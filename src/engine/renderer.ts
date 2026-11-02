@@ -225,7 +225,7 @@ export class PinballCanvasRenderer {
       this.renderTopHud(ctx, sim);
 
       if (sim.gameState === 'PAUSED') {
-        this.renderPauseOverlay(ctx);
+        this.renderPauseOverlay(ctx, sim);
       } else if (sim.gameState === 'GAME_OVER') {
         this.renderGameOverOverlay(ctx, sim);
       }
@@ -2130,7 +2130,7 @@ export class PinballCanvasRenderer {
     ctx.restore();
   }
 
-  private renderPauseOverlay(ctx: CanvasRenderingContext2D) {
+  private renderPauseOverlay(ctx: CanvasRenderingContext2D, sim: PinballSimulation) {
     ctx.fillStyle = 'rgba(5, 8, 16, 0.85)';
     ctx.fillRect(0, HUD_HEIGHT, SCREEN_WIDTH, VIEWPORT_HEIGHT);
 
@@ -2143,9 +2143,19 @@ export class PinballCanvasRenderer {
     ctx.font = '700 8px "JetBrains Mono", monospace';
     ctx.fillStyle = '#FFFFFF';
     ctx.fillText('R1 / C : REPRENDRE LA PARTIE', SCREEN_WIDTH * 0.5, 172);
-    ctx.fillStyle = '#CBD5E1';
-    ctx.fillText('B : RECOMMENCER LE PLATEAU', SCREEN_WIDTH * 0.5, 194);
-    ctx.fillText('A : MENU CHOIX DE FLIPPER', SCREEN_WIDTH * 0.5, 216);
+    const armed = sim.confirmTimer > 0 ? sim.pendingConfirm : null;
+    ctx.fillStyle = armed === 'RESTART' ? '#F87171' : '#CBD5E1';
+    ctx.fillText(
+      armed === 'RESTART' ? 'B : CONFIRMER ? RECOMMENCER' : 'B : RECOMMENCER LE PLATEAU',
+      SCREEN_WIDTH * 0.5,
+      194
+    );
+    ctx.fillStyle = armed === 'MENU' ? '#F87171' : '#CBD5E1';
+    ctx.fillText(
+      armed === 'MENU' ? 'A : CONFIRMER ? QUITTER AU MENU' : 'A : MENU CHOIX DE FLIPPER',
+      SCREEN_WIDTH * 0.5,
+      216
+    );
   }
 
   private renderGameOverOverlay(ctx: CanvasRenderingContext2D, sim: PinballSimulation) {

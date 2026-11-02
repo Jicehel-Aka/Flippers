@@ -23,7 +23,13 @@ import {
 } from '../types/pinball';
 
 const BALL_RADIUS = 4.8;
-const SUBSTEPS = 12; // 720Hz sub-stepping for crisp, zero-tunneling collisions
+// Fixed-timestep physics: the simulation always advances in 1/720 s slices, whatever the display
+// refresh rate (30/60/144/240 Hz...), so ball trajectories do not depend on the frame rate.
+const PHYSICS_DT = 1 / 720;
+const MAX_SUBSTEPS_PER_FRAME = 24; // matches the 33 ms frame clamp (0.033 s * 720 = 23.8)
+const HIGH_SCORE_SAVE_INTERVAL = 2; // seconds of simulated time between two localStorage writes
+const CONFIRM_WINDOW = 2.5; // seconds to confirm a destructive pause-menu action
+const ROLLOVER_RELIGHT_DELAY = 1.0; // seconds before a non-lane rollover switches off
 const TOTAL_BALLS_PER_GAME = 3;
 const INTRO_TOTAL_DURATION = 2.35; // Overview hold (~0.8s) + smooth progressive zoom (~1.55s)
 
@@ -59,7 +65,6 @@ export class PinballSimulation {
   public spinnerAngles: Record<string, number> = {};
   public spinnerMissionAccum: Record<string, number> = {};
   public gateOpenTimer: number = 0;
-  public lockedBallsCount: number = 0;
   public jackpotMultiplierBoost: number = 1;
 
   // Plunger, Nudge & Tilt
@@ -106,10 +111,88 @@ export class PinballSimulation {
   private nextBallId: number = 1;
   private nextPopupId: number = 1;
 
-  constructor() {
+  // Fixed-timestep accumulator, seeded gameplay PRNG, deferred high-score saving
+  private physicsAccumulator: number = 0;
+  private rngState: number = 1;
+  private highScoresDirty: boolean = false;
+  private lastHighScoreSave: number = 0;
+  private rolloverOffTimers: Record<string, number> = {};
+  private rampLengthCache: Map<string, { segLens: number[]; totalLen: number }> = new Map();
+
+  // Two-step confirmation for destructive pause-menu actions
+  public pendingConfirm: 'RESTART' | 'MENU' | null = null;
+  public confirmTimer: number = 0;
+
+  constructor(seed: number = (Date.now() ^ 0x9e3779b9) >>> 0) {
+    this.setSeed(seed);
     this.buildSharedCabinetGeometry();
     this.syncTableGeometry();
     this.initPlayers(1);
+  }
+
+  /** Multiball locks belong to the player who earned them (not shared between players). */
+  public get lockedBallsCount(): number {
+    return this.players[this.activePlayerIndex]?.lockedBalls ?? 0;
+  }
+
+  public set lockedBallsCount(value: number) {
+    const p = this.players[this.activePlayerIndex];
+    if (p) p.lockedBalls = value;
+  }
+
+  /** Seeds the gameplay PRNG (launch jitter, nudges, scoop ejects) so runs can be reproduced. */
+  public setSeed(seed: number) {
+    this.rngState = seed >>> 0 || 1;
+  }
+
+  /** mulberry32: small, fast, deterministic. Used for everything that can influence gameplay. */
+  private rand(): number {
+    this.rngState = (this.rngState + 0x6d2b79f5) >>> 0;
+    let t = this.rngState;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  }
+
+  /** Writes pending high scores to localStorage (called at game over, on pause and on page hide). */
+  public flushHighScores() {
+    if (!this.highScoresDirty) return;
+    this.highScoresDirty = false;
+    this.lastHighScoreSave = this.clock;
+    saveHighScores(this.highScores);
+  }
+
+  /** Auto-pause when the window loses focus so a ball is never lost in the background. */
+  public pauseIfPlaying() {
+    if (this.gameState === 'PLAYING') {
+      this.gameState = 'PAUSED';
+      this.pendingConfirm = null;
+      this.flushHighScores();
+    }
+  }
+
+  /** First call arms the confirmation, second call (within 2.5 s) restarts the table. */
+  public requestRestart() {
+    if (this.pendingConfirm === 'RESTART' && this.confirmTimer > 0) {
+      this.pendingConfirm = null;
+      this.startNewGame(this.playerCount);
+    } else {
+      this.pendingConfirm = 'RESTART';
+      this.confirmTimer = CONFIRM_WINDOW;
+      soundEngine.playMenuTick();
+    }
+  }
+
+  /** First call arms the confirmation, second call (within 2.5 s) goes back to the table menu. */
+  public requestMenu() {
+    if (this.pendingConfirm === 'MENU' && this.confirmTimer > 0) {
+      this.pendingConfirm = null;
+      this.openTableMenu();
+    } else {
+      this.pendingConfirm = 'MENU';
+      this.confirmTimer = CONFIRM_WINDOW;
+      soundEngine.playMenuTick();
+    }
   }
 
   public get currentTable(): PinballTableDef {
@@ -284,6 +367,7 @@ export class PinballSimulation {
       activeMissionIndex: 0,
       missionStepProgress: 0,
       missionsCompleted: 0,
+      lockedBalls: 0,
     }));
     this.activePlayerIndex = 0;
     this.currentBallNumber = 1;
@@ -326,6 +410,8 @@ export class PinballSimulation {
   }
 
   public openTableMenu() {
+    this.flushHighScores();
+    this.pendingConfirm = null;
     this.gameState = 'TABLE_SELECT';
     this.balls = [];
     this.popups = [];
@@ -339,6 +425,8 @@ export class PinballSimulation {
     this.syncTableGeometry();
     this.initPlayers(playerCount);
     this.gameState = 'PLAYING';
+    this.pendingConfirm = null;
+    this.physicsAccumulator = 0;
     this.activePlayerIndex = 0;
     this.currentBallNumber = 1;
     this.lockedBallsCount = 0;
@@ -350,6 +438,7 @@ export class PinballSimulation {
     this.balls = [];
     this.hitTargets.clear();
     this.litRollovers.clear();
+    this.rolloverOffTimers = {};
     this.dropBankResetTimers = {};
     this.spinnerMissionAccum = {};
     this.comboCount = 0;
@@ -395,7 +484,7 @@ export class PinballSimulation {
       x: 225,
       y: autoLaunch ? 448 : 473,
       vx: 0,
-      vy: autoLaunch ? -(790 + Math.random() * 110) : 0,
+      vy: autoLaunch ? -(790 + this.rand() * 110) : 0,
       radius: BALL_RADIUS,
       layer: 0,
       activeRampId: null,
@@ -433,7 +522,7 @@ export class PinballSimulation {
 
     if (player.score > this.highScores[this.currentTable.id]) {
       this.highScores[this.currentTable.id] = player.score;
-      saveHighScores(this.highScores);
+      this.highScoresDirty = true;
     }
 
     if (callout) {
@@ -657,13 +746,18 @@ export class PinballSimulation {
     }
 
     if (this.gameState === 'PAUSED') {
+      if (this.confirmTimer > 0) {
+        this.confirmTimer = Math.max(0, this.confirmTimer - dt);
+        if (this.confirmTimer === 0) this.pendingConfirm = null;
+      }
       if (justPause || justPlunger) {
+        this.pendingConfirm = null;
         this.gameState = 'PLAYING';
         soundEngine.playMenuTick();
       } else if (justNudge) {
-        this.startNewGame(this.playerCount);
+        this.requestRestart();
       } else if (justLeft) {
-        this.openTableMenu();
+        this.requestMenu();
       }
       this.prevControls = { ...controls };
       return;
@@ -680,6 +774,8 @@ export class PinballSimulation {
 
     if (justPause) {
       this.gameState = 'PAUSED';
+      this.pendingConfirm = null;
+      this.flushHighScores();
       soundEngine.playMenuTick();
       this.prevControls = { ...controls };
       return;
@@ -722,6 +818,15 @@ export class PinballSimulation {
     this.slingshotFlash.RIGHT = Math.max(0, this.slingshotFlash.RIGHT - dt);
     this.kickbackFlash.LEFT = Math.max(0, this.kickbackFlash.LEFT - dt);
     this.kickbackFlash.RIGHT = Math.max(0, this.kickbackFlash.RIGHT - dt);
+
+    // Non-lane rollovers switch off after a delay, measured in simulated time (frozen while paused)
+    for (const id of Object.keys(this.rolloverOffTimers)) {
+      this.rolloverOffTimers[id] -= dt;
+      if (this.rolloverOffTimers[id] <= 0) {
+        delete this.rolloverOffTimers[id];
+        this.litRollovers.delete(id);
+      }
+    }
 
     // Drop target bank auto-resets
     for (const bankId of Object.keys(this.dropBankResetTimers)) {
@@ -783,8 +888,8 @@ export class PinballSimulation {
       this.cameraZoom = 1.0;
       for (const b of this.balls) {
         if (b.inShooterLane && b.y > 430) {
-          b.vy = -(565 + launchPower * 385 + (Math.random() - 0.5) * 14);
-          b.vx = (Math.random() - 0.5) * 4;
+          b.vy = -(565 + launchPower * 385 + (this.rand() - 0.5) * 14);
+          b.vx = (this.rand() - 0.5) * 4;
           soundEngine.playPlungerLaunch(launchPower);
         }
       }
@@ -797,7 +902,7 @@ export class PinballSimulation {
       this.nudgeCooldown = 0.24;
       this.tiltMeter += 1.0;
       this.shakeOffset = {
-        x: (Math.random() > 0.5 ? 1 : -1) * 3.4,
+        x: (this.rand() > 0.5 ? 1 : -1) * 3.4,
         y: -3.2,
       };
 
@@ -811,18 +916,22 @@ export class PinballSimulation {
         for (const b of this.balls) {
           if (!b.inShooterLane && b.layer === 0 && !b.heldInScoopId) {
             b.vy -= 76;
-            b.vx += (113 - b.x) * 0.55 + (Math.random() - 0.5) * 28;
+            b.vx += (113 - b.x) * 0.55 + (this.rand() - 0.5) * 28;
           }
         }
       }
     }
 
-    // 720Hz Physics Sub-stepping
-    const subDt = dt / SUBSTEPS;
-    for (let s = 0; s < SUBSTEPS; s++) {
-      this.stepFlippers(subDt, controls);
-      this.stepBalls(subDt);
+    // Fixed 720 Hz physics: identical trajectories at any display refresh rate
+    this.physicsAccumulator += dt;
+    let substeps = 0;
+    while (this.physicsAccumulator >= PHYSICS_DT && substeps < MAX_SUBSTEPS_PER_FRAME) {
+      this.stepFlippers(PHYSICS_DT, controls);
+      this.stepBalls(PHYSICS_DT);
+      this.physicsAccumulator -= PHYSICS_DT;
+      substeps++;
     }
+    if (substeps === MAX_SUBSTEPS_PER_FRAME) this.physicsAccumulator = 0;
 
     // Update Overview Zoom + Lowest-Ball Smart Camera
     this.updateSmartCamera(dt, controls);
@@ -844,6 +953,9 @@ export class PinballSimulation {
     }
 
     this.checkDrainedBalls();
+    if (this.highScoresDirty && this.clock - this.lastHighScoreSave >= HIGH_SCORE_SAVE_INTERVAL) {
+      this.flushHighScores();
+    }
     this.prevControls = { ...controls };
   }
 
@@ -904,7 +1016,7 @@ export class PinballSimulation {
           if (scoop) {
             b.x = scoop.ejectTo.x;
             b.y = scoop.ejectTo.y;
-            b.vx = scoop.ejectVelocity.x + (Math.random() - 0.5) * 18;
+            b.vx = scoop.ejectVelocity.x + (this.rand() - 0.5) * 18;
             b.vy = scoop.ejectVelocity.y;
             b.trail = [];
             this.scoopFlashTimers[scoop.id] = 0.35;
@@ -1152,13 +1264,19 @@ export class PinballSimulation {
 
   private stepBallOnRamp(b: BallEntity, ramp: PinballTableDef['ramps'][number], dt: number) {
     const pts = ramp.path;
-    let totalLen = 0;
-    const segLens: number[] = [];
-    for (let i = 0; i < pts.length - 1; i++) {
-      const l = Math.hypot(pts[i + 1].x - pts[i].x, pts[i + 1].y - pts[i].y);
-      segLens.push(l);
-      totalLen += l;
+    let cached = this.rampLengthCache.get(ramp.id);
+    if (!cached) {
+      const lens: number[] = [];
+      let sum = 0;
+      for (let i = 0; i < pts.length - 1; i++) {
+        const l = Math.hypot(pts[i + 1].x - pts[i].x, pts[i + 1].y - pts[i].y);
+        lens.push(l);
+        sum += l;
+      }
+      cached = { segLens: lens, totalLen: sum };
+      this.rampLengthCache.set(ramp.id, cached);
     }
+    const { segLens, totalLen } = cached;
 
     if (b.rampReverse) {
       b.rampSpeed -= 380 * dt;
@@ -1391,9 +1509,7 @@ export class PinballSimulation {
               this.awardPoints(15000, 'BONUS + KICKBACK ACTIVÉ !', { x: 113, y: 70 }, '#FACC15');
             }
           } else {
-            setTimeout(() => {
-              this.litRollovers.delete(r.id);
-            }, 1000);
+            this.rolloverOffTimers[r.id] = ROLLOVER_RELIGHT_DELAY;
           }
         }
       }
@@ -1600,7 +1716,7 @@ export class PinballSimulation {
         player.score += bonusAward;
         if (player.score > this.highScores[this.currentTable.id]) {
           this.highScores[this.currentTable.id] = player.score;
-          saveHighScores(this.highScores);
+          this.highScoresDirty = true;
         }
       }
 
@@ -1627,6 +1743,7 @@ export class PinballSimulation {
         );
       } else {
         this.gameState = 'GAME_OVER';
+        this.flushHighScores();
         this.setCallout('FIN DE PARTIE', 0);
       }
     }

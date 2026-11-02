@@ -25,8 +25,11 @@ const INITIAL_INPUTS: InputControlsState = {
 };
 
 export default function App() {
-  const simRef = useRef<PinballSimulation>(new PinballSimulation());
-  const rendererRef = useRef<PinballCanvasRenderer>(new PinballCanvasRenderer());
+  // Lazy init: `useRef(new X())` would build (and discard) a new instance on every render.
+  const [initialSim] = useState(() => new PinballSimulation());
+  const [initialRenderer] = useState(() => new PinballCanvasRenderer());
+  const simRef = useRef<PinballSimulation>(initialSim);
+  const rendererRef = useRef<PinballCanvasRenderer>(initialRenderer);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   const keyboardInputsRef = useRef<InputControlsState>({ ...INITIAL_INPUTS });
@@ -113,6 +116,8 @@ export default function App() {
         case 'KeyC':
         case 'KeyP':
           return 'pauseBtn';
+        case 'KeyN':
+          return 'dpadUp'; // N : nombre de joueurs (+1)
         case 'ArrowDown':
           return 'dpadDown';
         default:
@@ -144,16 +149,29 @@ export default function App() {
     const onBlur = () => {
       keyboardInputsRef.current = { ...INITIAL_INPUTS };
       pointerInputsRef.current = { ...INITIAL_INPUTS };
+      // Never lose a ball in the background: pause as soon as the window loses focus
+      simRef.current.pauseIfPlaying();
       syncActiveInputsUI();
+      setSnapshot(simRef.current.getSnapshot());
     };
+
+    const onVisibilityChange = () => {
+      if (document.hidden) onBlur();
+    };
+
+    const onPageHide = () => simRef.current.flushHighScores();
 
     window.addEventListener('keydown', onKeyDown);
     window.addEventListener('keyup', onKeyUp);
     window.addEventListener('blur', onBlur);
+    window.addEventListener('pagehide', onPageHide);
+    document.addEventListener('visibilitychange', onVisibilityChange);
     return () => {
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('keyup', onKeyUp);
       window.removeEventListener('blur', onBlur);
+      window.removeEventListener('pagehide', onPageHide);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
     };
   }, [syncActiveInputsUI]);
 
@@ -210,9 +228,9 @@ export default function App() {
       if (ly >= 160 && ly < 185) {
         sim.gameState = 'PLAYING';
       } else if (ly >= 185 && ly < 206) {
-        sim.startNewGame(sim.playerCount);
+        sim.requestRestart();
       } else if (ly >= 206 && ly < 230) {
-        sim.openTableMenu();
+        sim.requestMenu();
       }
       setSnapshot(sim.getSnapshot());
     } else if (sim.gameState === 'GAME_OVER') {
