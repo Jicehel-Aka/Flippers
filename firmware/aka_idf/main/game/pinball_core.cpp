@@ -160,6 +160,8 @@ void Game::startNewGame(uint8_t tableIndex) {
     multiballActive = false;
     lockLit = false;
     lockHits = 0;
+    rolloverLit = 0;
+    rolloverFlash = 0.0f;
     missionIdx = 0;
     missionProgress = 0;
     tiltMeter = 0.0f;
@@ -286,6 +288,33 @@ void Game::stepSubstep(float dt, bool leftHeld, bool rightHeld) {
                 advanceMission(0);
                 emit(Sfx::Bumper, k);
                 touchHud();
+            }
+        }
+
+        // Rollovers : la lampe s'allume quand la bille roule dessus ; groupe complet = bonus
+        if (!b.inShooter) {
+            for (uint8_t k = 0; k < MAX_ROLLOVERS; k++) {
+                const RolloverDef& ro = t.rollovers[k];
+                const uint8_t bit = (uint8_t)(1u << k);
+                if (rolloverLit & bit) continue;
+                const float dx = b.x - ro.x, dy = b.y - ro.y, rr = ro.r + 1.5f;
+                if (dx * dx + dy * dy >= rr * rr) continue;
+                rolloverLit |= bit;
+                score += ro.points;
+                emit(Sfx::MenuMove, 1);
+                touchHud();
+                if ((rolloverLit & 0x0F) == 0x0F) {
+                    rolloverLit &= (uint8_t)~0x0F;
+                    rolloverFlash = 1.2f;
+                    score += 10000;
+                    showBanner("COULOIRS +10000", 1.6f);
+                    emit(Sfx::Mission, 0);
+                } else if ((rolloverLit & 0x30) == 0x30) {
+                    rolloverLit &= (uint8_t)~0x30;
+                    score += 5000;
+                    showBanner("RETOURS +5000", 1.4f);
+                    emit(Sfx::Mission, 0);
+                }
             }
         }
 
@@ -446,6 +475,7 @@ void Game::updatePlaying(float dt, const Input& in, bool nudgePressed, bool flip
     if (bannerTimer > 0.0f) bannerTimer = maxf(0.0f, bannerTimer - dt);
     for (int i = 0; i < MAX_BUMPERS; i++) if (bumperFlash[i] > 0.0f) bumperFlash[i] = maxf(0.0f, bumperFlash[i] - dt);
     for (int i = 0; i < wallCount; i++) if (wallFlash[i] > 0.0f) wallFlash[i] = maxf(0.0f, wallFlash[i] - dt);
+    if (rolloverFlash > 0.0f) rolloverFlash = maxf(0.0f, rolloverFlash - dt);
 
     bool anyInShooter = false;
     for (int i = 0; i < MAX_BALLS; i++) {
@@ -581,7 +611,16 @@ void Game::update(float dtRaw, const Input& in, uint32_t now) {
                 confirmAction = 0;
                 emit(Sfx::Pause);
             } else {
-                if (!isTilted && (leftEdge || rightEdge)) emit(Sfx::Flipper, leftEdge ? 0 : 1);
+                if (!isTilted && (leftEdge || rightEdge)) {
+                    emit(Sfx::Flipper, leftEdge ? 0 : 1);
+                    // changement de couloir : les boutons de flippers decalent les lampes du haut (classique)
+                    const uint8_t top = rolloverLit & 0x0F;
+                    if (top && top != 0x0F) {
+                        const uint8_t rot = leftEdge ? (uint8_t)(((top << 1) | (top >> 3)) & 0x0F)
+                                                     : (uint8_t)(((top >> 1) | (top << 3)) & 0x0F);
+                        rolloverLit = (uint8_t)((rolloverLit & 0xF0) | rot);
+                    }
+                }
                 updatePlaying(dt, in, nudgeEdge, leftEdge || rightEdge);
             }
             break;

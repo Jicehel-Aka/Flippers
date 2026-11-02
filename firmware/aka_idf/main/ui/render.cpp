@@ -234,8 +234,52 @@ static void draw_art_layer(const View& v, const uint8_t* art) {
     }
 }
 
+// Lampes animees posees sur le decor fixe : chevrons du couloir lanceur, rollovers, gemmes de mission.
+static void draw_lamps(const Game& g, const View& v, const TableDef& t) {
+    // chevrons du couloir lanceur : une lampe sur quatre s'allume, en chenillard
+    for (int y = 120; y <= 440; y += 45) {
+        if ((((g.nowMs / 100u) + (uint32_t)(y / 45)) & 3u) != 0u) continue;
+        ptri(v.X(225.0f), v.Y((float)(y - 4)), v.X(220.0f), v.Y((float)(y + 3)), v.X(230.0f), v.Y((float)(y + 3)), darken(t.rail, 15));
+    }
+
+    // rollovers : allumes par la bille ; les 4 couloirs clignotent quand ils sont completes
+    for (int k = 0; k < MAX_ROLLOVERS; k++) {
+        const RolloverDef& ro = t.rollovers[k];
+        const bool blink = g.rolloverFlash > 0.0f && k < 4 && (((g.nowMs / 100u) & 1u) != 0u);
+        const bool lit = (g.rolloverLit & (1u << k)) != 0 || blink;
+        if (!lit) continue;
+        const int cx = v.X(ro.x), cy = v.Y(ro.y), cr = v.R(ro.r);
+        pfillcircle(cx, cy, cr + 3, darken(t.rail, 65));
+        pfillcircle(cx, cy, cr, C(t.rail));
+        pcircle(cx, cy, cr, C3(255, 255, 255));
+        if (v.zoom > 0.8f) {
+            const char txt[2] = {ro.letter, 0};
+            ptext_center(cx, cy - 4, txt, C3(9, 13, 22));
+        }
+    }
+
+    // gemmes de mission : acquises = pleines, en cours = pulsation
+    for (int i = 0; i < 3; i++) {
+        const int cur = g.missionIdx % 3;
+        if (i > cur) continue;
+        const MissionDef& m = t.missions[i];
+        const int gx = v.X(t.missionPos.x - 26.0f + (float)i * 26.0f), gy = v.Y(t.missionPos.y - 3.5f);
+        const int gr = v.R(4.2f);
+        uint16_t col;
+        if (i < cur) {
+            col = C(m.color);
+        } else {
+            const int pulse = (int)(55.0f + 45.0f * sinf((float)g.nowMs * 0.01f));   // 10..100 %
+            col = mix(0x1E293B, m.color, pulse, 100);
+        }
+        pfillcircle(gx, gy, gr, col);
+        pcircle(gx, gy, gr, C3(255, 255, 255));
+    }
+}
+
 // Elements animes dessines PAR-DESSUS le decor : eclats des bumpers et slingshots, puits de verrouillage, ressort.
 static void draw_art_dynamic(const Game& g, const View& v, const TableDef& t) {
+    draw_lamps(g, v, t);
     for (int w = 0; w < g.wallCount; w++) {
         const Segment& sg = g.walls[w];
         if (!(sg.scoring && g.wallFlash[w] > 0.0f)) continue;

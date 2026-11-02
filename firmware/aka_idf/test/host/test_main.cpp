@@ -254,6 +254,34 @@ static void test_multiball_and_lock() {
     CHECK(strstr(g.bannerText, "ESCADRON") != nullptr, "bandeau Star Wars: %s", g.bannerText);
 }
 
+static void test_rollovers() {
+    printf("[rollovers]\n");
+    for (int ti = 0; ti < TABLE_COUNT; ti++) {
+        Game g;
+        g.begin(STORE());
+        g.startNewGame((uint8_t)ti);
+        const TableDef& t = g.tbl();
+        for (int k = 0; k < 4; k++) {   // couloirs du haut : la bille passe sur chacun
+            for (int i = 0; i < MAX_BALLS; i++) g.balls[i].active = false;
+            g.balls[0] = {t.rollovers[k].x, t.rollovers[k].y, 0, 0, true, false, 0.0f, 0.0f};
+            const uint32_t before = g.score;
+            g.stepPhysics(0.004f, Input());
+            if (k < 3) {
+                CHECK(g.rolloverLit & (1u << k), "table %d : rollover %d non allume", ti, k);
+                CHECK(g.score >= before + t.rollovers[k].points, "table %d : rollover %d sans points", ti, k);
+            }
+        }
+        CHECK((g.rolloverLit & 0x0F) == 0 && g.rolloverFlash > 0.0f, "table %d : 4 couloirs = bonus + clignotement (lit=%02x)", ti, g.rolloverLit);
+        for (int k = 4; k < 6; k++) {   // retours
+            for (int i = 0; i < MAX_BALLS; i++) g.balls[i].active = false;
+            g.balls[0] = {t.rollovers[k].x, t.rollovers[k].y, 0, 0, true, false, 0.0f, 0.0f};
+            g.stepPhysics(0.004f, Input());
+        }
+        CHECK((g.rolloverLit & 0x30) == 0, "table %d : 2 retours = bonus (lit=%02x)", ti, g.rolloverLit);
+    }
+    printf("  4 tables : allumage, bonus des couloirs et des retours\n");
+}
+
 static void test_art() {
     printf("[decors pre-rendus]\n");
     for (int i = 0; i < TABLE_COUNT; i++) {
@@ -349,6 +377,15 @@ static void test_render(const char* outDir) {
         for (int i = 0; i < 60 * 12; i++) tick(g, bot_input(g, bot, 1.0f / 60), 1.0f / 60);
         render::draw(g);
         if (outDir) { snprintf(path, sizeof(path), "%s/t%d_play.ppm", outDir, t); vid::dump_ppm(path); }
+        {   // lampes allumees (captures de controle) : couloirs 1 et 3, un retour, mission 2 en cours
+            const uint8_t sl = g.rolloverLit; const uint8_t sm = g.missionIdx; const float sz = g.cameraZoom, sc = g.cameraY;
+            g.rolloverLit = 0x15; g.missionIdx = 1;
+            g.cameraZoom = 1.0f; g.cameraY = 0.0f; render::draw(g);
+            if (outDir) { snprintf(path, sizeof(path), "%s/t%d_lamps_top.ppm", outDir, t); vid::dump_ppm(path); }
+            g.cameraY = MAX_CAM_Y; render::draw(g);
+            if (outDir) { snprintf(path, sizeof(path), "%s/t%d_lamps_bot.ppm", outDir, t); vid::dump_ppm(path); }
+            g.rolloverLit = sl; g.missionIdx = sm; g.cameraZoom = sz; g.cameraY = sc;
+        }
 
         // pause + fin de partie
         g.state = State::Paused;
@@ -371,6 +408,7 @@ int main(int argc, char** argv) {
     test_state_machine();
     test_multiball_and_lock();
     test_sfx_patterns();
+    test_rollovers();
     test_art();
     test_music();
     test_render(outDir);

@@ -568,7 +568,7 @@ export class PinballCanvasRenderer {
 
     // Shooter Tunnel Animated Boost Chevrons (x = 225, y: 120..440)
     for (let y = 120; y <= 440; y += 45) {
-      const lit = ((Math.floor(sim.clock * 10) + Math.floor(y / 45)) % 4 + 4) % 4 === 0;
+      const lit = !this.staticArt && ((Math.floor(sim.clock * 10) + Math.floor(y / 45)) % 4 + 4) % 4 === 0;
       ctx.fillStyle = lit ? `${pal.accentPrimary}88` : 'rgba(148, 163, 184, 0.14)';
       ctx.beginPath();
       ctx.moveTo(225, y - 4);
@@ -589,8 +589,9 @@ export class PinballCanvasRenderer {
 
     // 5. Rollovers & Skill Shot Lanes
     for (const r of table.rollovers) {
-      const isLit = sim.litRollovers.has(r.id);
+      const isLit = !this.staticArt && sim.litRollovers.has(r.id);
       const isSkill =
+        !this.staticArt &&
         sim.skillShotAvailable &&
         r.id === sim.skillShotRolloverId &&
         Math.sin(sim.clock * 14) > -0.2;
@@ -727,8 +728,8 @@ export class PinballCanvasRenderer {
       const gx = cx - 26 + i * 26;
       const gy = cy - 3.5;
       const m = table.missions[i];
-      const isDone = i < activeIdx;
-      const isCurrent = i === activeIdx;
+      const isDone = !this.staticArt && i < activeIdx;
+      const isCurrent = !this.staticArt && i === activeIdx;
       const pulse = 0.55 + 0.45 * Math.sin(sim.clock * 10);
 
       ctx.beginPath();
@@ -748,15 +749,17 @@ export class PinballCanvasRenderer {
       ctx.stroke();
     }
 
-    ctx.font = '700 5.6px "JetBrains Mono", monospace';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillStyle = '#F8FAFC';
-    ctx.fillText(
-      `${activeMission.title.slice(0, 14)} ${p?.missionStepProgress ?? 0}/${activeMission.goal}`,
-      cx,
-      cy + 6
-    );
+    if (!this.staticArt) {   // décor AKA : titre et progression sont dessinés par la console
+      ctx.font = '700 5.6px "JetBrains Mono", monospace';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = '#F8FAFC';
+      ctx.fillText(
+        `${activeMission.title.slice(0, 14)} ${p?.missionStepProgress ?? 0}/${activeMission.goal}`,
+        cx,
+        cy + 6
+      );
+    }
     ctx.restore();
   }
 
