@@ -2,6 +2,7 @@
 //   bash firmware/aka_idf/test/host/run.sh [dossier_captures]
 #include "../../main/game/pinball_core.h"
 #include "../../main/game/sfx_patterns.h"
+#include "../../main/game/music.h"
 #include "../../main/ui/gfx.h"
 #include "../../main/ui/render.h"
 #include <math.h>
@@ -227,6 +228,29 @@ static void test_multiball_and_lock() {
     CHECK(strstr(g.bannerText, "ESCADRON") != nullptr, "bandeau Star Wars: %s", g.bannerText);
 }
 
+static void test_music() {
+    printf("[musique]\n");
+    for (int decor = 0; decor < 4; decor++) {
+        int notes = 0;
+        float lo = 1e9f, hi = 0;
+        for (uint32_t st = 0; st < MUSIC_STEPS * 2; st++) {
+            MusicNote n;
+            if (!music_note((uint8_t)decor, st, n)) continue;
+            notes++;
+            CHECK(n.freq >= 80 && n.freq <= 2000, "decor %d pas %u : frequence %.0f", decor, st, n.freq);
+            CHECK(n.durMs > 0 && n.durMs <= music_step_ms((uint8_t)decor, false), "decor %d pas %u : duree %u", decor, st, n.durMs);
+            CHECK(n.vol > 0 && n.vol <= 0.5f, "decor %d : volume %.2f", decor, n.vol);
+            if (n.freq < lo) lo = n.freq;
+            if (n.freq > hi) hi = n.freq;
+        }
+        CHECK(notes >= MUSIC_STEPS * 2 / 3, "decor %d : boucle trop vide (%d notes)", decor, notes);
+        CHECK(music_step_ms((uint8_t)decor, true) < music_step_ms((uint8_t)decor, false), "decor %d : multibille pas plus rapide", decor);
+        MusicNote a, b;   // la boucle se repete a l'identique
+        CHECK(music_note((uint8_t)decor, 0, a) && music_note((uint8_t)decor, MUSIC_STEPS, b) && a.freq == b.freq, "decor %d : boucle non periodique", decor);
+        printf("  decor %d : %d notes sur 2 boucles, %.0f..%.0f Hz, pas %u ms\n", decor, notes, lo, hi, music_step_ms((uint8_t)decor, false));
+    }
+}
+
 static void test_sfx_patterns() {
     printf("[effets sonores]\n");
     int total = 0;
@@ -308,6 +332,7 @@ int main(int argc, char** argv) {
     test_state_machine();
     test_multiball_and_lock();
     test_sfx_patterns();
+    test_music();
     test_render(outDir);
     if (g_fail) { printf("\n%d ECHEC(S)\n", g_fail); return 1; }
     printf("\nTOUS LES TESTS PASSENT\n");

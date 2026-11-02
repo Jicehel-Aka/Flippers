@@ -72,6 +72,7 @@ extern "C" void app_main(void) {
         pinball::SfxEvent ev;
         const uint8_t decor = g_game.tbl().decor;
         while (g_game.popSfx(ev)) platform::audio_play(decor, ev.id, ev.arg);
+        platform::audio_music(g_game.state == pinball::State::Playing ? decor : 255, g_game.multiballActive);
 
         render::draw(g_game);
         vid::present();   // vsync + DMA vers la dalle

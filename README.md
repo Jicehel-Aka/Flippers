@@ -113,12 +113,13 @@ Les binaires autonomes (`.exe` portable sous Windows, `.AppImage` / `.tar.gz` so
 Le firmware (`firmware/aka_idf`) est un projet **ESP-IDF 5.5.1** pour l'ESP32-S3 de la console, construit sur les composants `gamebuino` et `aka_runtime`. C'est un **moteur simplifié** par rapport au Web/PC : les 4 plateaux (générés depuis `src/data/tables.ts`), bumpers, slingshots, flippers, rampes, puits de verrouillage, Multibille, missions et records sont présents, mais pas les spinners, les cibles ni les rollovers du Web. Les textes en jeu sont en français ; le menu système (MENU) est traduit en fr, en, de, es et it.
 
 - **Sons** : effets de flipper synthétisés (bumpers, slingshots, flippers, ressort, rampes, verrouillage, Multibille, tilt, fin de partie…), avec un décor sonore propre à chaque plateau. Aucun échantillon ni musique protégée.
+- **Musique de fond** : une boucle originale par plateau (circuit, espace, Star Wars, temple), synthétisée sur une piste réservée ; elle joue pendant la partie, se coupe en pause et s'accélère en Multibille. Son volume suit le réglage musique du runtime AKA.
 - **Menu système (MENU)** : reprendre, commandes, langue, crédits, retour au loader. Appui long sur MENU : capture d'écran. RUN + MENU : retour au loader.
 - **Commandes** : A / L1 / Gauche = flippers gauches ; D / Droite = flippers droits ; R1 / Bas = ressort ; B / Haut = secousse ; C / RUN = pause.
 - **Records** : `/sdcard/pinball/records.bin`.
 - **Table Star Wars · Yavin** : univers hommage de fan (libellés, couleurs, sabres laser et sons génériques) sans logo, personnage, image ni musique de Lucasfilm.
 
-> **Limites connues :** le firmware n'a pas encore été validé sur une console réelle (la logique et le rendu sont testés sur PC, la compilation ESP-IDF est vérifiée en CI). Le volume suit le réglage du runtime AKA, qui n'a pas encore de curseur dans son menu.
+> **Limites connues :** le firmware n'a pas encore été validé sur une console réelle (la logique et le rendu sont testés sur PC, la compilation ESP-IDF est vérifiée en CI). Les volumes (effets et musique) suivent les réglages du runtime AKA, qui n'a pas encore de curseur dans son menu : valeurs par défaut.
 
 ## Installer sur la console Gamebuino AKA
 

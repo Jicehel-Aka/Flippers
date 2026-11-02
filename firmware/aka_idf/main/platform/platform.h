@@ -16,6 +16,8 @@ pinball::Input input_from_keys(const Keys& k);
 void audio_init();
 void audio_play(uint8_t decor, pinball::Sfx id, uint8_t arg);
 void audio_silence();
+// Musique de fond : decor 0..3 pour la jouer, 255 pour l'arreter. `intense` = multibille (tempo plus vif).
+void audio_music(uint8_t decor, bool intense);
 
 // Records : fichier /sdcard/pinball/records.bin
 pinball::HighScoreStore store();

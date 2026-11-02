@@ -8,6 +8,7 @@
 */
 #include "platform.h"
 #include "../game/sfx_patterns.h"
+#include "../game/music.h"
 #include "gb_audio_player.h"
 #include "gb_audio_track_tone.h"
 #include "gb_ll_audio.h"
@@ -22,6 +23,8 @@ namespace platform {
 namespace {
 
 constexpr int VOICES = AUDIO_PLAYER_TRACK_COUNT;
+constexpr int MUSIC_VOICE = VOICES - 1;   // la derniere piste est reservee a la musique ; les effets utilisent les autres
+constexpr int SFX_VOICES = VOICES - 1;
 constexpr int MAX_PENDING = 32;
 constexpr float SFX_VOLUME = 0.85f;
 
@@ -54,10 +57,10 @@ void schedule(const Event& e) {
 void fire(const pinball::Note& n) {
     // voix libre, sinon la plus ancienne est volee
     int v = -1;
-    for (int i = 0; i < VOICES; i++) if (!g_voice[i].is_playing()) { v = i; break; }
+    for (int i = 0; i < SFX_VOICES; i++) if (!g_voice[i].is_playing()) { v = i; break; }
     if (v < 0) {
         v = 0;
-        for (int i = 1; i < VOICES; i++) if ((int32_t)(g_voice_start[i] - g_voice_start[v]) < 0) v = i;
+        for (int i = 1; i < SFX_VOICES; i++) if ((int32_t)(g_voice_start[i] - g_voice_start[v]) < 0) v = i;
     }
     g_voice_start[v] = now_ms();
     // Volume des effets du runtime AKA (70 = reglage par defaut -> SFX_VOLUME).
@@ -65,6 +68,33 @@ void fire(const pinball::Note& n) {
     if (vol > 1.0f) vol = 1.0f;
     g_voice[v].play_tone(n.f0, n.f1, n.v0 * vol, n.v1 * vol, n.durMs,
                          (gb_audio_track_tone::tone_type)n.wave);
+}
+
+// Musique : l'etat demande par le jeu (ecrit par la boucle principale, lu par AudioTask).
+volatile uint8_t g_music_want = 255;
+volatile bool g_music_intense = false;
+
+uint8_t g_music_theme = 255;
+uint32_t g_music_step = 0;
+uint32_t g_music_due = 0;
+
+void music_tick(uint32_t t) {
+    const uint8_t want = g_music_want;
+    if (want != g_music_theme) {
+        g_music_theme = want;
+        g_music_step = 0;
+        g_music_due = t + 250;   // petit temps d'attente apres le lancement de la bille
+        g_voice[MUSIC_VOICE].stop_playing();
+    }
+    if (g_music_theme == 255 || (int32_t)(t - g_music_due) < 0) return;
+    pinball::MusicNote n;
+    if (pinball::music_note(g_music_theme, g_music_step, n)) {
+        float vol = n.vol * ((float)akaRuntime.getMusicVolume() / 80.0f);   // 80 = reglage par defaut
+        if (vol > 1.0f) vol = 1.0f;
+        g_voice[MUSIC_VOICE].play_tone(n.freq, n.freq, vol, vol * 0.4f, n.durMs, (gb_audio_track_tone::tone_type)n.wave);
+    }
+    g_music_step++;
+    g_music_due += pinball::music_step_ms(g_music_theme, g_music_intense);
 }
 
 void audio_task(void*) {
@@ -80,6 +110,7 @@ void audio_task(void*) {
             }
         }
 
+        music_tick(t);
         g_player.pool();
         vTaskDelay(pdMS_TO_TICKS(2));
     }
@@ -97,7 +128,13 @@ void audio_init() {
     xTaskCreatePinnedToCore(audio_task, "pinball_audio", 4096, nullptr, 5, nullptr, 1);
 }
 
+void audio_music(uint8_t decor, bool intense) {
+    g_music_intense = intense;
+    g_music_want = (decor < 4) ? decor : 255;
+}
+
 void audio_silence() {
+    g_music_want = 255;
     for (int i = 0; i < VOICES; i++) g_voice[i].stop_playing();
     for (int k = 0; k < MAX_PENDING; k++) g_pending[k].used = false;
 }
