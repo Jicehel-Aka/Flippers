@@ -3,6 +3,7 @@ idf_component_register(
         app_main.cpp
         game/pinball_core.cpp
         game/sfx_patterns.cpp
+        game/music.cpp
         ui/gfx_prims.cpp
         ui/render.cpp
         platform/gfx_backend_aka.cpp
