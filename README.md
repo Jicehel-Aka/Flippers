@@ -152,6 +152,8 @@ git tag v1.0.0
 git push origin v1.0.0
 ```
 
+Sans pouvoir pousser de tag, lancez **les deux** workflows (`build-pc.yml` et `build-aka.yml`) à la main depuis l'onglet *Actions* avec `publish_release` coché et **le même `release_tag`** (ex. `v1.1.0`) : les exécutables PC et le paquet carte SD arrivent dans une seule Release.
+
 ---
 
 ## Licence
