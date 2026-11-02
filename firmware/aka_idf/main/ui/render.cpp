@@ -32,6 +32,38 @@ static void pfillcircle(int cx, int cy, int r, uint16_t col) { vid::fill_circle(
 static void ptri(int x0, int y0, int x1, int y1, int x2, int y2, uint16_t col) {
     vid::fill_triangle(SX(y0), SY(x0), SX(y1), SY(x1), SX(y2), SY(x2), col);
 }
+// Disque / anneau centres sur des coordonnees CANVAS flottantes (portrait). Ils se calent exactement sur le decor
+// pre-rendu : un cercle a centre entier (pfillcircle) serait decale d'un demi-pixel.
+static void pdisc(float cx, float cy, float r, uint16_t col) {
+    if (r <= 0.0f) return;
+    for (int j = (int)floorf(cy - r); j < (int)ceilf(cy + r); j++) {
+        const float dy = (float)j + 0.5f - cy;
+        const float q = r * r - dy * dy;
+        if (q <= 0.0f) continue;
+        const float w = sqrtf(q);
+        const int x0 = (int)lroundf(cx - w), x1 = (int)lroundf(cx + w);
+        if (x1 > x0) pfill(x0, j, x1 - x0, 1, col);
+    }
+}
+static void pring(float cx, float cy, float r, float thick, uint16_t col) {
+    const float ri = r - thick;
+    for (int j = (int)floorf(cy - r); j < (int)ceilf(cy + r); j++) {
+        const float dy = (float)j + 0.5f - cy;
+        const float qo = r * r - dy * dy;
+        if (qo <= 0.0f) continue;
+        const float wo = sqrtf(qo);
+        const int xo0 = (int)lroundf(cx - wo), xo1 = (int)lroundf(cx + wo);
+        const float qi = ri * ri - dy * dy;
+        if (ri > 0.0f && qi > 0.0f) {
+            const float wi = sqrtf(qi);
+            const int xi0 = (int)lroundf(cx - wi), xi1 = (int)lroundf(cx + wi);
+            if (xi0 > xo0) pfill(xo0, j, xi0 - xo0, 1, col);
+            if (xo1 > xi1) pfill(xi1, j, xo1 - xi1, 1, col);
+        } else if (xo1 > xo0) {
+            pfill(xo0, j, xo1 - xo0, 1, col);
+        }
+    }
+}
 static void prect(int x, int y, int w, int h, uint16_t col) {
     if (w <= 0 || h <= 0) return;
     vid::rect(SX(y), SY(x + w - 1), h, w, col);
@@ -125,6 +157,9 @@ struct View {
     float zoom, camY, xPad;
     int X(float wx) const { return (int)lroundf(xPad + wx * zoom); }
     int Y(float wy) const { return HUD_H + (int)lroundf((wy - camY) * zoom); }
+    // Coordonnees CANVAS (flottantes) : le pixel i couvre [i, i+1), comme dans les images de decor.
+    float Xf(float wx) const { return xPad + wx * zoom; }
+    float Yf(float wy) const { return (float)HUD_H + (wy - camY) * zoom; }
     int R(float r) const { int v = (int)lroundf(r * zoom); return v < 1 ? 1 : v; }
 };
 
@@ -237,9 +272,12 @@ static void draw_art_layer(const View& v, const uint8_t* art) {
 // Lampes animees posees sur le decor fixe : chevrons du couloir lanceur, rollovers, gemmes de mission.
 static void draw_lamps(const Game& g, const View& v, const TableDef& t) {
     // chevrons du couloir lanceur : une lampe sur quatre s'allume, en chenillard
+    // (triangle du moteur Web : sommet (225, y-4), base y+3 entre x = 220 et 230, en coordonnees canvas)
     for (int y = 120; y <= 440; y += 45) {
         if ((((g.nowMs / 100u) + (uint32_t)(y / 45)) & 3u) != 0u) continue;
-        ptri(v.X(225.0f), v.Y((float)(y - 4)), v.X(220.0f), v.Y((float)(y + 3)), v.X(230.0f), v.Y((float)(y + 3)), darken(t.rail, 15));
+        ptri((int)lroundf(v.Xf(225.0f) - 0.5f), (int)lroundf(v.Yf((float)(y - 4))),
+             (int)lroundf(v.Xf(220.0f)),        (int)lroundf(v.Yf((float)(y + 3)) - 1.0f),
+             (int)lroundf(v.Xf(230.0f) - 1.0f), (int)lroundf(v.Yf((float)(y + 3)) - 1.0f), darken(t.rail, 15));
     }
 
     // rollovers : allumes par la bille ; les 4 couloirs clignotent quand ils sont completes
@@ -248,23 +286,22 @@ static void draw_lamps(const Game& g, const View& v, const TableDef& t) {
         const bool blink = g.rolloverFlash > 0.0f && k < 4 && (((g.nowMs / 100u) & 1u) != 0u);
         const bool lit = (g.rolloverLit & (1u << k)) != 0 || blink;
         if (!lit) continue;
-        const int cx = v.X(ro.x), cy = v.Y(ro.y), cr = v.R(ro.r);
-        pfillcircle(cx, cy, cr + 3, darken(t.rail, 65));
-        pfillcircle(cx, cy, cr, C(t.rail));
-        pcircle(cx, cy, cr, C3(255, 255, 255));
+        const float cx = v.Xf(ro.x), cy = v.Yf(ro.y), cr = ro.r * v.zoom;
+        pdisc(cx, cy, cr + 3.0f * v.zoom, darken(t.rail, 65));    // halo
+        pdisc(cx, cy, cr + 0.6f * v.zoom, C3(255, 255, 255));     // liseré blanc (trait de 1,2 px centré sur le bord)
+        pdisc(cx, cy, cr - 0.6f * v.zoom, C(t.rail));
         if (v.zoom > 0.8f) {
             const char txt[2] = {ro.letter, 0};
-            ptext_center(cx, cy - 4, txt, C3(9, 13, 22));
+            ptext_center((int)lroundf(cx), (int)lroundf(cy) - 4, txt, C3(9, 13, 22));
         }
     }
 
-    // gemmes de mission : acquises = pleines, en cours = pulsation
+    // gemmes de mission : acquises = pleines, en cours = pulsation (rayon 4,2 + trait blanc de 1 px)
     for (int i = 0; i < 3; i++) {
         const int cur = g.missionIdx % 3;
         if (i > cur) continue;
         const MissionDef& m = t.missions[i];
-        const int gx = v.X(t.missionPos.x - 26.0f + (float)i * 26.0f), gy = v.Y(t.missionPos.y - 3.5f);
-        const int gr = v.R(4.2f);
+        const float gx = v.Xf(t.missionPos.x - 26.0f + (float)i * 26.0f), gy = v.Yf(t.missionPos.y - 3.5f);
         uint16_t col;
         if (i < cur) {
             col = C(m.color);
@@ -272,8 +309,8 @@ static void draw_lamps(const Game& g, const View& v, const TableDef& t) {
             const int pulse = (int)(55.0f + 45.0f * sinf((float)g.nowMs * 0.01f));   // 10..100 %
             col = mix(0x1E293B, m.color, pulse, 100);
         }
-        pfillcircle(gx, gy, gr, col);
-        pcircle(gx, gy, gr, C3(255, 255, 255));
+        pdisc(gx, gy, 4.7f * v.zoom, C3(255, 255, 255));
+        pdisc(gx, gy, 3.7f * v.zoom, col);
     }
 }
 
@@ -288,11 +325,11 @@ static void draw_art_dynamic(const Game& g, const View& v, const TableDef& t) {
     for (int k = 0; k < t.bumperCount; k++) {
         if (!(g.bumperFlash[k] > 0.0f)) continue;
         const BumperDef& b = t.bumpers[k];
-        const int bx = v.X(b.x), by = v.Y(b.y), br = v.R(b.r);
-        pcircle(bx, by, br + 3, lighten(b.rim, 50));
-        pcircle(bx, by, br + 5, darken(b.rim, 40));
-        pfillcircle(bx, by, br, C3(255, 255, 255));
-        pfillcircle(bx, by, br * 2 / 3 > 0 ? br * 2 / 3 : 1, lighten(b.fill, 60));
+        const float bx = v.Xf(b.x), by = v.Yf(b.y), br = b.r * v.zoom;
+        pring(bx, by, br + 4.0f, 1.0f, lighten(b.rim, 50));
+        pring(bx, by, br + 6.0f, 1.0f, darken(b.rim, 40));
+        pdisc(bx, by, br, C3(255, 255, 255));
+        pdisc(bx, by, br * 0.66f, lighten(b.fill, 60));
     }
     {   // puits Multibille : clignote quand il est arme, billes verrouillees visibles
         const int lx = v.X(t.lockPos.x), ly = v.Y(t.lockPos.y);
