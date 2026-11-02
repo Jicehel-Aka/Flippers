@@ -2,7 +2,7 @@
   "CTRL_FLIP": "A/L1/Sx, D/Dx: flipper",
   "CTRL_PLUNGER": "R1/Giu: molla (rilascia = tiro)",
   "CTRL_NUDGE": "B/Su: scossa (TILT!)",
-  "CTRL_PAUSE": "C/RUN: pausa",
+  "CTRL_PAUSE": "MENU: pausa / menu",
   "LOADER_OFF_1": "La console si spegnera.",
   "LOADER_OFF_2": "Riaccendila per aprire",
   "LOADER_OFF_3": "il loader.",

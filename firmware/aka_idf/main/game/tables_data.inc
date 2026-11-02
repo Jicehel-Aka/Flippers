@@ -25,9 +25,18 @@ static const TableDef TABLES[TABLE_COUNT] = {
     },
     {156.0f, 96.0f}, 9.0f,
     {
-      {"BUS SPI RAPIDE", 1, 2, 45000},
-      {"TEST OSCILLOSCOPE", 0, 5, 55000},
-      {"FLASH FIRMWARE", 2, 4, 75000},
+      {"BUS SPI RAPIDE", 1, 2, 45000, 0x38BDF8},
+      {"TEST OSCILLOSCOPE", 0, 5, 55000, 0x22C55E},
+      {"FLASH FIRMWARE", 2, 4, 75000, 0xFACC15},
+    },
+    {113.0f, 364.0f},
+    {
+      {68.0f, 52.0f, 6.0f, 'A', 3500, 0},
+      {98.0f, 49.0f, 6.0f, 'K', 3500, 0},
+      {128.0f, 49.0f, 6.0f, 'A', 3500, 0},
+      {158.0f, 52.0f, 6.0f, '!', 3500, 0},
+      {36.0f, 414.0f, 5.5f, '0', 2500, 1},
+      {190.0f, 414.0f, 5.5f, '1', 2500, 1},
     }
   },
   {
@@ -54,9 +63,18 @@ static const TableDef TABLES[TABLE_COUNT] = {
     },
     {182.0f, 126.0f}, 9.0f,
     {
-      {"MISE EN ORBITE", 1, 2, 45000},
-      {"PLUIE DE METEORES", 0, 6, 60000},
-      {"ARRIMAGE STATION MIR", 2, 4, 80000},
+      {"MISE EN ORBITE", 1, 2, 45000, 0x38BDF8},
+      {"PLUIE DE METEORES", 0, 6, 60000, 0xFACC15},
+      {"ARRIMAGE STATION MIR", 2, 4, 80000, 0xEF4444},
+    },
+    {113.0f, 364.0f},
+    {
+      {68.0f, 50.0f, 6.0f, '1', 3500, 0},
+      {98.0f, 47.0f, 6.0f, 'U', 3500, 0},
+      {128.0f, 47.0f, 6.0f, 'P', 3500, 0},
+      {158.0f, 50.0f, 6.0f, '*', 3500, 0},
+      {36.0f, 414.0f, 5.5f, '*', 2500, 1},
+      {190.0f, 414.0f, 5.5f, '*', 2500, 1},
     }
   },
   {
@@ -83,9 +101,18 @@ static const TableDef TABLES[TABLE_COUNT] = {
     },
     {113.0f, 174.0f}, 9.0f,
     {
-      {"DUEL DE SABRES", 1, 2, 50000},
-      {"DEFENSE DES TURBOLASERS", 0, 5, 60000},
-      {"TRANCHEE DE L'ETOILE NOIRE", 2, 4, 85000},
+      {"DUEL DE SABRES", 1, 2, 50000, 0xEF4444},
+      {"DEFENSE DES TURBOLASERS", 0, 5, 60000, 0x3B82F6},
+      {"TRANCHEE DE L'ETOILE NOIRE", 2, 4, 85000, 0xFACC15},
+    },
+    {113.0f, 364.0f},
+    {
+      {68.0f, 50.0f, 6.0f, 'J', 3500, 0},
+      {98.0f, 47.0f, 6.0f, 'E', 3500, 0},
+      {128.0f, 47.0f, 6.0f, 'D', 3500, 0},
+      {158.0f, 50.0f, 6.0f, 'I', 3500, 0},
+      {36.0f, 414.0f, 5.5f, '<', 2500, 1},
+      {190.0f, 414.0f, 5.5f, '>', 2500, 1},
     }
   },
   {
@@ -112,9 +139,18 @@ static const TableDef TABLES[TABLE_COUNT] = {
     },
     {78.0f, 106.0f}, 9.0f,
     {
-      {"VOIE DE QUETZAL", 1, 2, 45000},
-      {"OFFRANDE DES TOTEMS", 0, 6, 60000},
-      {"RITUEL DU ZENITH", 2, 4, 80000},
+      {"VOIE DE QUETZAL", 1, 2, 45000, 0x10B981},
+      {"OFFRANDE DES TOTEMS", 0, 6, 60000, 0xF59E0B},
+      {"RITUEL DU ZENITH", 2, 4, 80000, 0xFACC15},
+    },
+    {113.0f, 374.0f},
+    {
+      {68.0f, 50.0f, 6.0f, 'S', 3500, 0},
+      {98.0f, 47.0f, 6.0f, 'O', 3500, 0},
+      {128.0f, 47.0f, 6.0f, 'L', 3500, 0},
+      {158.0f, 50.0f, 6.0f, '*', 3500, 0},
+      {36.0f, 414.0f, 5.5f, '+', 2500, 1},
+      {190.0f, 414.0f, 5.5f, '+', 2500, 1},
     }
   },
 };

@@ -14,6 +14,7 @@ void raw_fill_rect(int x, int y, int w, int h, uint16_t color) {
     gfx.setColor(color);
     gfx.fillRect((int16_t)x, (int16_t)y, (int16_t)w, (int16_t)h);
 }
+void raw_blit_row(int x, int y, const uint16_t* px, int n) { gfx.drawImage((int16_t)x, (int16_t)y, px, (uint16_t)n, 1); }
 // SANS CET APPEL L'ECRAN RESTE NOIR : le framebuffer n'est transfere a la dalle que par update().
 void present() { gfx.update(); }
 

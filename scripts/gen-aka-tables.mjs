@@ -56,6 +56,9 @@ const BUMPER_COLORS = {
   GOLD: ['0xEAB308', '0xFEF08A'],
   JADE: ['0x10B981', '0xA7F3D0'],
 };
+// Lettre de rollover affichable avec la police 8x8 ASCII du SDK
+const ROLL_CHAR = { '★': '*', '☀': '*', '◆': '+', '◄': '<', '►': '>', '!': '!' };
+const rollChar = (l) => ROLL_CHAR[l] ?? (/^[A-Za-z0-9]$/.test(l) ? l.toUpperCase() : '*');
 const MISSION_KIND = { BUMPER: 0, RAMP: 1, TARGET: 2, SCOOP: 2 };
 const DECOR = { aka_esp32: 0, space_odyssey: 1, star_galaxy: 2, solaire: 3 };
 
@@ -132,7 +135,13 @@ for (const t of PINBALL_TABLES) {
   o += '    },\n';
   o += `    {${f(lock.x)}, ${f(lock.y)}}, ${f(lock.radius)},\n    {\n`;
   for (const m of t.missions) {
-    o += `      {${cstr(m.title)}, ${MISSION_KIND[m.targetKind]}, ${m.goal}, ${m.rewardPoints}},\n`;
+    o += `      {${cstr(m.title)}, ${MISSION_KIND[m.targetKind]}, ${m.goal}, ${m.rewardPoints}, ${hex(m.accentColor)}},\n`;
+  }
+  o += '    },\n';
+  if (t.rollovers.length !== 6) throw new Error(`${t.id}: 6 rollovers attendus (4 haut + 2 retours)`);
+  o += `    {${f(t.missionEmblemPos.x)}, ${f(t.missionEmblemPos.y)}},\n    {\n`;
+  for (const r of t.rollovers) {
+    o += `      {${f(r.x)}, ${f(r.y)}, ${f(r.radius)}, '${rollChar(r.letter)}', ${r.points}, ${r.groupId === 'TOP_LANES' ? 0 : 1}},\n`;
   }
   o += '    }\n  },\n';
 }

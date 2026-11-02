@@ -185,6 +185,32 @@ static void test_state_machine() {
     in = Input(); in.nudge = true; tick(g, in, 0.016f);
     CHECK(g.state == State::Playing, "rejouer apres le verrou");
 
+    // Reprise depuis le menu systeme : une touche deja tenue (A qui valide « Reprendre ») n'est pas un nouvel appui.
+    {
+        Game m;
+        m.begin(STORE());
+        m.startNewGame(1);
+        const uint32_t sc = m.score;
+        Input held; held.left = true;
+        m.syncInput(held);                        // pendant que le menu est ouvert
+        tick(m, held, 0.016f);                    // premiere image apres la reprise, touche encore tenue
+        CHECK(m.state == State::Playing && m.score == sc, "la reprise garde la partie en cours");
+        Input none;
+        CHECK(!none.pause, "aucune pause par defaut");
+    }
+    {   // fin de partie : A / D reviennent a la selection de table (plus de touche de pause)
+        Game e;
+        e.begin(STORE());
+        e.startNewGame(0);
+        for (int i = 0; i < MAX_BALLS; i++) e.balls[i].active = false;
+        e.ballsRemaining = 1;
+        tick(e, Input(), 0.016f);
+        CHECK(e.state == State::GameOver, "fin de partie");
+        for (int i = 0; i < 80; i++) tick(e, Input(), 0.016f);
+        Input l; l.left = true; tick(e, l, 0.016f);
+        CHECK(e.state == State::Menu, "A en fin de partie : retour a la selection de table");
+    }
+
     // record : sauvegarde unique a la fin de partie
     g_saves = 0;
     Game h;
@@ -226,6 +252,77 @@ static void test_multiball_and_lock() {
     CHECK(active == 3, "3 billes en jeu (%d)", active);
     CHECK(c.n[(int)Sfx::Lock] == 1 && c.n[(int)Sfx::Multiball] == 1, "sons verrou/multibille");
     CHECK(strstr(g.bannerText, "ESCADRON") != nullptr, "bandeau Star Wars: %s", g.bannerText);
+}
+
+static void test_rollovers() {
+    printf("[rollovers]\n");
+    for (int ti = 0; ti < TABLE_COUNT; ti++) {
+        Game g;
+        g.begin(STORE());
+        g.startNewGame((uint8_t)ti);
+        const TableDef& t = g.tbl();
+        for (int k = 0; k < 4; k++) {   // couloirs du haut : la bille passe sur chacun
+            for (int i = 0; i < MAX_BALLS; i++) g.balls[i].active = false;
+            g.balls[0] = {t.rollovers[k].x, t.rollovers[k].y, 0, 0, true, false, 0.0f, 0.0f};
+            const uint32_t before = g.score;
+            g.stepPhysics(0.004f, Input());
+            if (k < 3) {
+                CHECK(g.rolloverLit & (1u << k), "table %d : rollover %d non allume", ti, k);
+                CHECK(g.score >= before + t.rollovers[k].points, "table %d : rollover %d sans points", ti, k);
+            }
+        }
+        CHECK((g.rolloverLit & 0x0F) == 0 && g.rolloverFlash > 0.0f, "table %d : 4 couloirs = bonus + clignotement (lit=%02x)", ti, g.rolloverLit);
+        for (int k = 4; k < 6; k++) {   // retours
+            for (int i = 0; i < MAX_BALLS; i++) g.balls[i].active = false;
+            g.balls[0] = {t.rollovers[k].x, t.rollovers[k].y, 0, 0, true, false, 0.0f, 0.0f};
+            g.stepPhysics(0.004f, Input());
+        }
+        CHECK((g.rolloverLit & 0x30) == 0, "table %d : 2 retours = bonus (lit=%02x)", ti, g.rolloverLit);
+    }
+    printf("  4 tables : allumage, bonus des couloirs et des retours\n");
+}
+
+// Le decor doit tomber EXACTEMENT sous les coordonnees du jeu : les 4 anneaux de rollovers du haut (Star Wars,
+// asymetriques par rapport a l'axe central) doivent se retrouver a leur place dans l'image rendue.
+static void test_art_alignment() {
+    printf("[alignement decor / coordonnees du jeu]\n");
+    Game g;
+    g.begin(STORE());
+    g.startNewGame(2);
+    g.introTimer = 0.0f;
+    g.cameraZoom = 1.0f;
+    g.cameraY = 0.0f;
+    render::draw(g);
+    const TableDef& t = g.tbl();
+    int found = 0;
+    for (int k = 0; k < 4; k++) {
+        const RolloverDef& ro = t.rollovers[k];
+        bool ok = false;
+        for (int dx = -7; dx <= -5 && !ok; dx++) {
+            for (int dy = -1; dy <= 0 && !ok; dy++) {
+                const int px = (int)ro.x + dx, py = (int)ro.y + dy;      // pixel du plateau (portrait)
+                const uint16_t c = vid::g_fb[(239 - px) * 320 + (HUD_H + py)];  // rotation : sx = HUD_H + y, sy = 239 - x
+                const int r = (c & 31) << 3, gg = ((c >> 5) & 63) << 2, b = ((c >> 11) & 31) << 3;
+                if (abs(r - 71) < 45 && abs(gg - 85) < 45 && abs(b - 105) < 45) ok = true;
+            }
+        }
+        found += ok ? 1 : 0;
+    }
+    CHECK(found == 4, "anneaux de rollovers du decor retrouves a leur place : %d/4 (decor inverse ou decale ?)", found);
+    printf("  %d/4 anneaux du decor sous les coordonnees des rollovers\n", found);
+}
+
+static void test_art() {
+    printf("[decors pre-rendus]\n");
+    for (int i = 0; i < TABLE_COUNT; i++) {
+        const uint8_t* a = render::table_art(i);
+        CHECK(a != nullptr, "plateau %d : image de decor introuvable (node scripts/gen-aka-art.mjs)", i);
+        if (!a) continue;
+        unsigned nonBlack = 0;
+        for (int k = 0; k < 240 * 520; k += 7) { uint16_t px = (uint16_t)(a[k * 2] | (a[k * 2 + 1] << 8)); if (px) nonBlack++; }
+        CHECK(nonBlack > 240 * 520 / 7 / 2, "plateau %d : image de decor presque noire", i);
+    }
+    printf("  %d images de decor presentes\n", TABLE_COUNT);
 }
 
 static void test_music() {
@@ -310,6 +407,15 @@ static void test_render(const char* outDir) {
         for (int i = 0; i < 60 * 12; i++) tick(g, bot_input(g, bot, 1.0f / 60), 1.0f / 60);
         render::draw(g);
         if (outDir) { snprintf(path, sizeof(path), "%s/t%d_play.ppm", outDir, t); vid::dump_ppm(path); }
+        {   // lampes allumees (captures de controle) : couloirs 1 et 3, un retour, mission 2 en cours
+            const uint8_t sl = g.rolloverLit; const uint8_t sm = g.missionIdx; const float sz = g.cameraZoom, sc = g.cameraY;
+            g.rolloverLit = 0x15; g.missionIdx = 1;
+            g.cameraZoom = 1.0f; g.cameraY = 0.0f; render::draw(g);
+            if (outDir) { snprintf(path, sizeof(path), "%s/t%d_lamps_top.ppm", outDir, t); vid::dump_ppm(path); }
+            g.cameraY = MAX_CAM_Y; render::draw(g);
+            if (outDir) { snprintf(path, sizeof(path), "%s/t%d_lamps_bot.ppm", outDir, t); vid::dump_ppm(path); }
+            g.rolloverLit = sl; g.missionIdx = sm; g.cameraZoom = sz; g.cameraY = sc;
+        }
 
         // pause + fin de partie
         g.state = State::Paused;
@@ -332,6 +438,9 @@ int main(int argc, char** argv) {
     test_state_machine();
     test_multiball_and_lock();
     test_sfx_patterns();
+    test_rollovers();
+    test_art();
+    test_art_alignment();
     test_music();
     test_render(outDir);
     if (g_fail) { printf("\n%d ECHEC(S)\n", g_fail); return 1; }

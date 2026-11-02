@@ -240,11 +240,11 @@ static const int kLangCount = 5;
 
 static void menu_frame(const char* titleKey) {
     gfx.setColor(gfx.makeColor(10, 10, 30));
-    gfx.fillRect(40, 20, 240, 200);
+    gfx.fillRect(20, 20, 280, 200);
     gfx.setColor(gfx.makeColor(255, 255, 255));
-    gfx.drawRect(40, 20, 240, 200);
+    gfx.drawRect(20, 20, 280, 200);
     gfx.setColor(gfx.makeColor(255, 220, 0));
-    gfx.move_cursor(52, 28);
+    gfx.move_cursor(32, 28);
     gfx.print_str(akaRuntime.translate(titleKey));
     gfx.setColor(gfx.makeColor(255, 255, 255));
 }
@@ -255,9 +255,9 @@ void AkaRuntime::menuDrawMain() {
         int y = 50 + i * 16;
         bool sel = (i == s_menuSel);
         gfx.setColor(sel ? gfx.makeColor(255, 220, 0) : gfx.makeColor(255, 255, 255));
-        gfx.move_cursor(52, y);
+        gfx.move_cursor(32, y);
         gfx.print_str(sel ? ">" : " ");
-        gfx.move_cursor(64, y);
+        gfx.move_cursor(44, y);
         gfx.print_str(translate(s_menuKeys[i]));
     }
 }
@@ -267,7 +267,7 @@ void AkaRuntime::menuDrawControls() {
     int y = 50;
     if (m_controlsKeys) {
         for (int i = 0; m_controlsKeys[i] != nullptr && y < 205; ++i, y += 14) {
-            gfx.move_cursor(52, y);
+            gfx.move_cursor(32, y);
             gfx.print_str(translate(m_controlsKeys[i]));
         }
     }
@@ -279,9 +279,9 @@ void AkaRuntime::menuDrawLanguage() {
         int y = 50 + i * 16;
         bool sel = (i == s_langSel);
         gfx.setColor(sel ? gfx.makeColor(255, 220, 0) : gfx.makeColor(255, 255, 255));
-        gfx.move_cursor(52, y);
+        gfx.move_cursor(32, y);
         gfx.print_str(sel ? ">" : " ");
-        gfx.move_cursor(64, y);
+        gfx.move_cursor(44, y);
         gfx.print_str(kLangNames[i]);
     }
 }
@@ -306,21 +306,21 @@ static const char* truncate_to_fit(const char* s, int maxChars, int bufIdx) {
 void AkaRuntime::menuDrawCredits() {
     menu_frame("MENU_CREDITS");
     int y = 50;
-    gfx.move_cursor(52, y); gfx.print_str(truncate_to_fit(m_title, 28, 0)); y += 16;
-    gfx.move_cursor(52, y); gfx.print_str(translate("CREDITS_AUTHOR")); y += 12;
-    gfx.move_cursor(60, y); gfx.print_str(truncate_to_fit(m_author, 26, 0)); y += 20;
-    gfx.move_cursor(52, y); gfx.print_str(translate("CREDITS_LICENSE")); y += 12;
-    gfx.move_cursor(60, y); gfx.print_str(truncate_to_fit(m_license, 26, 0)); y += 20;
-    gfx.move_cursor(52, y); gfx.print_str(translate("CREDITS_SOURCE")); y += 12;
+    gfx.move_cursor(32, y); gfx.print_str(truncate_to_fit(m_title, 28, 0)); y += 16;
+    gfx.move_cursor(32, y); gfx.print_str(translate("CREDITS_AUTHOR")); y += 12;
+    gfx.move_cursor(40, y); gfx.print_str(truncate_to_fit(m_author, 26, 0)); y += 20;
+    gfx.move_cursor(32, y); gfx.print_str(translate("CREDITS_LICENSE")); y += 12;
+    gfx.move_cursor(40, y); gfx.print_str(truncate_to_fit(m_license, 26, 0)); y += 20;
+    gfx.move_cursor(32, y); gfx.print_str(translate("CREDITS_SOURCE")); y += 12;
     // Source (souvent la plus longue, ex: URL github) : repartie sur 2
     // lignes plutot que tronquee brutalement, plus lisible.
     size_t srcLen = strlen(m_sourceUrl);
     if (srcLen > 26) {
         char line1[27]; strncpy(line1, m_sourceUrl, 26); line1[26] = '\0';
-        gfx.move_cursor(60, y); gfx.print_str(line1); y += 12;
-        gfx.move_cursor(60, y); gfx.print_str(truncate_to_fit(m_sourceUrl + 26, 26, 1));
+        gfx.move_cursor(40, y); gfx.print_str(line1); y += 12;
+        gfx.move_cursor(40, y); gfx.print_str(truncate_to_fit(m_sourceUrl + 26, 26, 1));
     } else {
-        gfx.move_cursor(60, y); gfx.print_str(m_sourceUrl);
+        gfx.move_cursor(40, y); gfx.print_str(m_sourceUrl);
     }
 }
 
@@ -333,7 +333,7 @@ void AkaRuntime::menuDrawCredits() {
 // visible qu'une fraction de frame.
 static void clear_menu_box() {
     gfx.setColor(gfx.makeColor(0, 0, 0));
-    gfx.fillRect(40, 20, 240, 200);
+    gfx.fillRect(20, 20, 280, 200);
     gfx.update();
 }
 

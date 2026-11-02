@@ -70,6 +70,7 @@ Jeu de flipper arcade néo-pixel conçu sur mesure pour la console **Gamebuino A
 │   ├── sdcard_files/           # Dossiers pinball/ (meta.json, screen.bmp, lang) et AKA/lang à copier sur la carte SD
 │   └── test/host/              # Tests PC (g++) : physique, états, 168 motifs sonores, rendu sans écriture hors écran
 ├── scripts/gen-aka-tables.mjs  # Génère les plateaux du firmware depuis src/data/tables.ts (--check en CI)
+├── scripts/gen-aka-art.mjs     # Génère les images de décor du firmware depuis le rendu Web (Chromium)
 └── .github/workflows/
     ├── build-pc.yml            # CI/CD : Lint + Web (GitHub Pages) + Exécutables PC (Win/Linux/macOS)
     └── build-aka.yml           # CI/CD : tests PC, build ESP-IDF 5.5.1, paquet carte SD & Releases
@@ -112,10 +113,11 @@ Les binaires autonomes (`.exe` portable sous Windows, `.AppImage` / `.tar.gz` so
 
 Le firmware (`firmware/aka_idf`) est un projet **ESP-IDF 5.5.1** pour l'ESP32-S3 de la console, construit sur les composants `gamebuino` et `aka_runtime`. C'est un **moteur simplifié** par rapport au Web/PC : les 4 plateaux (générés depuis `src/data/tables.ts`), bumpers, slingshots, flippers, rampes, puits de verrouillage, Multibille, missions et records sont présents, mais pas les spinners, les cibles ni les rollovers du Web. Les textes en jeu sont en français ; le menu système (MENU) est traduit en fr, en, de, es et it.
 
+- **Graphismes** : le décor de chaque plateau (fond, rampes 3D, bumpers, cadre, cartouches) est **pré-rendu depuis le vrai moteur du jeu Web** (`PinballCanvasRenderer.renderTableArtwork`) et embarqué dans le firmware (`firmware/aka_idf/main/art/art<N>.bin`, 240×520 RGB565). La console y superpose les éléments animés : flippers, bille, ressort, éclats des bumpers et slingshots, puits Multibille, et les **lampes** (chevrons du couloir lanceur en chenillard, 4 rollovers du haut + 2 retours allumés par la bille, gemmes de mission). Les boutons de flippers décalent les lampes du haut ; 4 couloirs = +10 000, 2 retours = +5 000. Pour régénérer les images après une modification des plateaux ou du rendu web : `node scripts/gen-aka-art.mjs` (Chromium + Playwright requis), puis committer les `.bin`.
 - **Sons** : effets de flipper synthétisés (bumpers, slingshots, flippers, ressort, rampes, verrouillage, Multibille, tilt, fin de partie…), avec un décor sonore propre à chaque plateau. Aucun échantillon ni musique protégée.
-- **Musique de fond** : une boucle originale par plateau (circuit, espace, Star Wars, temple), synthétisée sur une piste réservée ; elle joue pendant la partie, se coupe en pause et s'accélère en Multibille. Son volume suit le réglage musique du runtime AKA.
+- **Musique de fond** : une boucle originale par plateau (circuit, espace, Star Wars, temple), synthétisée sur une piste réservée ; elle joue pendant la partie, se coupe dans le menu et s'accélère en Multibille. Son volume suit le réglage musique du runtime AKA.
 - **Menu système (MENU)** : reprendre, commandes, langue, crédits, retour au loader. Appui long sur MENU : capture d'écran. RUN + MENU : retour au loader.
-- **Commandes** : A / L1 / Gauche = flippers gauches ; D / Droite = flippers droits ; R1 / Bas = ressort ; B / Haut = secousse ; C / RUN = pause.
+- **Commandes** : A / L1 / Gauche = flippers gauches ; D / Droite = flippers droits ; R1 / Bas = ressort ; B / Haut = secousse ; pause = touche MENU uniquement (la partie reprend où elle en était via « Reprendre »).
 - **Records** : `/sdcard/pinball/records.bin`.
 - **Table Star Wars · Yavin** : univers hommage de fan (libellés, couleurs, sabres laser et sons génériques) sans logo, personnage, image ni musique de Lucasfilm.
 

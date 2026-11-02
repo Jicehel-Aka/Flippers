@@ -66,7 +66,17 @@ struct MissionDef {
     uint8_t kind;
     uint8_t goal;
     uint32_t reward;
+    uint32_t color;           // couleur de la gemme (RGB888)
 };
+
+// Rollover : lampe au sol qui s'allume quand la bille passe dessus. group 0 = 4 couloirs du haut, 1 = retours.
+struct RolloverDef {
+    float x, y, r;
+    char letter;
+    uint16_t points;
+    uint8_t group;
+};
+constexpr int MAX_ROLLOVERS = 6;
 
 struct TableDef {
     const char* name;
@@ -83,6 +93,8 @@ struct TableDef {
     Vec2 lockPos;
     float lockRadius;
     MissionDef missions[3];
+    Vec2 missionPos;          // centre du cartouche des 3 gemmes de mission
+    RolloverDef rollovers[MAX_ROLLOVERS];
 };
 
 const TableDef& table(int index);
@@ -143,6 +155,7 @@ public:
     Game();
     void begin(const HighScoreStore& store);
     void update(float dt, const Input& in, uint32_t nowMs);
+    void syncInput(const Input& in);   // voir pinball_core.cpp
 
     bool popSfx(SfxEvent& out);          // vide la file d'evenements sonores
 
@@ -164,6 +177,8 @@ public:
     bool multiballActive = false;
     bool lockLit = false;                // le puits ne capture que lorsqu'il est allume (5 touches de bumpers)
     uint8_t lockHits = 0;
+    uint8_t rolloverLit = 0;             // bit i = rollover i allume (0..3 couloirs du haut, 4..5 retours)
+    float rolloverFlash = 0.0f;          // clignotement de bonus quand les 4 couloirs sont completes
     uint8_t missionIdx = 0;
     uint8_t missionProgress = 0;
     float plungerCharge = 0.0f;
