@@ -31,7 +31,7 @@ constexpr float BALL_SAVE_SEC = 20.0f;    // duree de la protection contre la ch
 constexpr int TABLE_COUNT  = 4;
 constexpr int MAX_BALLS    = 3;
 constexpr int MAX_BUMPERS  = 6;
-constexpr int MAX_WALLS    = 32;
+constexpr int MAX_WALLS    = 112;
 constexpr int MAX_FLIPPERS = 4;
 
 constexpr float PHYSICS_DT    = 1.0f / 360.0f;   // independant de la cadence d'affichage
@@ -80,6 +80,11 @@ struct RolloverDef {
 };
 constexpr int MAX_ROLLOVERS = 6;
 
+struct HousingDef {
+    uint8_t n;                // nombre de sommets (polygone ferme)
+    Vec2 p[5];
+};
+
 struct TableDef {
     const char* name;
     const char* subName;
@@ -97,6 +102,8 @@ struct TableDef {
     MissionDef missions[3];
     Vec2 missionPos;          // centre du cartouche des 3 gemmes de mission
     RolloverDef rollovers[MAX_ROLLOVERS];
+    uint8_t housingCount;     // boitiers biseautes pleins (collision identique au moteur Web)
+    HousingDef housings[6];
 };
 
 const TableDef& table(int index);
@@ -224,7 +231,7 @@ private:
     void spawnBallInShooter(int idx);
     void advanceMission(uint8_t kind);
     void collideBallSegment(Ball& b, float x1, float y1, float x2, float y2, float restitution,
-                            float extraKick, int wallIndex);
+                            float extraKick, int wallIndex, float thick = 0.0f);
     void stepSubstep(float dt, bool leftHeld, bool rightHeld);
     void updatePlaying(float dt, const Input& in, bool nudgePressed, bool launchEdgeFlipper);
     void updateCamera(float dt);
