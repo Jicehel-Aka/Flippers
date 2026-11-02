@@ -2,6 +2,61 @@ class ArcadeSoundEngine {
   private ctx: AudioContext | null = null;
   private muted: boolean = false;
   private lastSpinnerTime: number = 0;
+  private theme: 'default' | 'starwars' = 'default';
+
+  /** Thème sonore de la table en cours (effets de tir blaster / sabre laser pour la table Star Wars). */
+  public setTheme(theme: 'default' | 'starwars') {
+    this.theme = theme;
+  }
+
+  /** Tir de blaster : balayage descendant de dent de scie + claquage bref (bumpers du thème Star Wars). */
+  private playBlaster(comboIndex: number) {
+    const ctx = this.ensureContext();
+    if (!ctx) return;
+    const now = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    const click = ctx.createOscillator();
+    const gain = ctx.createGain();
+    const top = 1500 + Math.min(comboIndex, 8) * 60;
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(top, now);
+    osc.frequency.exponentialRampToValueAtTime(130, now + 0.16);
+    click.type = 'square';
+    click.frequency.setValueAtTime(90, now);
+    gain.gain.setValueAtTime(0.13, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.17);
+    osc.connect(gain);
+    click.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(now);
+    click.start(now);
+    osc.stop(now + 0.18);
+    click.stop(now + 0.04);
+  }
+
+  /** Sabre laser : deux dents de scie légèrement désaccordées qui montent puis retombent (rampes du thème Star Wars). */
+  private playSaberSwing(combo: number) {
+    const ctx = this.ensureContext();
+    if (!ctx) return;
+    const now = ctx.currentTime;
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.001, now);
+    gain.gain.exponentialRampToValueAtTime(0.11, now + 0.06);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.42);
+    gain.connect(ctx.destination);
+    const base = 110 * Math.pow(1.05, Math.min(combo, 10));
+    for (const detune of [-9, 9]) {
+      const osc = ctx.createOscillator();
+      osc.type = 'sawtooth';
+      osc.detune.value = detune;
+      osc.frequency.setValueAtTime(base, now);
+      osc.frequency.exponentialRampToValueAtTime(base * 2.6, now + 0.18);
+      osc.frequency.exponentialRampToValueAtTime(base * 1.4, now + 0.42);
+      osc.connect(gain);
+      osc.start(now);
+      osc.stop(now + 0.43);
+    }
+  }
 
   private ensureContext(): AudioContext | null {
     if (this.muted) return null;
@@ -80,6 +135,10 @@ class ArcadeSoundEngine {
   }
 
   public playBumperHit(comboIndex: number = 0) {
+    if (this.theme === 'starwars') {
+      this.playBlaster(comboIndex);
+      return;
+    }
     const ctx = this.ensureContext();
     if (!ctx) return;
     const now = ctx.currentTime;
@@ -147,6 +206,10 @@ class ArcadeSoundEngine {
   }
 
   public playRampClimb(combo: number) {
+    if (this.theme === 'starwars') {
+      this.playSaberSwing(combo);
+      return;
+    }
     const ctx = this.ensureContext();
     if (!ctx) return;
     const now = ctx.currentTime;

@@ -27,7 +27,7 @@ Jeu de flipper arcade néo-pixel conçu sur mesure pour la console **Gamebuino A
 | :--- | :--- | :--- | :--- |
 | **1. Gamebuino AKA · ESP32** | **4 flippers** (paire basse + 2 mini-flippers cyber-deck symétriques à `y=174`), grappe asymétrique de 3 engrenages en haut à gauche + cœur Wi-Fi central | Rampe moulée bleue **Bus SPI** + rail métallique **Antenne Wi-Fi** | *Init Bus SPI*, *Overclock 240 MHz*, *Flash Firmware OTA* |
 | **2. Odyssée Spatiale** | **3 flippers** (paire basse + flipper orbital gauche à mi-hauteur `y=256`), constellation centrale de 5 bumpers en diamant | Grande arche moulée **Apollo** + rail chromé croisé **Anneau de Saturne** | *Allumage Apollo*, *Champ d'Astéroïdes*, *Arrimage Station ISS* |
-| **3. Galaxie Stellaire** | **4 flippers** (paire basse + **double assaut étagé à droite** `y=154` & `y=282`), réacteur blindé gardé par 2 tourelles | Deux grandes rampes **Sabres Laser Rouge & Bleu** croisées en **X** | *Escadron Rogue*, *Bouclier Déflecteur*, *Cœur du Réacteur* |
+| **3. Star Wars · Yavin** | **4 flippers** (paire basse + **double assaut étagé à droite** `y=154` & `y=282`), Conduit Thermique gardé par 2 turbolasers, bumpers X-Wing / Faucon Millenium / Y-Wing | Deux grandes rampes **Sabre Sith (rouge) & Sabre Jedi (bleu)** croisées en **X**, saut hyperespace | *Duel de sabres*, *Défense des turbolasers*, *Tranchée de l’Étoile Noire* ; sons de blaster et de sabre laser |
 | **4. Temple Solaire** | **4 flippers en terrasses diagonales** (terrasse jade haute-gauche `y=204` + terrasse or basse-droite `y=298`), sanctuaires séparés émeraude / solaire | Rampe sinueuse **Serpent Quetzal** en S + rail doré **Aqueduc Solaire** | *Réveil de Quetzal*, *Offrande Solaire*, *Éclipse d'Or* |
 
 ---

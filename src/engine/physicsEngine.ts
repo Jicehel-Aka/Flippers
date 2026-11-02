@@ -204,6 +204,7 @@ export class PinballSimulation {
    */
   public syncTableGeometry() {
     const table = this.currentTable;
+    soundEngine.setTheme(table.id === 'star_galaxy' ? 'starwars' : 'default');
 
     // 2 Main Lower Arena Flippers (y = 468) + Table-Specific Extra Flippers
     const mainFlippers: FlipperState[] = [
