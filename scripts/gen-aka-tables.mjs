@@ -143,6 +143,15 @@ for (const t of PINBALL_TABLES) {
   for (const r of t.rollovers) {
     o += `      {${f(r.x)}, ${f(r.y)}, ${f(r.radius)}, '${rollChar(r.letter)}', ${r.points}, ${r.groupId === 'TOP_LANES' ? 0 : 1}},\n`;
   }
+  o += '    },\n';
+  if (t.beveledHousings.length > 6) throw new Error(`${t.id}: plus de 6 boitiers`);
+  o += `    ${t.beveledHousings.length},\n    {\n`;
+  for (let i = 0; i < 6; i++) {
+    const h = t.beveledHousings[i];
+    if (!h) { o += '      {0, {}},\n'; continue; }
+    if (h.points.length > 5) throw new Error(`${t.id}: boitier a plus de 5 points`);
+    o += `      {${h.points.length}, {${h.points.map((q) => `{${f(q.x)}, ${f(q.y)}}`).join(', ')}}},\n`;
+  }
   o += '    }\n  },\n';
 }
 o += '};\n';

@@ -9,7 +9,8 @@
 
 namespace pinball {
 
-constexpr int MUSIC_STEPS = 32;   // une boucle = 32 pas (2 mesures de 16 doubles-croches)
+constexpr int PHRASE_STEPS = 32;                 // une phrase = 2 mesures de 16 doubles-croches
+constexpr int MUSIC_STEPS = PHRASE_STEPS * 8;    // une boucle = 8 phrases (A B A C D B C A)
 
 struct MusicNote {
     float freq;        // Hz

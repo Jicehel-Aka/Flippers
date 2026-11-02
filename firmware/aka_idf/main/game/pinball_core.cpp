@@ -68,51 +68,63 @@ void Game::buildStaticWalls() {
     };
     auto addW = [&](float x1, float y1, float x2, float y2, float b, uint32_t c) { addSeg(x1, y1, x2, y2, b, c, false); };
 
-    // Arche superieure et murs exterieurs sans piege
-    addW(14, 496, 14, 68, 0.55f, STEEL);
-    addW(14, 68, 42, 26, 0.55f, STEEL);
-    addW(42, 26, 108, 14, 0.55f, STEEL);
-    addW(108, 14, 186, 26, 0.55f, STEEL);
-    addW(186, 26, 232, 68, 0.55f, STEEL);
-    addW(232, 68, 232, 496, 0.55f, STEEL);
+    // Geometrie identique au moteur Web (monde 240x520) : les bords collisionnent exactement la ou le decor les dessine.
+    // Arche elliptique (9,72) -> (233,72), centre (121,72), rayons 112 x 58
+    {
+        const int N = 28;
+        float px = 121.0f + 112.0f * cosf(3.14159265f), py = 72.0f - 58.0f * sinf(3.14159265f);
+        for (int i = 1; i <= N; i++) {
+            const float th = 3.14159265f - ((float)i / (float)N) * 3.14159265f;
+            const float x = 121.0f + 112.0f * cosf(th), y = 72.0f - 58.0f * sinf(th);
+            addW(px, py, x, y, 0.45f, STEEL);
+            px = x; py = y;
+        }
+    }
+    // separateurs des couloirs du haut
+    addW(83, 41, 83, 59, 0.45f, STEEL);
+    addW(113, 41, 113, 59, 0.45f, STEEL);
+    addW(143, 41, 143, 59, 0.45f, STEEL);
 
-    // Couloir du lance-bille (x: 210..232) + clapet anti-retour haut
-    addW(210, 108, 210, 496, 0.5f, STEEL);
-    addW(210, 492, 232, 492, 0.2f, GOLD);
+    // murs exterieurs, couloir du lance-bille (x: 217..233) ; le clapet haut est gere dans stepSubstep
+    addW(9, 72, 9, 452, 0.48f, STEEL);
+    addW(233, 72, 233, 514, 0.4f, STEEL);
+    addW(217, 514, 233, 514, 0.2f, GOLD);
+    addW(217, 86, 217, 516, 0.48f, STEEL);
 
-    // Caissons biseautes a 45 degres (aucun coin plat ou coincer la bille)
-    addW(14, 278, 28, 294, 0.75f, GOLD);
-    addW(28, 294, 28, 336, 0.85f, GOLD);
-    addW(28, 336, 14, 352, 0.65f, GOLD);
+    // tabliers de drain et couloirs inlanes / outlanes
+    addW(9, 452, 89, 504, 0.35f, STEEL);
+    addW(217, 452, 137, 504, 0.35f, STEEL);
+    addW(27, 384, 27, 438, 0.45f, STEEL);
+    addW(27, 438, 72, 468, 0.28f, STEEL);
+    addW(199, 384, 199, 438, 0.45f, STEEL);
+    addW(199, 438, 154, 468, 0.28f, STEEL);
 
-    addW(210, 278, 196, 294, 0.75f, GOLD);
-    addW(196, 294, 196, 336, 0.85f, GOLD);
-    addW(196, 336, 210, 352, 0.65f, GOLD);
+    // slingshots triangulaires
+    addW(45, 376, 45, 416, 0.5f, STEEL);
+    addW(45, 416, 70, 431, 0.5f, STEEL);
+    addSeg(45, 376, 70, 431, 1.35f, SLING, true);
+    addW(181, 376, 181, 416, 0.5f, STEEL);
+    addW(181, 416, 156, 431, 0.5f, STEEL);
+    addSeg(181, 376, 156, 431, 1.35f, SLING, true);
 
-    // Couloirs inlanes / outlanes larges (18 px de passage franc)
-    addW(32, 392, 32, 444, 0.5f, STEEL);
-    addW(32, 444, 62, 464, 0.45f, STEEL);
-    addW(14, 462, 56, 502, 0.4f, STEEL);
-
-    addW(184, 392, 184, 444, 0.5f, STEEL);
-    addW(184, 444, 154, 464, 0.45f, STEEL);
-    addW(210, 462, 160, 502, 0.4f, STEEL);
-
-    // Slingshots triangulaires (35 px au-dessus des flippers)
-    addW(46, 388, 46, 424, 0.6f, STEEL);
-    addW(46, 424, 68, 434, 0.6f, STEEL);
-    addSeg(46, 388, 68, 434, 1.35f, SLING, true);
-
-    addW(170, 388, 170, 424, 0.6f, STEEL);
-    addW(170, 424, 148, 434, 0.6f, STEEL);
-    addSeg(170, 388, 148, 434, 1.35f, SLING, true);
+    // boitiers biseautes de la table (polygones du decor) : meme exclusion des aretes collees aux parois que le Web
+    const TableDef& td = tbl();
+    for (uint8_t h = 0; h < td.housingCount; h++) {
+        const HousingDef& hd = td.housings[h];
+        for (uint8_t i = 0; i < hd.n; i++) {
+            const Vec2 a = hd.p[i], c = hd.p[(i + 1) % hd.n];
+            const bool flushL = fabsf(a.x - 9.0f) < 0.2f && fabsf(c.x - 9.0f) < 0.2f;
+            const bool flushR = fabsf(a.x - 217.0f) < 0.2f && fabsf(c.x - 217.0f) < 0.2f;
+            if (!flushL && !flushR) addW(a.x, a.y, c.x, c.y, 0.44f, GOLD);
+        }
+    }
     for (int i = 0; i < MAX_WALLS; i++) wallFlash[i] = 0.0f;
 }
 
 void Game::setupFlippers() {
     flipperCount = 0;
-    flippers[flipperCount++] = {true,  62.0f,  464.0f, 38.0f,  26.0f * DEG_TO_RAD_F, -31.0f * DEG_TO_RAD_F,  26.0f * DEG_TO_RAD_F,  26.0f * DEG_TO_RAD_F};
-    flippers[flipperCount++] = {false, 154.0f, 464.0f, 38.0f, 154.0f * DEG_TO_RAD_F, 211.0f * DEG_TO_RAD_F, 154.0f * DEG_TO_RAD_F, 154.0f * DEG_TO_RAD_F};
+    flippers[flipperCount++] = {true,  72.0f,  468.0f, 34.0f,  25.2f * DEG_TO_RAD_F, -28.6f * DEG_TO_RAD_F,  25.2f * DEG_TO_RAD_F,  25.2f * DEG_TO_RAD_F};
+    flippers[flipperCount++] = {false, 154.0f, 468.0f, 34.0f, 154.8f * DEG_TO_RAD_F, 208.6f * DEG_TO_RAD_F, 154.8f * DEG_TO_RAD_F, 154.8f * DEG_TO_RAD_F};
     const TableDef& t = tbl();
     for (uint8_t i = 0; i < t.extraFlipperCount; i++) {
         const ExtraFlipperDef& ef = t.extraFlippers[i];
@@ -124,7 +136,8 @@ void Game::setupFlippers() {
 }
 
 void Game::spawnBallInShooter(int idx) {
-    balls[idx] = {221.0f, 478.0f, 0.0f, 0.0f, true, true, 0.0f, 0.0f};
+    // pose sur la tete du ressort (comme le moteur Web : x = 225, sommet du ressort a y = 478, bille de rayon 5,2)
+    balls[idx] = {225.0f, PLUNGER_TOP_Y - BALL_RADIUS, 0.0f, 0.0f, true, true, 0.0f, 0.0f};
 }
 
 void Game::advanceMission(uint8_t kind) {
@@ -162,6 +175,9 @@ void Game::startNewGame(uint8_t tableIndex) {
     lockHits = 0;
     rolloverLit = 0;
     rolloverFlash = 0.0f;
+    ballSaveTimer = 0.0f;
+    ballSaveUsed = false;
+    kickLeftLit = kickRightLit = true;
     missionIdx = 0;
     missionProgress = 0;
     tiltMeter = 0.0f;
@@ -181,7 +197,7 @@ void Game::startNewGame(uint8_t tableIndex) {
 }
 
 void Game::collideBallSegment(Ball& b, float x1, float y1, float x2, float y2, float restitution,
-                              float extraKick, int wallIndex) {
+                              float extraKick, int wallIndex, float thick) {
     float dx = x2 - x1;
     float dy = y2 - y1;
     float lenSq = dx * dx + dy * dy;
@@ -195,13 +211,14 @@ void Game::collideBallSegment(Ball& b, float x1, float y1, float x2, float y2, f
     float nx = b.x - cx;
     float ny = b.y - cy;
     float distSq = nx * nx + ny * ny;
-    if (distSq >= BALL_RADIUS * BALL_RADIUS || distSq < 0.0001f) return;
+    const float reach = BALL_RADIUS + thick;
+    if (distSq >= reach * reach || distSq < 0.0001f) return;
 
     float dist = sqrtf(distSq);
     nx /= dist;
     ny /= dist;
 
-    float overlap = BALL_RADIUS - dist;
+    float overlap = reach - dist;
     b.x += nx * overlap;
     b.y += ny * overlap;
 
@@ -243,10 +260,32 @@ void Game::stepSubstep(float dt, bool leftHeld, bool rightHeld) {
         b.x += b.vx * dt;
         b.y += b.vy * dt;
 
-        b.inShooter = (b.x > 210.0f && b.y > 120.0f);
+        const bool wasInShooter = b.inShooter;
+        b.inShooter = (b.x > 217.0f && b.y > 90.0f);
+        if (wasInShooter && !b.inShooter && ballSaveTimer <= 0.0f && !ballSaveUsed && !multiballActive && !isTilted) {
+            ballSaveTimer = BALL_SAVE_SEC;   // protection contre la chute directe : la bille est rendue si elle tombe tout de suite
+        }
+        // boucliers des sorties laterales : renvoient la bille vers le haut (une fois chacun par bille)
+        if (!isTilted && !b.inShooter && b.y > 438.0f && b.y < 462.0f && b.vy > 0.0f) {
+            if (kickLeftLit && b.x < 27.0f) {
+                kickLeftLit = false; b.vy = -720.0f; b.vx = 28.0f;
+                score += 12000; showBanner("KICKBACK GAUCHE !", 1.2f); emit(Sfx::Sling); touchHud();
+            } else if (kickRightLit && b.x > 199.0f && b.x < 217.0f) {
+                kickRightLit = false; b.vy = -720.0f; b.vx = -28.0f;
+                score += 12000; showBanner("BOUCLIER DROIT !", 1.2f); emit(Sfx::Sling); touchHud();
+            }
+        }
+        // La tete du ressort sert de sol dans le couloir : elle s'abaisse quand on tend le ressort
+        if (b.inShooter) {
+            const float floorY = PLUNGER_TOP_Y + plungerCharge * 22.0f;
+            if (b.y + BALL_RADIUS > floorY) {
+                b.y = floorY - BALL_RADIUS;
+                if (b.vy > 0.0f) b.vy = 0.0f;
+            }
+        }
 
         // Clapet anti-retour en haut du couloir lanceur
-        if (!b.inShooter && b.x > 204.0f && b.y < 115.0f && b.vy > 0.0f) {
+        if (!b.inShooter && b.x > 212.0f && b.y < 100.0f && b.vy > 0.0f) {
             b.vx = -fabsf(b.vx) - 45.0f;
         }
 
@@ -260,7 +299,7 @@ void Game::stepSubstep(float dt, bool leftHeld, bool rightHeld) {
             float ey = fl.py + sinf(fl.angleRad) * fl.length;
             float angVel = fabsf(fl.angleRad - fl.prevAngleRad) / dt;
             float kick = (angVel > 1.5f) ? 235.0f : 0.0f;
-            collideBallSegment(b, fl.px, fl.py, ex, ey, 0.58f, kick, -1);
+            collideBallSegment(b, fl.px, fl.py, ex, ey, 0.58f, kick, -1, f < 2 ? 4.2f : 3.7f);
         }
 
         // Bumpers
@@ -476,6 +515,7 @@ void Game::updatePlaying(float dt, const Input& in, bool nudgePressed, bool flip
     for (int i = 0; i < MAX_BUMPERS; i++) if (bumperFlash[i] > 0.0f) bumperFlash[i] = maxf(0.0f, bumperFlash[i] - dt);
     for (int i = 0; i < wallCount; i++) if (wallFlash[i] > 0.0f) wallFlash[i] = maxf(0.0f, wallFlash[i] - dt);
     if (rolloverFlash > 0.0f) rolloverFlash = maxf(0.0f, rolloverFlash - dt);
+    if (ballSaveTimer > 0.0f) ballSaveTimer = maxf(0.0f, ballSaveTimer - dt);
 
     bool anyInShooter = false;
     for (int i = 0; i < MAX_BALLS; i++) {
@@ -530,9 +570,20 @@ void Game::updatePlaying(float dt, const Input& in, bool nudgePressed, bool flip
     if (activeCount == 0) {
         isTilted = false;
         tiltMeter = 0.0f;
+        if (ballSaveTimer > 0.0f) {   // chute directe juste apres le tir : la bille est rendue, sans perdre de bille
+            ballSaveTimer = 0.0f;
+            ballSaveUsed = true;
+            spawnBallInShooter(0);
+            showBanner("BILLE SAUVEE !", 1.6f);
+            emit(Sfx::NewBall);
+            touchHud();
+            updateCamera(dt);
+            return;
+        }
         emit(Sfx::Drain);
         if (ballsRemaining > 1) {
             ballsRemaining--;
+            ballSaveUsed = false; kickLeftLit = kickRightLit = true;
             spawnBallInShooter(0);
             showBanner("NOUVELLE BILLE", 1.4f);
             emit(Sfx::NewBall);

@@ -325,6 +325,56 @@ static void test_art() {
     printf("  %d images de decor presentes\n", TABLE_COUNT);
 }
 
+static void test_launch_and_save() {
+    printf("[lanceur et protection]\n");
+    Game g; g.begin(STORE()); g.startNewGame(0);
+    Input in;
+    for (int i = 0; i < 120; i++) tick(g, in, 1.0f / 60.0f);
+    CHECK(fabsf(g.balls[0].y - (PLUNGER_TOP_Y - BALL_RADIUS)) < 0.6f, "bille posee sur la tete du ressort (y=%.1f)", g.balls[0].y);
+    // ressort tendu : la tete (donc la bille) descend
+    in.plunger = true;
+    for (int i = 0; i < 40; i++) tick(g, in, 1.0f / 60.0f);
+    CHECK(g.balls[0].y > PLUNGER_TOP_Y - BALL_RADIUS + 3.0f, "la bille suit le ressort tendu (y=%.1f)", g.balls[0].y);
+    // protection : bille hors du couloir, puis chute directe -> rendue, une seule fois
+    g.startNewGame(0);
+    g.balls[0].x = 113; g.balls[0].y = 300; g.balls[0].vx = 0; g.balls[0].vy = 0; g.balls[0].inShooter = false;
+    g.ballSaveTimer = BALL_SAVE_SEC;
+    const int before = g.ballsRemaining;
+    in = Input();
+    g.balls[0].y = 600;   // sous le plateau
+    for (int i = 0; i < 30; i++) tick(g, in, 1.0f / 60.0f);
+    CHECK(g.ballsRemaining == before && g.ballSaveUsed, "bille sauvee sans perdre de bille");
+    g.balls[0].x = 113; g.balls[0].inShooter = false; g.balls[0].y = 600; g.ballSaveTimer = 0.0f;
+    for (int i = 0; i < 30; i++) tick(g, in, 1.0f / 60.0f);
+    CHECK(g.ballsRemaining == before - 1, "sans protection la bille est perdue");
+}
+
+static void test_containment() {
+    printf("[etancheite des bords]\n");
+    uint32_t seed = 12345;
+    auto rnd = [&]() { seed = seed * 1664525u + 1013904223u; return (float)((seed >> 8) & 0xFFFF) / 65535.0f; };
+    for (int t = 0; t < TABLE_COUNT; t++) {
+        int escapes = 0; float ex = 0, ey = 0;
+        for (int trial = 0; trial < 120; trial++) {
+            Game g; g.begin(STORE()); g.startNewGame((uint8_t)t);
+            g.ballSaveTimer = 0.0f; g.ballSaveUsed = true; g.introTimer = 0.0f;
+            float x = 20.0f + rnd() * 180.0f, y = 40.0f + rnd() * 420.0f;
+            float sp = 150.0f + rnd() * 700.0f, an = rnd() * 6.2832f;
+            g.balls[0] = {x, y, cosf(an) * sp, sinf(an) * sp, true, false, 0.0f, 0.0f};
+            Input in;
+            for (int f = 0; f < 60 * 8 && g.state == State::Playing; f++) {
+                in.left = in.right = ((f / 7) & 1);
+                tick(g, in, 1.0f / 60.0f);
+                const Ball& b = g.balls[0];
+                if (!b.active) break;
+                const bool bad = b.x < 9.0f || b.x > 236.0f || b.y < 8.0f || (b.y > 520.0f && b.x < 209.0f && false);
+                if (bad && !b.inShooter) { escapes++; ex = b.x; ey = b.y; break; }
+            }
+        }
+        CHECK(escapes == 0, "table %d : %d billes sorties du plateau (derniere en %.0f,%.0f)", t, escapes, ex, ey);
+    }
+}
+
 static void test_music() {
     printf("[musique]\n");
     for (int decor = 0; decor < 4; decor++) {
@@ -441,6 +491,8 @@ int main(int argc, char** argv) {
     test_rollovers();
     test_art();
     test_art_alignment();
+    test_launch_and_save();
+    test_containment();
     test_music();
     test_render(outDir);
     if (g_fail) { printf("\n%d ECHEC(S)\n", g_fail); return 1; }

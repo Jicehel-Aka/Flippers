@@ -25,11 +25,13 @@ constexpr int   WORLD_H    = 520;
 constexpr float MAX_CAM_Y     = (float)(WORLD_H - VIEW_H);
 constexpr float OVERVIEW_ZOOM = (float)VIEW_H / (float)WORLD_H;
 constexpr float BALL_RADIUS   = 5.2f;
+constexpr float PLUNGER_TOP_Y = 478.0f;   // sommet du ressort au repos (identique au moteur Web)
+constexpr float BALL_SAVE_SEC = 20.0f;    // duree de la protection contre la chute directe, apres la sortie du couloir
 
 constexpr int TABLE_COUNT  = 4;
 constexpr int MAX_BALLS    = 3;
 constexpr int MAX_BUMPERS  = 6;
-constexpr int MAX_WALLS    = 32;
+constexpr int MAX_WALLS    = 112;
 constexpr int MAX_FLIPPERS = 4;
 
 constexpr float PHYSICS_DT    = 1.0f / 360.0f;   // independant de la cadence d'affichage
@@ -78,6 +80,11 @@ struct RolloverDef {
 };
 constexpr int MAX_ROLLOVERS = 6;
 
+struct HousingDef {
+    uint8_t n;                // nombre de sommets (polygone ferme)
+    Vec2 p[5];
+};
+
 struct TableDef {
     const char* name;
     const char* subName;
@@ -95,6 +102,8 @@ struct TableDef {
     MissionDef missions[3];
     Vec2 missionPos;          // centre du cartouche des 3 gemmes de mission
     RolloverDef rollovers[MAX_ROLLOVERS];
+    uint8_t housingCount;     // boitiers biseautes pleins (collision identique au moteur Web)
+    HousingDef housings[6];
 };
 
 const TableDef& table(int index);
@@ -179,6 +188,9 @@ public:
     uint8_t lockHits = 0;
     uint8_t rolloverLit = 0;             // bit i = rollover i allume (0..3 couloirs du haut, 4..5 retours)
     float rolloverFlash = 0.0f;          // clignotement de bonus quand les 4 couloirs sont completes
+    bool ballSaveUsed = false;           // la protection ne sert qu'une fois par bille
+    bool kickLeftLit = true, kickRightLit = true;   // boucliers des sorties laterales (un coup chacun, rearmes a chaque bille)
+    float ballSaveTimer = 0.0f;          // > 0 : protection active (la bille perdue est rendue)
     uint8_t missionIdx = 0;
     uint8_t missionProgress = 0;
     float plungerCharge = 0.0f;
@@ -219,7 +231,7 @@ private:
     void spawnBallInShooter(int idx);
     void advanceMission(uint8_t kind);
     void collideBallSegment(Ball& b, float x1, float y1, float x2, float y2, float restitution,
-                            float extraKick, int wallIndex);
+                            float extraKick, int wallIndex, float thick = 0.0f);
     void stepSubstep(float dt, bool leftHeld, bool rightHeld);
     void updatePlaying(float dt, const Input& in, bool nudgePressed, bool launchEdgeFlipper);
     void updateCamera(float dt);
