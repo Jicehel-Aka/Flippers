@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Volume2, VolumeX } from 'lucide-react';
+import { Music, Volume2, VolumeX } from 'lucide-react';
+import { musicEngine } from './audio/musicEngine';
 import { soundEngine } from './audio/soundEngine';
 import { ActivePanelTab, CompanionPanels } from './components/CompanionPanels';
 import { GamebuinoConsole } from './components/GamebuinoConsole';
@@ -40,6 +41,8 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<ActivePanelTab>('tables');
   const [viewMode, setViewMode] = useState<ConsoleViewMode>('CONSOLE_90');
   const [muted, setMuted] = useState<boolean>(false);
+  const [musicEnabled, setMusicEnabled] = useState<boolean>(true);
+  const [windowFocused, setWindowFocused] = useState<boolean>(true);
   const [showLcdGrid, setShowLcdGrid] = useState<boolean>(false);
 
   const mergeInputs = useCallback((): InputControlsState => {
@@ -84,11 +87,24 @@ export default function App() {
 
   const handlePointerButtonChange = useCallback(
     (key: keyof InputControlsState, pressed: boolean) => {
+      if (pressed) {
+        soundEngine.unlockAndGetContext();
+      }
       pointerInputsRef.current[key] = pressed;
       syncActiveInputsUI();
     },
     [syncActiveInputsUI]
   );
+
+  // Synchronise le thème musical, le mode (Menu / Jeu / Pause) et l'intensité Multibille
+  useEffect(() => {
+    musicEngine.updateGameContext(
+      snapshot.selectedTableId,
+      snapshot.gameState,
+      snapshot.multiballActive,
+      windowFocused
+    );
+  }, [snapshot.selectedTableId, snapshot.gameState, snapshot.multiballActive, windowFocused]);
 
   // Keyboard bindings (AZERTY & QWERTY friendly: A/Q/Left = Bouton A, D/Right = Bouton D, Space/Enter/R = R1, B/Z/W/Up = Bouton B)
   useEffect(() => {
@@ -127,6 +143,16 @@ export default function App() {
 
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      soundEngine.unlockAndGetContext();
+      if (e.code === 'KeyM' && !e.repeat) {
+        e.preventDefault();
+        setMusicEnabled((prev) => {
+          const next = !prev;
+          musicEngine.setEnabled(next, soundEngine.unlockAndGetContext());
+          return next;
+        });
+        return;
+      }
       const ctrl = mapCodeToControl(e.code);
       if (!ctrl) return;
       e.preventDefault();
@@ -146,7 +172,16 @@ export default function App() {
       }
     };
 
+    const onPointerUnlock = () => {
+      soundEngine.unlockAndGetContext();
+    };
+
+    const onFocus = () => {
+      setWindowFocused(true);
+    };
+
     const onBlur = () => {
+      setWindowFocused(false);
       keyboardInputsRef.current = { ...INITIAL_INPUTS };
       pointerInputsRef.current = { ...INITIAL_INPUTS };
       // Never lose a ball in the background: pause as soon as the window loses focus
@@ -157,18 +192,23 @@ export default function App() {
 
     const onVisibilityChange = () => {
       if (document.hidden) onBlur();
+      else setWindowFocused(true);
     };
 
     const onPageHide = () => simRef.current.flushHighScores();
 
     window.addEventListener('keydown', onKeyDown);
     window.addEventListener('keyup', onKeyUp);
+    window.addEventListener('pointerdown', onPointerUnlock, { passive: true });
+    window.addEventListener('focus', onFocus);
     window.addEventListener('blur', onBlur);
     window.addEventListener('pagehide', onPageHide);
     document.addEventListener('visibilitychange', onVisibilityChange);
     return () => {
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('keyup', onKeyUp);
+      window.removeEventListener('pointerdown', onPointerUnlock);
+      window.removeEventListener('focus', onFocus);
       window.removeEventListener('blur', onBlur);
       window.removeEventListener('pagehide', onPageHide);
       document.removeEventListener('visibilitychange', onVisibilityChange);
@@ -265,6 +305,15 @@ export default function App() {
     const next = !muted;
     setMuted(next);
     soundEngine.setMuted(next);
+    if (!next) {
+      soundEngine.unlockAndGetContext();
+    }
+  };
+
+  const toggleMusic = () => {
+    const next = !musicEnabled;
+    setMusicEnabled(next);
+    musicEngine.setEnabled(next, soundEngine.unlockAndGetContext());
   };
 
   return (
@@ -405,12 +454,27 @@ export default function App() {
 
             <button
               type="button"
+              onClick={toggleMusic}
+              aria-label={musicEnabled ? 'Couper la musique de fond' : 'Activer la musique de fond'}
+              title="Raccourci clavier : M"
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
+                musicEnabled
+                  ? 'bg-[#141923] border-amber-400/50 text-amber-300 hover:text-amber-200'
+                  : 'bg-[#141923] border-slate-800 text-slate-500 hover:text-slate-300'
+              }`}
+            >
+              <Music className={`w-3.5 h-3.5 ${musicEnabled ? 'text-amber-400' : 'text-slate-500'}`} />
+              <span>{musicEnabled ? 'Musique' : 'Musique off'}</span>
+            </button>
+
+            <button
+              type="button"
               onClick={toggleMute}
-              aria-label={muted ? 'Activer le son' : 'Couper le son'}
+              aria-label={muted ? 'Activer les effets sonores' : 'Couper les effets sonores'}
               className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-[#141923] border border-slate-800 text-slate-300 hover:text-white transition-colors whitespace-nowrap shrink-0 cursor-pointer"
             >
               {muted ? <VolumeX className="w-3.5 h-3.5 text-red-400" /> : <Volume2 className="w-3.5 h-3.5 text-amber-400" />}
-              <span>{muted ? 'Muet' : 'Son'}</span>
+              <span>{muted ? 'Effets off' : 'Effets'}</span>
             </button>
           </div>
         </div>

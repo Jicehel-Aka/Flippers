@@ -13,7 +13,8 @@ desktop/app/
 desktop/release/
 release/
 
-# Gamebuino AKA (PlatformIO / ESP32) build artifacts
-firmware/gamebuino_aka/.pio/
-firmware/gamebuino_aka/dist/
+# Gamebuino AKA (ESP-IDF 5.5.1 / ESP32-S3) build artifacts
+firmware/aka_idf/build/
+firmware/aka_idf/managed_components/
+
 

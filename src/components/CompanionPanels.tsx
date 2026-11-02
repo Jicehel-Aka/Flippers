@@ -93,68 +93,54 @@ const TablePreviewThumb: React.FC<TablePreviewThumbProps> = ({
   );
 };
 
-const AKA_CPP_SKETCH = `#include <Gamebuino-AKA.h>
+const AKA_CPP_SKETCH = `// firmware/aka_idf/main/app_main.cpp — ESP-IDF 5.5.1 (ESP32-S3 · Gamebuino AKA)
+#include "gb_core.h"
+#include "gb_graphics.h"
+#include "gb_ll_lcd.h"
+#include "core/input.h"
+#include "aka_runtime/aka_runtime.h"
+#include "game/pinball_core.h"    // Physique portable 360 Hz + tables_data.inc généré
+#include "platform/platform.h"
+#include "ui/render.h"
 
-// Rotation 90° vers la droite : l'écran 320x240 devient 240 (large) x 320 (haut)
-// Le bandeau gauche sans rotation (x: 0..46) devient le HUD supérieur fixe (y: 0..46)
-constexpr int SCREEN_W = 240;
-constexpr int SCREEN_H = 320;
-constexpr int HUD_H    = 46;
-constexpr int VIEW_H   = SCREEN_H - HUD_H; // Fenêtre de jeu : 274 px
-constexpr int WORLD_H  = 520;              // Plateau équilibré ~1.9 écrans (240x520)
-constexpr float MAX_CAM_Y = (float)(WORLD_H - VIEW_H);
-constexpr float OVERVIEW_ZOOM = (float)VIEW_H / (float)WORLD_H;
+gb_core g_core;
+extern gb_graphics gfx;
+static pinball::Game g_game;
 
-struct Ball {
-  float x = 225.0f, y = 473.0f, vx = 0.0f, vy = 0.0f;
-  bool active = false, inShooter = true;
-};
+extern "C" void app_main(void) {
+  g_core.init();
+  gfx.set_backlight_percent(80);
+  gfx.set_refresh_rate(60);
 
-Ball balls[3];
-uint32_t score = 0;
-uint8_t missionIdx = 0, missionProg = 0;
-float cameraY = MAX_CAM_Y;
-float cameraZoom = OVERVIEW_ZOOM; // Arrivée en vue d'ensemble complète !
-float introTimer = 2.35f;
+  input_init();
+  akaRuntime.begin("pinball");
+  akaRuntime.setCredits("AKA Pinball", "jeancharleslebeau", "MIT", "Gamebuino AKA");
+  akaRuntime.setBeforeExitCallback([] { platform::audio_silence(); });
 
-void setup() {
-  gb.begin();
-  gb.display.setRotation(1); // 90° sens horaire -> 240x320 portrait
-  balls[0].active = true;
-}
+  platform::audio_init();
+  g_game.begin(platform::store()); // Records persistés dans /sdcard/pinball/records.bin
 
-void updateCameraLowestBall(float dt) {
-  if (introTimer > 0.0f) {
-    introTimer = max(0.0f, introTimer - dt);
-    float u = constrain((1.0f - introTimer / 2.35f - 0.34f) / 0.66f, 0.0f, 1.0f);
-    cameraZoom = OVERVIEW_ZOOM + (1.0f - OVERVIEW_ZOOM) * (u * u * (3.0f - 2.0f * u));
-  } else {
-    cameraZoom = 1.0f;
-  }
-
-  // Toujours suivre la bille active la plus basse (plus grand Y) en Multibille !
-  int lowestIdx = -1;
-  for (int i = 0; i < 3; i++) {
-    if (!balls[i].active) continue;
-    if (lowestIdx < 0 || (!balls[i].inShooter && balls[i].y > balls[lowestIdx].y)) {
-      lowestIdx = i;
+  uint32_t last = (uint32_t)(esp_timer_get_time() / 1000);
+  while (true) {
+    input_poll(g_keys);
+    if (!akaRuntime.update(g_keys)) { // Menu système AKA (langues, crédits, capture, loader)
+      platform::audio_silence();
+      vTaskDelay(pdMS_TO_TICKS(16));
+      continue;
     }
+
+    while (!lcd_refresh_completed()) {}
+    const uint32_t now = (uint32_t)(esp_timer_get_time() / 1000);
+    g_game.update((now - last) * 0.001f, platform::input_from_keys(g_keys), now);
+    last = now;
+
+    pinball::SfxEvent ev;
+    while (g_game.popSfx(ev)) platform::audio_play(g_game.tbl().decor, ev.id, ev.arg);
+
+    render::draw(g_game); // Portrait 240x320 (HUD 240x46 + plateau 240x520)
+    vid::present();
+    vTaskDelay(1);
   }
-  if (lowestIdx < 0) return;
-
-  float targetCam = constrain(balls[lowestIdx].y - VIEW_H * 0.56f, 0.0f, MAX_CAM_Y);
-  cameraY += (targetCam - cameraY) * min(1.0f, dt * 16.0f);
-  cameraY = max(cameraY, min(MAX_CAM_Y, balls[lowestIdx].y - (VIEW_H - 44.0f)));
-}
-
-void loop() {
-  if (!gb.update()) return;
-  bool flipLeft  = gb.buttons.repeat(BUTTON_A, 0);
-  bool flipRight = gb.buttons.repeat(BUTTON_D, 0);
-  updateCameraLowestBall(1.0f / 60.0f);
-
-  gb.display.clear();
-  // Rendu zoomé à l'arrivée puis scrolling fluide sur la bille la plus basse
 }`;
 
 export const CompanionPanels: React.FC<CompanionPanelsProps> = ({
@@ -460,7 +446,7 @@ export const CompanionPanels: React.FC<CompanionPanelsProps> = ({
               }`}
             >
               <div className="flex items-center justify-between">
-                <span className="font-mono text-sm font-bold text-white">Bouton A</span>
+                <span className="font-mono text-sm font-bold text-white">A / L1 / Gauche</span>
                 <span className="text-xs text-amber-400 font-medium">Flippers Gauches</span>
               </div>
               <p className="text-xs text-slate-400 mt-1.5">
@@ -474,7 +460,7 @@ export const CompanionPanels: React.FC<CompanionPanelsProps> = ({
               }`}
             >
               <div className="flex items-center justify-between">
-                <span className="font-mono text-sm font-bold text-white">Bouton D</span>
+                <span className="font-mono text-sm font-bold text-white">D / Droite</span>
                 <span className="text-xs text-amber-400 font-medium">Flippers Droits</span>
               </div>
               <p className="text-xs text-slate-400 mt-1.5">
@@ -488,7 +474,7 @@ export const CompanionPanels: React.FC<CompanionPanelsProps> = ({
               }`}
             >
               <div className="flex items-center justify-between">
-                <span className="font-mono text-sm font-bold text-white">Gâchette R1</span>
+                <span className="font-mono text-sm font-bold text-white">R1 / Bas</span>
                 <span className="text-xs text-red-400 font-medium">Tendre le Ressort</span>
               </div>
               <p className="text-xs text-slate-400 mt-1.5">
@@ -502,7 +488,7 @@ export const CompanionPanels: React.FC<CompanionPanelsProps> = ({
               }`}
             >
               <div className="flex items-center justify-between">
-                <span className="font-mono text-sm font-bold text-white">Bouton B</span>
+                <span className="font-mono text-sm font-bold text-white">B / Haut</span>
                 <span className="text-xs text-sky-400 font-medium">Secousse (Nudge)</span>
               </div>
               <p className="text-xs text-slate-400 mt-1.5">
@@ -510,6 +496,17 @@ export const CompanionPanels: React.FC<CompanionPanelsProps> = ({
               </p>
             </div>
           </div>
+
+          <p className="text-xs text-slate-400 leading-relaxed border-t border-slate-800/80 pt-3">
+            <strong className="text-slate-200">Menu, Musique & Système :</strong>{' '}
+            <span className="font-mono text-slate-200">M</span> active/coupe la musique thématique ·{' '}
+            <span className="font-mono text-slate-200">C / P / Échap</span> met en pause (double
+            appui requis pour recommencer ou quitter) ·{' '}
+            <span className="font-mono text-slate-200">N</span> /{' '}
+            <span className="font-mono text-slate-200">Flèche Bas</span> règle le nombre de joueurs
+            au menu · Sur console AKA, <span className="font-mono text-slate-200">MENU</span> ouvre
+            le menu système (langues, capture d’écran, retour au loader).
+          </p>
         </section>
       )}
 
@@ -518,12 +515,13 @@ export const CompanionPanels: React.FC<CompanionPanelsProps> = ({
           <div className="flex items-center justify-between gap-4">
             <div>
               <h2 className="text-base font-semibold text-white">
-                Firmware C++ Gamebuino AKA (firmware/gamebuino_aka)
+                Firmware ESP-IDF 5.5.1 Gamebuino AKA (firmware/aka_idf)
               </h2>
               <p className="text-xs text-slate-400 mt-0.5">
-                Aperçu du moteur C++17 ESP32 (240×520, zoom d’arrivée, Multibille ×3 & caméra bille
-                la plus basse). Le projet PlatformIO complet et le workflow GitHub Actions associé
-                se trouvent dans <span className="font-mono text-slate-200">firmware/gamebuino_aka/</span>.
+                Cœur C++ portable à 360 Hz sur <span className="font-mono text-slate-200">gamebuino</span> &{' '}
+                <span className="font-mono text-slate-200">aka_runtime</span> (ESP32-S3), avec les
+                4 plateaux générés depuis <span className="font-mono text-slate-200">src/data/tables.ts</span>{' '}
+                et paquet carte SD <span className="font-mono text-slate-200">AKA-Pinball-sdcard.zip</span>.
               </p>
             </div>
 

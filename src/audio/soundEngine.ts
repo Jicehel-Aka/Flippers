@@ -1,3 +1,5 @@
+import { musicEngine } from './musicEngine';
+
 class ArcadeSoundEngine {
   private ctx: AudioContext | null = null;
   private muted: boolean = false;
@@ -58,19 +60,29 @@ class ArcadeSoundEngine {
     }
   }
 
-  private ensureContext(): AudioContext | null {
-    if (this.muted) return null;
+  /** Crée ou réveille l'AudioContext partagé (effets + musique de fond) sur une action utilisateur. */
+  public unlockAndGetContext(): AudioContext | null {
     if (typeof window === 'undefined') return null;
     if (!this.ctx) {
-      const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      const AudioCtx =
+        window.AudioContext ||
+        (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
       if (AudioCtx) {
         this.ctx = new AudioCtx();
       }
     }
-    if (this.ctx && this.ctx.state === 'suspended') {
-      this.ctx.resume().catch(() => {});
+    if (this.ctx) {
+      if (this.ctx.state === 'suspended') {
+        this.ctx.resume().catch(() => {});
+      }
+      musicEngine.attachContext(this.ctx);
     }
     return this.ctx;
+  }
+
+  private ensureContext(): AudioContext | null {
+    if (this.muted) return null;
+    return this.unlockAndGetContext();
   }
 
   public setMuted(muted: boolean) {
@@ -297,6 +309,7 @@ class ArcadeSoundEngine {
   }
 
   public playJackpotOrMultiball() {
+    musicEngine.duckBriefly(0.95);
     const ctx = this.ensureContext();
     if (!ctx) return;
     const now = ctx.currentTime;
