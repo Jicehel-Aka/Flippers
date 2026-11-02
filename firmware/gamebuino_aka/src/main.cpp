@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include <Preferences.h>
 #include <math.h>
 #include "aka_hal.h"
 
@@ -19,6 +20,9 @@ static constexpr float MAX_CAM_Y     = (float)(WORLD_H - VIEW_H); // 246.0f
 static constexpr float OVERVIEW_ZOOM = (float)VIEW_H / (float)WORLD_H; // ~0.5269f
 static constexpr float BALL_RADIUS   = 5.2f;
 static constexpr int MAX_BALLS       = 3;
+static constexpr uint8_t MAX_WALLS   = 32;                 // marge au-dessus des 26 murs actuels
+static constexpr float PHYSICS_DT    = 1.0f / 360.0f;      // pas physique fixe (indépendant du FPS)
+static constexpr int MAX_SUBSTEPS    = 14;                 // 14 / 360 s > 33 ms (borne de dt)
 
 struct Vec2 {
   float x, y;
@@ -28,6 +32,7 @@ struct Segment {
   float x1, y1, x2, y2;
   float bounce;
   uint16_t color;
+  bool scoring;   // vrai pour les slingshots (points + mission), indépendant du rebond
 };
 
 struct BumperDef {
@@ -206,7 +211,8 @@ struct Ball {
   float x, y, vx, vy;
   bool active;
   bool inShooter;
-  uint8_t rampCool;
+  float rampCool;   // secondes restantes avant de pouvoir reprendre une rampe / un verrou
+  float stuckTime;  // secondes passées quasi immobile hors lanceur (anti-blocage)
 };
 
 struct FlipperRuntime {
@@ -220,18 +226,49 @@ static AkaHardware hw;
 static LGFX_Sprite hudSpr(&hw.lcd);
 static LGFX_Sprite bandSpr(&hw.lcd);
 
+enum class GameState : uint8_t { Menu, Playing, Paused, GameOver };
+
 static uint8_t currentTableIdx = 0;
-static bool inMenuOverlay = true;
+static GameState gameState = GameState::Menu;
+static uint32_t stateLockUntilMs = 0;   // anti-rebond après la fin de partie
+static uint8_t confirmAction = 0;       // 0 aucune, 1 recommencer, 2 retour menu
+static uint32_t confirmUntilMs = 0;
+static bool newRecord = false;
+static uint32_t recordAtStart = 0;
+static float physicsAccum = 0.0f;
+static bool hudDirty = true;
+static Preferences prefs;
 
 static Ball balls[MAX_BALLS];
 static FlipperRuntime flippers[4];
 static uint8_t flipperCount = 2;
 
-static Segment walls[26];
+static Segment walls[MAX_WALLS];
 static uint8_t wallCount = 0;
 
 static uint32_t score = 0;
 static uint32_t highScores[4] = {25000, 25000, 25000, 25000};
+
+// Records conservés en mémoire flash (NVS) entre deux parties / redémarrages
+static void loadHighScores() {
+  if (!prefs.begin("pinball", true)) return;
+  char key[8];
+  for (int i = 0; i < 4; i++) {
+    snprintf(key, sizeof(key), "hs%d", i);
+    highScores[i] = prefs.getUInt(key, 25000);
+  }
+  prefs.end();
+}
+
+static void saveHighScores() {
+  if (!prefs.begin("pinball", false)) return;
+  char key[8];
+  for (int i = 0; i < 4; i++) {
+    snprintf(key, sizeof(key), "hs%d", i);
+    prefs.putUInt(key, highScores[i]);
+  }
+  prefs.end();
+}
 static uint8_t ballsRemaining = 3;
 static uint8_t lockedBalls = 0;
 static bool multiballActive = false;
@@ -259,8 +296,15 @@ static void showBanner(const char* txt, float sec = 1.6f) {
 
 static void buildStaticWalls() {
   wallCount = 0;
-  auto addW = [](float x1, float y1, float x2, float y2, float b, uint16_t c) {
-    if (wallCount < 26) walls[wallCount++] = {x1, y1, x2, y2, b, c};
+  auto addSeg = [](float x1, float y1, float x2, float y2, float b, uint16_t c, bool scoring) {
+    if (wallCount < MAX_WALLS) {
+      walls[wallCount++] = {x1, y1, x2, y2, b, c, scoring};
+    } else {
+      Serial.println("AKA Pinball: trop de murs, augmenter MAX_WALLS");
+    }
+  };
+  auto addW = [&](float x1, float y1, float x2, float y2, float b, uint16_t c) {
+    addSeg(x1, y1, x2, y2, b, c, false);
   };
 
   uint16_t steel = rgb565(148, 163, 184);
@@ -299,11 +343,11 @@ static void buildStaticWalls() {
   // Slingshots triangulaires relevés (35 px au-dessus des flippers)
   addW(46, 388, 46, 424, 0.6f, steel);
   addW(46, 424, 68, 434, 0.6f, steel);
-  addW(46, 388, 68, 434, 1.35f, rgb565(248, 113, 113));
+  addSeg(46, 388, 68, 434, 1.35f, rgb565(248, 113, 113), true);
 
   addW(170, 388, 170, 424, 0.6f, steel);
   addW(170, 424, 148, 434, 0.6f, steel);
-  addW(170, 388, 148, 434, 1.35f, rgb565(248, 113, 113));
+  addSeg(170, 388, 148, 434, 1.35f, rgb565(248, 113, 113), true);
 }
 
 static void setupFlippersForTable(const TableDef& t) {
@@ -322,7 +366,7 @@ static void setupFlippersForTable(const TableDef& t) {
 }
 
 static void spawnBallInShooter(int idx) {
-  balls[idx] = {221.0f, 478.0f, 0.0f, 0.0f, true, true, 0};
+  balls[idx] = {221.0f, 478.0f, 0.0f, 0.0f, true, true, 0.0f, 0.0f};
 }
 
 static void advanceMission(uint8_t eventKind) {
@@ -351,7 +395,7 @@ static void startNewGame(uint8_t tableIndex) {
   setupFlippersForTable(TABLES[currentTableIdx]);
 
   for (int i = 0; i < MAX_BALLS; i++) {
-    balls[i] = {0, 0, 0, 0, false, false, 0};
+    balls[i] = {0, 0, 0, 0, false, false, 0.0f, 0.0f};
   }
   spawnBallInShooter(0);
 
@@ -363,17 +407,23 @@ static void startNewGame(uint8_t tableIndex) {
   missionProgress = 0;
   tiltMeter = 0.0f;
   isTilted = false;
+  plungerCharge = 0.0f;
+  recordAtStart = highScores[currentTableIdx];
+  newRecord = false;
+  physicsAccum = 0.0f;
+  confirmAction = 0;
+  hudDirty = true;
 
   // Vue d'ensemble intégrale à l'arrivée sur le flipper puis zoom progressif
   cameraZoom = OVERVIEW_ZOOM;
   cameraY = MAX_CAM_Y;
   introTimer = 2.35f;
-  inMenuOverlay = false;
+  gameState = GameState::Playing;
   showBanner(TABLES[currentTableIdx].name, 2.0f);
   hw.playBeep(880, 75);
 }
 
-static void collideBallSegment(Ball& b, float x1, float y1, float x2, float y2, float restitution, float extraKick = 0.0f) {
+static void collideBallSegment(Ball& b, float x1, float y1, float x2, float y2, float restitution, float extraKick = 0.0f, bool scoring = false) {
   float dx = x2 - x1;
   float dy = y2 - y1;
   float lenSq = dx * dx + dy * dy;
@@ -402,7 +452,7 @@ static void collideBallSegment(Ball& b, float x1, float y1, float x2, float y2, 
     float impulse = -(1.0f + restitution) * vn + extraKick;
     b.vx += nx * impulse;
     b.vy += ny * impulse;
-    if (restitution > 1.1f) {
+    if (scoring) {
       score += 120;
       advanceMission(2);
       hw.playBeep(740, 28);
@@ -445,7 +495,7 @@ static void stepPhysicsSubstep(float dt) {
 
     // Murs et slingshots
     for (uint8_t w = 0; w < wallCount; w++) {
-      collideBallSegment(b, walls[w].x1, walls[w].y1, walls[w].x2, walls[w].y2, walls[w].bounce);
+      collideBallSegment(b, walls[w].x1, walls[w].y1, walls[w].x2, walls[w].y2, walls[w].bounce, 0.0f, walls[w].scoring);
     }
 
     // Flippers dynamiques
@@ -480,7 +530,7 @@ static void stepPhysicsSubstep(float dt) {
     }
 
     // Entrées de rampes 3D (propulsion guidée vers la sortie)
-    if (b.rampCool == 0 && b.vy < -55.0f) {
+    if (b.rampCool <= 0.0f && b.vy < -55.0f) {
       for (uint8_t r = 0; r < 2; r++) {
         Vec2 entry = tbl.ramps[r].pts[0];
         Vec2 exitP = tbl.ramps[r].pts[4];
@@ -489,9 +539,13 @@ static void stepPhysicsSubstep(float dt) {
         if (dx * dx + dy * dy < 16.0f * 16.0f) {
           b.x = exitP.x;
           b.y = exitP.y;
-          b.vx = 0.0f;
+          // Jamais vx = 0 : une bille qui tombe pile sur l'extrémité d'un mur (le sommet d'un slingshot,
+          // sous la sortie des rampes) y reste en équilibre indéfiniment. On l'oriente vers le côté
+          // le plus proche (couloir d'inlane) ou vers le centre pour une sortie en haut de table.
+          b.vx = (exitP.x < 112.0f) ? -35.0f : 35.0f;
+          if (exitP.y < 300.0f) b.vx = (exitP.x < 112.0f) ? 35.0f : -35.0f;
           b.vy = 95.0f;
-          b.rampCool = 45;
+          b.rampCool = 0.75f;
           score += 2500;
           advanceMission(1);
           showBanner("RAMPE +2500!", 1.1f);
@@ -502,7 +556,7 @@ static void stepPhysicsSubstep(float dt) {
     }
 
     // Puits de capture Multibille x3 (2 verrous -> 3 billes simultanées)
-    if (!multiballActive && b.rampCool == 0) {
+    if (!multiballActive && b.rampCool <= 0.0f) {
       float dx = b.x - tbl.lockPos.x;
       float dy = b.y - tbl.lockPos.y;
       if (dx * dx + dy * dy < 11.5f * 11.5f) {
@@ -513,9 +567,9 @@ static void stepPhysicsSubstep(float dt) {
           multiballActive = true;
           b.vx = -110.0f;
           b.vy = -130.0f;
-          b.rampCool = 50;
-          balls[1] = {tbl.lockPos.x - 10.0f, tbl.lockPos.y + 8.0f, -95.0f, 70.0f, true, false, 40};
-          balls[2] = {tbl.lockPos.x + 10.0f, tbl.lockPos.y + 8.0f,  95.0f, 80.0f, true, false, 40};
+          b.rampCool = 0.83f;
+          balls[1] = {tbl.lockPos.x - 10.0f, tbl.lockPos.y + 8.0f, -95.0f, 70.0f, true, false, 0.67f, 0.0f};
+          balls[2] = {tbl.lockPos.x + 10.0f, tbl.lockPos.y + 8.0f,  95.0f, 80.0f, true, false, 0.67f, 0.0f};
           showBanner("MULTIBILLE X3!", 2.2f);
           hw.playBeep(1660, 120);
         } else {
@@ -523,6 +577,30 @@ static void stepPhysicsSubstep(float dt) {
           spawnBallInShooter(i);
           hw.playBeep(1180, 80);
         }
+      }
+    }
+
+    // Anti-blocage : une bille quasi immobile hors lanceur (et pas retenue par un flipper levé)
+    // est relancée au bout de 0,7 s, comme dans la version web.
+    {
+      bool cradled = false;
+      for (uint8_t f = 0; f < flipperCount; f++) {
+        bool active = flippers[f].isLeft ? leftHeld : rightHeld;
+        float cdx = b.x - flippers[f].px;
+        float cdy = b.y - flippers[f].py;
+        float reach = flippers[f].length + 12.0f;
+        if (active && cdx * cdx + cdy * cdy < reach * reach) cradled = true;
+      }
+      float spd2 = b.vx * b.vx + b.vy * b.vy;
+      if (!b.inShooter && !cradled && b.y < 490.0f && spd2 < 100.0f) {
+        b.stuckTime += dt;
+        if (b.stuckTime > 0.7f) {
+          b.vy = -155.0f;
+          b.vx = (b.x < 112.0f) ? 85.0f : -85.0f;
+          b.stuckTime = 0.0f;
+        }
+      } else {
+        b.stuckTime = 0.0f;
       }
     }
 
@@ -547,7 +625,7 @@ static void updateGameFrame(float dt) {
   bool anyInShooter = false;
   for (int i = 0; i < MAX_BALLS; i++) {
     if (balls[i].active && balls[i].inShooter) anyInShooter = true;
-    if (balls[i].active && balls[i].rampCool > 0) balls[i].rampCool--;
+    if (balls[i].active && balls[i].rampCool > 0.0f) balls[i].rampCool = max(0.0f, balls[i].rampCool - dt);
   }
 
   if (hw.btn.r1 && anyInShooter) {
@@ -585,11 +663,15 @@ static void updateGameFrame(float dt) {
     }
   }
 
-  // 6 sous-pas physiques par frame (360 Hz sur ESP32)
-  const int substeps = 6;
-  for (int s = 0; s < substeps; s++) {
-    stepPhysicsSubstep(dt / (float)substeps);
+  // Pas physique fixe à 360 Hz : trajectoires identiques que l'affichage tourne à 25 ou 60 FPS
+  physicsAccum += dt;
+  int substeps = 0;
+  while (physicsAccum >= PHYSICS_DT && substeps < MAX_SUBSTEPS) {
+    stepPhysicsSubstep(PHYSICS_DT);
+    physicsAccum -= PHYSICS_DT;
+    substeps++;
   }
+  if (substeps == MAX_SUBSTEPS) physicsAccum = 0.0f;
 
   // Compte des billes actives & relance
   int activeCount = 0;
@@ -607,8 +689,11 @@ static void updateGameFrame(float dt) {
       spawnBallInShooter(0);
       showBanner("NOUVELLE BILLE", 1.4f);
     } else {
-      showBanner("FIN DE PARTIE!", 2.2f);
-      inMenuOverlay = true;
+      newRecord = score > recordAtStart;
+      if (newRecord) saveHighScores();
+      gameState = GameState::GameOver;
+      stateLockUntilMs = millis() + 1200;   // évite qu'un appui sur B/R1 saute l'écran de fin
+      hw.playBeep(330, 220);
     }
   }
 
@@ -655,9 +740,24 @@ static void updateGameFrame(float dt) {
 }
 
 // ============================================================================
-// Rendu 60 FPS sans scintillement (HUD 240x46 + 2 bandes 240x137 DMA)
+// Rendu sans scintillement (HUD 240x46 + 2 bandes 240x137). Cible 60 FPS, mais l'écran complet
+// (153 600 octets) prend ~31 ms en SPI à 40 MHz : attendez-vous à 25-30 FPS réels.
 // ============================================================================
+static uint32_t lastHudSig = 0;
+
 static void renderHud() {
+  // Le HUD (22 Ko) n'est renvoyé à l'écran que si son contenu change : -15 % de trafic SPI par image
+  uint32_t sig = score;
+  sig = sig * 31u + ballsRemaining;
+  sig = sig * 31u + missionIdx;
+  sig = sig * 31u + missionProgress;
+  sig = sig * 31u + lockedBalls;
+  sig = sig * 31u + (multiballActive ? 1u : 0u);
+  sig = sig * 31u + currentTableIdx;
+  if (!hudDirty && sig == lastHudSig) return;
+  hudDirty = false;
+  lastHudSig = sig;
+
   const TableDef& tbl = TABLES[currentTableIdx];
   hudSpr.fillSprite(rgb565(9, 13, 22));
   hudSpr.drawFastHLine(0, HUD_H - 1, SCREEN_W, tbl.accent);
@@ -796,32 +896,72 @@ static void renderPlayfieldBand(int bandIndex) {
     }
   }
 
-  // Bandeau d'annonce ou menu de sélection de plateau
-  if (inMenuOverlay && bandIndex == 0) {
-    bandSpr.fillRoundRect(18, 18, 204, 106, 6, rgb565(12, 18, 30));
-    bandSpr.drawRoundRect(18, 18, 204, 106, 6, tbl.accent);
-    bandSpr.setTextColor(tbl.accent);
-    bandSpr.setTextSize(1);
-    bandSpr.setCursor(30, 28);
-    bandSpr.print("GAMEBUINO AKA PINBALL");
-    bandSpr.setTextColor(TFT_WHITE);
-    bandSpr.setCursor(30, 46);
-    bandSpr.printf("< %u/4 : %s >", currentTableIdx + 1, tbl.name);
-    bandSpr.setTextColor(rgb565(148, 163, 184));
-    bandSpr.setCursor(30, 62);
-    bandSpr.printf("%s", tbl.subName);
-    bandSpr.setCursor(30, 80);
-    bandSpr.printf("Record: %lu pts", (unsigned long)highScores[currentTableIdx]);
-    bandSpr.setTextColor(rgb565(52, 211, 153));
-    bandSpr.setCursor(30, 100);
-    bandSpr.print("A/D: Table | R1 ou B: JOUER");
-  } else if (bannerTimer > 0.0f && bandIndex == 0) {
-    bandSpr.fillRoundRect(24, 8, 192, 22, 4, rgb565(15, 23, 42));
-    bandSpr.drawRoundRect(24, 8, 192, 22, 4, tbl.accent);
-    bandSpr.setTextColor(TFT_WHITE);
-    bandSpr.setTextSize(1);
-    bandSpr.setCursor(34, 15);
-    bandSpr.print(bannerText);
+  // Écrans superposés (bande haute uniquement) : menu, pause, fin de partie, bandeau d'annonce
+  if (bandIndex == 0) {
+    if (gameState == GameState::Menu) {
+      bandSpr.fillRoundRect(18, 18, 204, 106, 6, rgb565(12, 18, 30));
+      bandSpr.drawRoundRect(18, 18, 204, 106, 6, tbl.accent);
+      bandSpr.setTextColor(tbl.accent);
+      bandSpr.setTextSize(1);
+      bandSpr.setCursor(30, 28);
+      bandSpr.print("GAMEBUINO AKA PINBALL");
+      bandSpr.setTextColor(TFT_WHITE);
+      bandSpr.setCursor(30, 46);
+      bandSpr.printf("< %u/4 : %s >", currentTableIdx + 1, tbl.name);
+      bandSpr.setTextColor(rgb565(148, 163, 184));
+      bandSpr.setCursor(30, 62);
+      bandSpr.printf("%s", tbl.subName);
+      bandSpr.setCursor(30, 80);
+      bandSpr.printf("Record: %lu pts", (unsigned long)highScores[currentTableIdx]);
+      bandSpr.setTextColor(rgb565(52, 211, 153));
+      bandSpr.setCursor(30, 100);
+      bandSpr.print("A/D: Table | R1 ou B: JOUER");
+    } else if (gameState == GameState::Paused) {
+      bool armRestart = (confirmAction == 1 && millis() < confirmUntilMs);
+      bool armMenu    = (confirmAction == 2 && millis() < confirmUntilMs);
+      bandSpr.fillRoundRect(18, 18, 204, 106, 6, rgb565(12, 18, 30));
+      bandSpr.drawRoundRect(18, 18, 204, 106, 6, tbl.accent);
+      bandSpr.setTextSize(1);
+      bandSpr.setTextColor(tbl.accent);
+      bandSpr.setCursor(30, 28);
+      bandSpr.print("PAUSE");
+      bandSpr.setTextColor(TFT_WHITE);
+      bandSpr.setCursor(30, 50);
+      bandSpr.print("C ou R1 : REPRENDRE");
+      bandSpr.setTextColor(armRestart ? rgb565(248, 113, 113) : rgb565(148, 163, 184));
+      bandSpr.setCursor(30, 72);
+      bandSpr.print(armRestart ? "B : CONFIRMER RECOMMENCER" : "B : RECOMMENCER (x2)");
+      bandSpr.setTextColor(armMenu ? rgb565(248, 113, 113) : rgb565(148, 163, 184));
+      bandSpr.setCursor(30, 92);
+      bandSpr.print(armMenu ? "A : CONFIRMER MENU" : "A : MENU TABLES (x2)");
+    } else if (gameState == GameState::GameOver) {
+      bandSpr.fillRoundRect(18, 18, 204, 106, 6, rgb565(12, 18, 30));
+      bandSpr.drawRoundRect(18, 18, 204, 106, 6, rgb565(239, 68, 68));
+      bandSpr.setTextSize(1);
+      bandSpr.setTextColor(rgb565(239, 68, 68));
+      bandSpr.setCursor(30, 28);
+      bandSpr.print("FIN DE PARTIE");
+      bandSpr.setTextColor(TFT_WHITE);
+      bandSpr.setCursor(30, 48);
+      bandSpr.printf("Score : %lu", (unsigned long)score);
+      bandSpr.setTextColor(newRecord ? rgb565(250, 204, 21) : rgb565(148, 163, 184));
+      bandSpr.setCursor(30, 66);
+      if (newRecord) {
+        bandSpr.print("NOUVEAU RECORD !");
+      } else {
+        bandSpr.printf("Record : %lu", (unsigned long)highScores[currentTableIdx]);
+      }
+      bandSpr.setTextColor(rgb565(52, 211, 153));
+      bandSpr.setCursor(30, 92);
+      bandSpr.print("R1/B: REJOUER | C: MENU");
+    } else if (bannerTimer > 0.0f) {
+      bandSpr.fillRoundRect(24, 8, 192, 22, 4, rgb565(15, 23, 42));
+      bandSpr.drawRoundRect(24, 8, 192, 22, 4, tbl.accent);
+      bandSpr.setTextColor(TFT_WHITE);
+      bandSpr.setTextSize(1);
+      bandSpr.setCursor(34, 15);
+      bandSpr.print(bannerText);
+    }
   }
 
   bandSpr.pushSprite(0, HUD_H + screenBandY);
@@ -835,52 +975,128 @@ void setup() {
   hw.begin();
 
   hudSpr.setColorDepth(16);
-  hudSpr.createSprite(SCREEN_W, HUD_H);
-
   bandSpr.setColorDepth(16);
-  bandSpr.createSprite(SCREEN_W, BAND_H);
+  // createSprite() renvoie nullptr si la mémoire manque : on l'affiche au lieu de planter
+  if (!hudSpr.createSprite(SCREEN_W, HUD_H) || !bandSpr.createSprite(SCREEN_W, BAND_H)) {
+    Serial.println("AKA Pinball: memoire insuffisante pour les sprites d'affichage");
+    hw.lcd.fillScreen(TFT_RED);
+    hw.lcd.setTextColor(TFT_WHITE);
+    hw.lcd.setCursor(8, 8);
+    hw.lcd.print("MEMOIRE INSUFFISANTE");
+    while (true) delay(1000);
+  }
 
+  loadHighScores();
   startNewGame(0);
-  inMenuOverlay = true;
+  gameState = GameState::Menu;
   lastFrameUs = micros();
+}
+
+// Demande de confirmation en deux temps (2,5 s) pour les actions destructives du menu pause
+static void requestConfirm(uint8_t action) {
+  uint32_t now = millis();
+  if (confirmAction == action && now < confirmUntilMs) {
+    confirmAction = 0;
+    if (action == 1) {
+      startNewGame(currentTableIdx);
+    } else {
+      gameState = GameState::Menu;
+    }
+  } else {
+    confirmAction = action;
+    confirmUntilMs = now + 2500;
+    hw.playBeep(660, 30);
+  }
 }
 
 void loop() {
   uint32_t nowUs = micros();
   uint32_t elapsedUs = nowUs - lastFrameUs;
-  if (elapsedUs < 16666) return; // Cadence 60 FPS régulière
+  if (elapsedUs < 16666) {  // cadence cible 60 FPS (le SPI plafonne plutôt vers 25-30 FPS)
+    delay(1);               // rend la main à FreeRTOS au lieu d'une attente active
+    return;
+  }
   lastFrameUs = nowUs;
 
   float dt = min(0.033f, elapsedUs * 1e-6f);
   hw.updateInputs();
 
-  if (hw.btn.cPressed) {
-    inMenuOverlay = !inMenuOverlay;
-    hw.playBeep(660, 45);
-  }
+  // Fronts montants locaux (A et R1 n'en ont pas dans le HAL)
+  static bool prevA = false, prevR1 = false;
+  bool aPressed  = hw.btn.a && !prevA;
+  bool r1Pressed = hw.btn.r1 && !prevR1;
+  prevA  = hw.btn.a;
+  prevR1 = hw.btn.r1;
 
-  if (inMenuOverlay) {
-    static uint32_t navCooldownMs = 0;
-    if (millis() > navCooldownMs) {
-      if (hw.btn.a || hw.btn.upPressed) {
-        currentTableIdx = (currentTableIdx + 3) % 4;
-        setupFlippersForTable(TABLES[currentTableIdx]);
-        navCooldownMs = millis() + 200;
-        hw.playBeep(540, 35);
-      } else if (hw.btn.d || hw.btn.downPressed) {
-        currentTableIdx = (currentTableIdx + 1) % 4;
-        setupFlippersForTable(TABLES[currentTableIdx]);
-        navCooldownMs = millis() + 200;
-        hw.playBeep(640, 35);
-      } else if (hw.btn.r1 || hw.btn.bPressed) {
-        startNewGame(currentTableIdx);
+  if (hw.btn.l1 && hw.btn.c) hudDirty = true;  // rotation inversée : tout redessiner
+
+  switch (gameState) {
+    case GameState::Menu: {
+      static uint32_t navCooldownMs = 0;
+      if (millis() > navCooldownMs) {
+        if (hw.btn.a || hw.btn.upPressed) {
+          currentTableIdx = (currentTableIdx + 3) % 4;
+          setupFlippersForTable(TABLES[currentTableIdx]);
+          navCooldownMs = millis() + 200;
+          hudDirty = true;
+          hw.playBeep(540, 35);
+        } else if (hw.btn.d || hw.btn.downPressed) {
+          currentTableIdx = (currentTableIdx + 1) % 4;
+          setupFlippersForTable(TABLES[currentTableIdx]);
+          navCooldownMs = millis() + 200;
+          hudDirty = true;
+          hw.playBeep(640, 35);
+        } else if (r1Pressed || hw.btn.bPressed) {
+          startNewGame(currentTableIdx);
+        }
       }
+      break;
     }
-  } else {
-    updateGameFrame(dt);
+
+    case GameState::Playing:
+      if (hw.btn.cPressed) {
+        gameState = GameState::Paused;
+        confirmAction = 0;
+        hw.playBeep(660, 45);
+      } else {
+        updateGameFrame(dt);
+      }
+      break;
+
+    case GameState::Paused:
+      if (confirmAction != 0 && millis() >= confirmUntilMs) confirmAction = 0;
+      if (hw.btn.cPressed || r1Pressed) {
+        confirmAction = 0;
+        gameState = GameState::Playing;
+        hw.playBeep(660, 45);
+      } else if (hw.btn.bPressed) {
+        requestConfirm(1);
+      } else if (aPressed) {
+        requestConfirm(2);
+      }
+      break;
+
+    case GameState::GameOver:
+      if (millis() >= stateLockUntilMs) {
+        if (r1Pressed || hw.btn.bPressed) {
+          startNewGame(currentTableIdx);
+        } else if (hw.btn.cPressed) {
+          gameState = GameState::Menu;
+          hudDirty = true;
+        }
+      }
+      break;
   }
 
   renderHud();
   renderPlayfieldBand(0);
   renderPlayfieldBand(1);
 }
+
+#ifdef AKA_HOST_TEST
+// Points d'accès pour firmware/gamebuino_aka/test/host (compilé sur PC avec des mocks Arduino/LovyanGFX)
+int aka_test_state() { return (int)gameState; }
+unsigned long aka_test_score() { return (unsigned long)score; }
+int aka_test_wall_count() { return (int)wallCount; }
+bool aka_test_new_record() { return newRecord; }
+#endif

@@ -58,6 +58,9 @@ jobs:
           python -m pip install --upgrade pip
           pip install --upgrade platformio
 
+      - name: Test hôte du firmware (g++ + mocks Arduino/LovyanGFX)
+        run: bash firmware/gamebuino_aka/test/host/run.sh
+
       - name: Build Gamebuino AKA Firmware (240x320 Portrait / 240x520 Tables)
         run: pio run -d firmware/gamebuino_aka -e gamebuino_aka
 
@@ -73,6 +76,10 @@ jobs:
           ============================================================
           GAMEBUINO AKA PINBALL - INSTALLATION SUR LA CONSOLE
           ============================================================
+          ATTENTION : firmware EXPERIMENTAL (cible ESP32 generique, brochage
+          indicatif). Non valide sur la console AKA reelle (ESP32-S3 / ESP-IDF).
+          Voir la section "Firmware : etat actuel" du README.
+
           1. INSTALLATION CARTE MICROSD (Recommandé avec le chargeur AKA) :
              - Copiez simplement "PINBALL.BIN" à la racine (ou dossier /GAMES)
                de la carte MicroSD FAT32 de votre Gamebuino AKA.
@@ -108,6 +115,10 @@ jobs:
     needs: build-aka-firmware
     if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.publish_release == true)
     runs-on: ubuntu-latest
+    # Même groupe que la release PC (voir build-pc.yml) : publications sérialisées.
+    concurrency:
+      group: release-${{ github.ref }}
+      cancel-in-progress: false
     steps:
       - name: Download AKA Firmware bundle
         uses: actions/download-artifact@v4

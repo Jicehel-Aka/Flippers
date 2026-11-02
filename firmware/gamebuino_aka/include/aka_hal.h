@@ -7,6 +7,10 @@
 // ============================================================================
 // Brochage matériel Gamebuino AKA (ESP32 + ILI9341 320x240 SPI + Boutons GPIO)
 // Surchargeable via build_flags (-DAKA_PIN_...) selon la révision du PCB AKA
+//
+// ATTENTION : ces valeurs sont INDICATIVES (cible générique `esp32dev`), elles n'ont pas été
+// vérifiées sur la vraie console AKA (ESP32-S3, bibliothèque components/gamebuino sous ESP-IDF).
+// Voir la section « Firmware : état actuel » du README avant de flasher.
 // ============================================================================
 
 #ifndef AKA_PIN_TFT_MOSI
