@@ -1,0 +1,10 @@
+{
+  "CTRL_FLIP": "A/L1/Links, D/Rechts: Flipper",
+  "CTRL_PLUNGER": "R1/Unten: Feder (loslassen)",
+  "CTRL_NUDGE": "B/Oben: Stossen (TILT!)",
+  "CTRL_PAUSE": "C/RUN: Pause",
+  "LOADER_OFF_1": "Die Konsole schaltet ab.",
+  "LOADER_OFF_2": "Wieder einschalten, um",
+  "LOADER_OFF_3": "den Loader zu starten.",
+  "LOADER_OFF_MANUAL": "Konsole ausschalten."
+}

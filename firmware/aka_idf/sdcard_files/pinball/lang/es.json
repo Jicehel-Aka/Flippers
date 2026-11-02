@@ -1,0 +1,10 @@
+{
+  "CTRL_FLIP": "A/L1/Izq, D/Der: flippers",
+  "CTRL_PLUNGER": "R1/Abajo: muelle (soltar = tiro)",
+  "CTRL_NUDGE": "B/Arriba: empujar (TILT!)",
+  "CTRL_PAUSE": "C/RUN: pausa",
+  "LOADER_OFF_1": "La consola se apagara.",
+  "LOADER_OFF_2": "Enciendela de nuevo",
+  "LOADER_OFF_3": "para abrir el loader.",
+  "LOADER_OFF_MANUAL": "Apaga la consola."
+}

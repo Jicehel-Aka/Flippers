@@ -14,8 +14,10 @@
     "desktop:install": "npm --prefix desktop install",
     "desktop:sync": "npm run build && node desktop/scripts/sync-web.mjs",
     "desktop:dist": "npm run desktop:sync && npm --prefix desktop run dist",
-    "aka:build": "pio run -d firmware/gamebuino_aka -e gamebuino_aka",
-    "aka:upload": "pio run -d firmware/gamebuino_aka -e gamebuino_aka -t upload"
+    "aka:tables": "node scripts/gen-aka-tables.mjs",
+    "aka:test": "bash firmware/aka_idf/test/host/run.sh",
+    "aka:build": "idf.py -C firmware/aka_idf build",
+    "aka:flash": "idf.py -C firmware/aka_idf flash monitor"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.3.3",
