@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "id": "pinball",
+  "title": "AKA Pinball",
+  "version": "1.0.0",
+  "platform": "Gamebuino AKA",
+  "port_level": "native",
+  "author": "jeancharleslebeau",
+  "license": "MIT",
+  "description": "Arcade pinball: 4 tables (AKA ESP32, Space Odyssey, Star Wars Yavin, Solar Temple), bumpers, ramps, multiball, missions, tilt, high scores and synthesized sound effects.",
+  "supports_save": true,
+  "supports_screenshot": true,
+  "supports_languages": true,
+  "supports_pause": true,
+  "save_directory": "/sdcard/pinball/"
+}

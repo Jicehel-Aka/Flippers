@@ -250,6 +250,8 @@ export interface PlayerSession {
   activeMissionIndex: number;
   missionStepProgress: number;
   missionsCompleted: number;
+  /** Balls this player has locked towards the next Multiball (0..2). */
+  lockedBalls: number;
 }
 
 export interface InputControlsState {

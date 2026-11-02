@@ -225,7 +225,7 @@ export class PinballCanvasRenderer {
       this.renderTopHud(ctx, sim);
 
       if (sim.gameState === 'PAUSED') {
-        this.renderPauseOverlay(ctx);
+        this.renderPauseOverlay(ctx, sim);
       } else if (sim.gameState === 'GAME_OVER') {
         this.renderGameOverOverlay(ctx, sim);
       }
@@ -988,30 +988,42 @@ export class PinballCanvasRenderer {
       ctx.lineWidth = 1.1;
       ctx.stroke();
 
-      // Lower X-Fighter & Rebel Emblem (y=414)
+      // Deux sabres laser croisés au-dessus des flippers : lame rouge (Sith) et bleue (Jedi)
       const fx = 113;
       const fy = 414;
-      ctx.strokeStyle = '#E2E8F0';
-      ctx.lineWidth = 2.4;
-      ctx.beginPath();
-      ctx.moveTo(fx - 19, fy - 6);
-      ctx.lineTo(fx + 19, fy + 6);
-      ctx.moveTo(fx - 19, fy + 6);
-      ctx.lineTo(fx + 19, fy - 6);
-      ctx.stroke();
-
-      ctx.fillStyle = '#F8FAFC';
-      ctx.beginPath();
-      ctx.moveTo(fx, fy - 16);
-      ctx.lineTo(fx + 4, fy + 10);
-      ctx.lineTo(fx - 4, fy + 10);
-      ctx.closePath();
-      ctx.fill();
+      const blade = (x1: number, y1: number, x2: number, y2: number, glow: string, core: string) => {
+        ctx.lineCap = 'round';
+        ctx.strokeStyle = glow;
+        ctx.globalAlpha = 0.35;
+        ctx.lineWidth = 7;
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+        ctx.strokeStyle = core;
+        ctx.lineWidth = 2.6;
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.stroke();
+        ctx.strokeStyle = '#FFFFFF';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.stroke();
+      };
+      blade(fx - 24, fy - 8, fx + 22, fy + 6, '#EF4444', '#F87171');
+      blade(fx + 24, fy - 8, fx - 22, fy + 6, '#3B82F6', '#60A5FA');
+      ctx.fillStyle = '#94A3B8';
+      ctx.fillRect(fx - 29, fy - 12, 6, 3.4);
+      ctx.fillRect(fx + 23, fy - 12, 6, 3.4);
 
       ctx.font = '700 8px "JetBrains Mono", monospace';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillStyle = '#FACC15';
+      ctx.fillStyle = '#FFE81F';
       ctx.fillText(`×${mult}`, fx, fy + 18);
       ctx.restore();
     } else {
@@ -2130,7 +2142,7 @@ export class PinballCanvasRenderer {
     ctx.restore();
   }
 
-  private renderPauseOverlay(ctx: CanvasRenderingContext2D) {
+  private renderPauseOverlay(ctx: CanvasRenderingContext2D, sim: PinballSimulation) {
     ctx.fillStyle = 'rgba(5, 8, 16, 0.85)';
     ctx.fillRect(0, HUD_HEIGHT, SCREEN_WIDTH, VIEWPORT_HEIGHT);
 
@@ -2143,9 +2155,19 @@ export class PinballCanvasRenderer {
     ctx.font = '700 8px "JetBrains Mono", monospace';
     ctx.fillStyle = '#FFFFFF';
     ctx.fillText('R1 / C : REPRENDRE LA PARTIE', SCREEN_WIDTH * 0.5, 172);
-    ctx.fillStyle = '#CBD5E1';
-    ctx.fillText('B : RECOMMENCER LE PLATEAU', SCREEN_WIDTH * 0.5, 194);
-    ctx.fillText('A : MENU CHOIX DE FLIPPER', SCREEN_WIDTH * 0.5, 216);
+    const armed = sim.confirmTimer > 0 ? sim.pendingConfirm : null;
+    ctx.fillStyle = armed === 'RESTART' ? '#F87171' : '#CBD5E1';
+    ctx.fillText(
+      armed === 'RESTART' ? 'B : CONFIRMER ? RECOMMENCER' : 'B : RECOMMENCER LE PLATEAU',
+      SCREEN_WIDTH * 0.5,
+      194
+    );
+    ctx.fillStyle = armed === 'MENU' ? '#F87171' : '#CBD5E1';
+    ctx.fillText(
+      armed === 'MENU' ? 'A : CONFIRMER ? QUITTER AU MENU' : 'A : MENU CHOIX DE FLIPPER',
+      SCREEN_WIDTH * 0.5,
+      216
+    );
   }
 
   private renderGameOverOverlay(ctx: CanvasRenderingContext2D, sim: PinballSimulation) {

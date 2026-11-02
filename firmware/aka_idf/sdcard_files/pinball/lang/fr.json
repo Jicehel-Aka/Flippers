@@ -1,0 +1,10 @@
+{
+  "CTRL_FLIP": "A/L1/Gauche, D/Droite: flippers",
+  "CTRL_PLUNGER": "R1/Bas: ressort (lacher = tir)",
+  "CTRL_NUDGE": "B/Haut: secousse (attention TILT)",
+  "CTRL_PAUSE": "C/RUN: pause",
+  "LOADER_OFF_1": "La console va s'eteindre.",
+  "LOADER_OFF_2": "Rallumez-la pour revenir",
+  "LOADER_OFF_3": "au loader.",
+  "LOADER_OFF_MANUAL": "Eteignez la console."
+}

@@ -508,20 +508,20 @@ export const PINBALL_TABLES: PinballTableDef[] = [
   },
 
   // ==========================================================================
-  // 3. GALAXIE STELLAIRE
+  // 3. STAR WARS · YAVIN (id technique : star_galaxy)
   // Layout unique : Double Flipper Droit d'Assaut (y=154 et y=282),
-  // Rampes Sabres Rouge & Bleu croisées en X géant au centre du plateau,
-  // Puits du Réacteur gardé par les tourelles de la Station Blindée !
+  // Rampes Sabre Sith (rouge) & Sabre Jedi (bleu) croisées en X au centre du plateau,
+  // Conduit Thermique de l'Étoile Noire gardé par les turbolasers !
   // ==========================================================================
   {
     id: 'star_galaxy',
-    name: 'Galaxie Stellaire',
-    subtitle: 'Sabres Croisés en X & Double Flipper Droit',
-    layoutBadge: '4 Flippers · Sabres Croisés en X',
-    environmentTag: 'Space Opera · Assaut Tactique Droit',
+    name: 'Star Wars · Yavin',
+    subtitle: 'Bataille de Yavin · Sabres en X & Assaut Droit',
+    layoutBadge: '4 Flippers · Sabres Jedi & Sith',
+    environmentTag: 'Il y a bien longtemps · Une galaxie très lointaine',
     description:
-      'Tactique offensive : deux sabres laser rouge et bleu se croisent en X au-dessus de la Station Sphérique, épaulés par deux flippers d’assaut étagés sur le flanc droit.',
-    multiballName: 'MULTIBILLE ESCADRON',
+      'Bataille de Yavin : un sabre Sith rouge et un sabre Jedi bleu se croisent en X au-dessus de l’Étoile Noire. Vos X-Wings attaquent par le flanc droit, il faut placer la torpille à protons dans le conduit thermique !',
+    multiballName: 'ESCADRON ROUGE',
     jackpotName: 'TORPILLE À PROTONS',
     skillShotLabel: 'SAUT HYPERESPACE',
     gravity: 328,
@@ -534,14 +534,14 @@ export const PINBALL_TABLES: PinballTableDef[] = [
       wallHighlight: '#F8FAFC',
       accentPrimary: '#3B82F6',
       accentSecondary: '#EF4444',
-      accentWarm: '#FACC15',
+      accentWarm: '#FFE81F',
       flipperTop: '#F8FAFC',
       flipperSkirt: '#DC2626',
       slingshotMain: '#DC2626',
       slingshotAccent: '#3B82F6',
       hudBg: '#070912',
-      hudBorder: '#FACC15',
-      hudDigits: '#EF4444',
+      hudBorder: '#FFE81F',
+      hudDigits: '#FFE81F',
       hudStyle: 'LED_7SEG',
       ballTint: '#E2E8F0',
     },
@@ -585,14 +585,14 @@ export const PINBALL_TABLES: PinballTableDef[] = [
       { points: [{ x: 217, y: 304 }, { x: 207.5, y: 313.5 }, { x: 207.5, y: 355.5 }, { x: 217, y: 365 }] },
     ],
     bumpers: [
-      { id: 'gal_b1', x: 62, y: 100, radius: 10, points: 2100, label: 'ESCORTE G', colorStyle: 'RED', iconStyle: 'CREST' },
-      { id: 'gal_b2', x: 113, y: 86, radius: 10.5, points: 2400, label: 'AMIRAL OR', colorStyle: 'GOLD', iconStyle: 'CREST' },
-      { id: 'gal_b3', x: 150, y: 102, radius: 10, points: 2100, label: 'ESCORTE D', colorStyle: 'BLUE', iconStyle: 'CREST' },
-      { id: 'gal_b4', x: 70, y: 214, radius: 10.5, points: 2300, label: 'TOURELLE G', colorStyle: 'RED', iconStyle: 'CREST' },
-      { id: 'gal_b5', x: 156, y: 214, radius: 10.5, points: 2300, label: 'TOURELLE D', colorStyle: 'BLUE', iconStyle: 'CREST' },
+      { id: 'gal_b1', x: 62, y: 100, radius: 10, points: 2100, label: 'X-WING ROUGE 2', colorStyle: 'RED', iconStyle: 'CREST' },
+      { id: 'gal_b2', x: 113, y: 86, radius: 10.5, points: 2400, label: 'FAUCON MILLENIUM', colorStyle: 'GOLD', iconStyle: 'CREST' },
+      { id: 'gal_b3', x: 150, y: 102, radius: 10, points: 2100, label: 'Y-WING OR', colorStyle: 'BLUE', iconStyle: 'CREST' },
+      { id: 'gal_b4', x: 70, y: 214, radius: 10.5, points: 2300, label: 'TURBOLASER G', colorStyle: 'RED', iconStyle: 'CREST' },
+      { id: 'gal_b5', x: 156, y: 214, radius: 10.5, points: 2300, label: 'TURBOLASER D', colorStyle: 'BLUE', iconStyle: 'CREST' },
     ],
     targets: [
-      ...makeVerticalBank('gal', 'SHLD', 'MULTIPLIER', 'DROP', 19.5, 154, 14, ['S', 'H', 'L', 'D'], ['#EF4444', '#3B82F6', '#FACC15', '#22C55E'], 3500),
+      ...makeVerticalBank('gal', 'SITH', 'MULTIPLIER', 'DROP', 19.5, 154, 14, ['S', 'I', 'T', 'H'], ['#EF4444', '#B91C1C', '#EF4444', '#B91C1C'], 3500),
       ...makeVerticalBank('gal', 'XWNG', 'MULTIBALL', 'STANDUP', 206.5, 185, 14.5, ['X', 'W', 'N', 'G'], ['#3B82F6', '#EF4444', '#FACC15', '#22C55E'], 4500),
       ...makeVerticalBank('gal', 'R2D', 'KICKBACK', 'DROP', 19, 294, 13, ['R', '2', 'D'], ['#38BDF8', '#FFFFFF', '#FACC15'], 3200),
       ...makeVerticalBank('gal', 'ION', 'JACKPOT_BOOST', 'STANDUP', 207, 316, 13, ['I', 'O', 'N'], ['#EF4444', '#3B82F6', '#FACC15'], 3500),
@@ -600,7 +600,7 @@ export const PINBALL_TABLES: PinballTableDef[] = [
     ramps: [
       {
         id: 'gal_ramp_red_saber',
-        name: 'SABRE LASER ROUGE',
+        name: 'SABRE SITH',
         style: 'MOLDED_ACRYLIC',
         entry: { x: 52, y: 344 },
         entryRadius: 15.5,
@@ -618,7 +618,7 @@ export const PINBALL_TABLES: PinballTableDef[] = [
       },
       {
         id: 'gal_ramp_blue_saber',
-        name: 'SABRE IONIQUE BLEU',
+        name: 'SABRE JEDI',
         style: 'MOLDED_ACRYLIC',
         entry: { x: 166, y: 344 },
         entryRadius: 15.5,
@@ -636,7 +636,7 @@ export const PINBALL_TABLES: PinballTableDef[] = [
       },
       {
         id: 'gal_ramp_hyper',
-        name: 'BOUCLE HYPERESPACE',
+        name: 'SAUT HYPERESPACE',
         style: 'WIREFORM_RAIL',
         entry: { x: 54, y: 242 },
         entryRadius: 15,
@@ -654,21 +654,21 @@ export const PINBALL_TABLES: PinballTableDef[] = [
       },
     ],
     rollovers: [
-      { id: 'gal_r1', groupId: 'TOP_LANES', x: 68, y: 50, radius: 6, letter: 'F', points: 3500 },
-      { id: 'gal_r2', groupId: 'TOP_LANES', x: 98, y: 47, radius: 6, letter: 'O', points: 3500 },
-      { id: 'gal_r3', groupId: 'TOP_LANES', x: 128, y: 47, radius: 6, letter: 'R', points: 3500 },
-      { id: 'gal_r4', groupId: 'TOP_LANES', x: 158, y: 50, radius: 6, letter: 'C', points: 3500 },
+      { id: 'gal_r1', groupId: 'TOP_LANES', x: 68, y: 50, radius: 6, letter: 'J', points: 3500 },
+      { id: 'gal_r2', groupId: 'TOP_LANES', x: 98, y: 47, radius: 6, letter: 'E', points: 3500 },
+      { id: 'gal_r3', groupId: 'TOP_LANES', x: 128, y: 47, radius: 6, letter: 'D', points: 3500 },
+      { id: 'gal_r4', groupId: 'TOP_LANES', x: 158, y: 50, radius: 6, letter: 'I', points: 3500 },
       { id: 'gal_in_l', groupId: 'INLANES', x: 36, y: 414, radius: 5.5, letter: '◄', points: 2500 },
       { id: 'gal_in_r', groupId: 'INLANES', x: 190, y: 414, radius: 5.5, letter: '►', points: 2500 },
     ],
     spinners: [
-      { id: 'gal_sp1', name: 'TIE VORTEX', x: 38, y: 254, width: 15, angle: -0.2, pointsPerSpin: 950 },
-      { id: 'gal_sp2', name: 'HYPERDRIVE', x: 190, y: 110, width: 15, angle: 0.25, pointsPerSpin: 950 },
+      { id: 'gal_sp1', name: 'CHASSEURS TIE', x: 38, y: 254, width: 15, angle: -0.2, pointsPerSpin: 950 },
+      { id: 'gal_sp2', name: 'HYPERPROPULSEUR', x: 190, y: 110, width: 15, angle: 0.25, pointsPerSpin: 950 },
     ],
     scoops: [
       {
         id: 'gal_lock_reactor',
-        name: 'PUITS DU RÉACTEUR',
+        name: 'CONDUIT THERMIQUE',
         kind: 'UPPER_LOCK',
         x: 113,
         y: 174,
@@ -680,7 +680,7 @@ export const PINBALL_TABLES: PinballTableDef[] = [
       },
       {
         id: 'gal_vuk_hyper',
-        name: 'TUNNEL HYPERESPACE',
+        name: 'TUNNEL DE KESSEL',
         kind: 'MID_VUK_TELEPORT',
         x: 113,
         y: 298,
@@ -695,7 +695,7 @@ export const PINBALL_TABLES: PinballTableDef[] = [
       {
         id: 'gal_m1',
         title: 'DUEL DE SABRES',
-        description: 'Franchir 2 fois les rampes Sabres croisées en X',
+        description: 'Franchir 2 fois les rampes du Sabre Sith et du Sabre Jedi',
         targetKind: 'RAMP',
         goal: 2,
         rewardPoints: 50000,
@@ -703,8 +703,8 @@ export const PINBALL_TABLES: PinballTableDef[] = [
       },
       {
         id: 'gal_m2',
-        title: 'ASSAUT TOURELLES',
-        description: 'Neutraliser 5 tourelles bumpers ou spinners',
+        title: 'DÉFENSE DES TURBOLASERS',
+        description: 'Neutraliser 5 X-Wings, Faucon ou turbolasers (bumpers ou spinners)',
         targetKind: 'BUMPER',
         goal: 5,
         rewardPoints: 60000,
@@ -712,8 +712,8 @@ export const PINBALL_TABLES: PinballTableDef[] = [
       },
       {
         id: 'gal_m3',
-        title: 'TORPILLE RÉACTEUR',
-        description: 'Toucher 4 cibles déflecteurs ou le Puits du Réacteur',
+        title: 'TRANCHÉE DE L’ÉTOILE NOIRE',
+        description: 'Toucher 4 cibles ou le Conduit Thermique : « Utilise la Force ! »',
         targetKind: 'TARGET',
         goal: 4,
         rewardPoints: 85000,
@@ -725,13 +725,13 @@ export const PINBALL_TABLES: PinballTableDef[] = [
     missionEmblemPos: { x: 113, y: 364 },
     rulesSummary: {
       rampsRule:
-        'Les Sabres Laser Rouge et Bleu forment un X lumineux au centre : le Sabre Rouge livre la bille sur le flipper d’assaut médian droit pour enchaîner la Boucle Hyperespace.',
+        'Le Sabre Sith (rouge) et le Sabre Jedi (bleu) forment un X lumineux : le Sabre Sith livre la bille sur le flipper d’assaut médian droit pour enchaîner le Saut Hyperespace.',
       bumpersRule:
-        '3 croiseurs d’escorte en haut + 2 tourelles blindées protégeant l’entrée du Puits du Réacteur.',
+        'X-Wing, Faucon Millenium et Y-Wing en formation d’attaque + 2 turbolasers protégeant le Conduit Thermique.',
       targetsRule:
-        'Abattez le bouclier S-H-L-D à gauche pour le Bonus, X-W-N-G à droite pour le Multibille Escadron et R-2-D pour les 2 Kickbacks.',
+        'Abattez les S-I-T-H à gauche pour le multiplicateur, X-W-N-G à droite pour l’Escadron Rouge (multibille) et R-2-D pour les 2 Kickbacks. J-E-D-I en haut allume les couloirs.',
       multiballRule:
-        '2 tirs dans le Puits du Réacteur central ou la banque X-W-N-G lancent l’offensive à 3 billes !',
+        '2 tirs dans le Conduit Thermique central ou la banque X-W-N-G lancent l’Escadron Rouge à 3 billes !',
     },
   },
 

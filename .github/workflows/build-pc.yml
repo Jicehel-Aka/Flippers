@@ -39,12 +39,16 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22'
+          cache: npm
 
       - name: Install web dependencies
-        run: npm install
+        run: npm ci
 
       - name: TypeScript check (lint)
         run: npm run lint
+
+      - name: Moteur physique (tests)
+        run: npm test
 
       - name: Build production web bundle
         run: npm run build
@@ -126,7 +130,7 @@ jobs:
 
       - name: Install Electron builder dependencies
         working-directory: desktop
-        run: npm install
+        run: npm ci
 
       - name: Package standalone PC executable (${{ matrix.label }})
         working-directory: desktop
@@ -154,6 +158,11 @@ jobs:
     needs: build-pc
     if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.publish_release == true)
     runs-on: ubuntu-latest
+    # Partage le même groupe que la release firmware : les deux publient sur le même tag,
+    # ils sont donc exécutés l'un après l'autre (évite la course à la création de la Release).
+    concurrency:
+      group: release-${{ github.ref }}
+      cancel-in-progress: false
     steps:
       - name: Download all PC artifacts
         uses: actions/download-artifact@v4

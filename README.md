@@ -1,6 +1,6 @@
 # Gamebuino AKA Pinball (Web · PC · Firmware ESP32 AKA)
 
-Jeu de flipper arcade néo-pixel conçu sur mesure pour la console **Gamebuino AKA** tenue **tournée de 90° vers la droite** (`240 × 320 px` en mode portrait), accompagné d'un simulateur interactif **Web / PC (Windows, Linux, macOS)** et du **firmware embarqué C++17 ESP32** prêt à flasher ou copier sur carte MicroSD.
+Jeu de flipper arcade néo-pixel conçu sur mesure pour la console **Gamebuino AKA** tenue **tournée de 90° vers la droite** (`240 × 320 px` en mode portrait), accompagné d'un simulateur interactif **Web / PC (Windows, Linux, macOS)** et d'un **firmware ESP-IDF pour la console** *(voir « Firmware Gamebuino AKA »)*.
 
 ---
 
@@ -15,7 +15,9 @@ Jeu de flipper arcade néo-pixel conçu sur mesure pour la console **Gamebuino A
 - **Multibille physique ×3 & Système de Missions**
   - Verrouillez **2 billes** dans le puits `LOCK` pour libérer **3 billes simultanées** sur le plateau.
   - Chaque flipper intègre **3 missions scénarisées** (suivies par le médaillon central à 3 gemmes) menant à la **Finale Maître (`+100 000 pts` + Multibille ×3)**.
-- **1 à 4 joueurs en local** au tour par tour, synthèse audio arcade temps réel (WebAudio sur PC/Web, PWM sur ESP32) et support manette Gamepad API.
+- **1 à 4 joueurs en local** au tour par tour *(version Web / PC)*, synthèse audio arcade temps réel (WebAudio sur PC/Web, PWM sur ESP32) et support manette Gamepad API *(Web / PC)*.
+- **Physique à pas fixe** : 720 Hz sur Web/PC, 360 Hz sur le firmware. Les trajectoires ne dépendent pas de la fréquence d'affichage.
+- **Pause automatique** quand la fenêtre Web/PC perd le focus. *Recommencer* et *Quitter au menu* demandent une **confirmation en deux appuis** (2,5 s).
 
 ---
 
@@ -25,7 +27,7 @@ Jeu de flipper arcade néo-pixel conçu sur mesure pour la console **Gamebuino A
 | :--- | :--- | :--- | :--- |
 | **1. Gamebuino AKA · ESP32** | **4 flippers** (paire basse + 2 mini-flippers cyber-deck symétriques à `y=174`), grappe asymétrique de 3 engrenages en haut à gauche + cœur Wi-Fi central | Rampe moulée bleue **Bus SPI** + rail métallique **Antenne Wi-Fi** | *Init Bus SPI*, *Overclock 240 MHz*, *Flash Firmware OTA* |
 | **2. Odyssée Spatiale** | **3 flippers** (paire basse + flipper orbital gauche à mi-hauteur `y=256`), constellation centrale de 5 bumpers en diamant | Grande arche moulée **Apollo** + rail chromé croisé **Anneau de Saturne** | *Allumage Apollo*, *Champ d'Astéroïdes*, *Arrimage Station ISS* |
-| **3. Galaxie Stellaire** | **4 flippers** (paire basse + **double assaut étagé à droite** `y=154` & `y=282`), réacteur blindé gardé par 2 tourelles | Deux grandes rampes **Sabres Laser Rouge & Bleu** croisées en **X** | *Escadron Rogue*, *Bouclier Déflecteur*, *Cœur du Réacteur* |
+| **3. Star Wars · Yavin** | **4 flippers** (paire basse + **double assaut étagé à droite** `y=154` & `y=282`), Conduit Thermique gardé par 2 turbolasers, bumpers X-Wing / Faucon Millenium / Y-Wing | Deux grandes rampes **Sabre Sith (rouge) & Sabre Jedi (bleu)** croisées en **X**, saut hyperespace | *Duel de sabres*, *Défense des turbolasers*, *Tranchée de l’Étoile Noire* ; sons de blaster et de sabre laser |
 | **4. Temple Solaire** | **4 flippers en terrasses diagonales** (terrasse jade haute-gauche `y=204` + terrasse or basse-droite `y=298`), sanctuaires séparés émeraude / solaire | Rampe sinueuse **Serpent Quetzal** en S + rail doré **Aqueduc Solaire** | *Réveil de Quetzal*, *Offrande Solaire*, *Éclipse d'Or* |
 
 ---
@@ -39,6 +41,7 @@ Jeu de flipper arcade néo-pixel conçu sur mesure pour la console **Gamebuino A
 | **Tendre le ressort (Lanceur)** | **Gâchette R1** *(maintenir puis relâcher)* | `Espace`, `Entrée` ou `R` | `Bouton Sud (A)` |
 | **Secousse physique (Nudge)** | **Bouton B** *(attention au TILT)* | `B`, `Z`, `W`, `Flèche Haut` | `Bouton Nord (Y)` / `Ouest (X)` |
 | **Menu / Table / Pause** | **Bouton C** | `C`, `P`, `Échap` | `Start` |
+| **Nombre de joueurs (Web / PC)** | — | `N` (+1) ou `Flèche Bas` (−1) au menu | — |
 | **Inverser rotation 180° (AKA)** | **L1 + C** | — | — |
 | **Plein écran (PC)** | — | `F11` ou `Alt + Entrée` | — |
 
@@ -54,21 +57,22 @@ Jeu de flipper arcade néo-pixel conçu sur mesure pour la console **Gamebuino A
 │   ├── data/tables.ts          # Géométrie, rampes, bumpers et missions des 4 plateaux (240x520)
 │   ├── engine/physicsEngine.ts # Moteur physique 720Hz, Multibille x3, zoom d'arrivée & caméra
 │   └── engine/renderer.ts      # Rendu 2D haute précision, rampes Catmull-Rom & HUD 240x46
+├── tests/engine.test.mjs       # Tests headless du moteur (node:test) : stabilité, déterminisme, framerate, pause...
 ├── desktop/                    # Wrapper Electron autonome (Windows .exe, Linux .AppImage, macOS .zip)
 │   ├── main.cjs                # Fenêtre arcade 60 FPS sans latence audio + plein écran F11
 │   ├── preload.cjs             # Pont sécurisé Electron
 │   └── scripts/sync-web.mjs    # Synchronisation du bundle Vite vers desktop/app
-├── firmware/gamebuino_aka/     # Projet PlatformIO C++17 complet pour l'ESP32 de la Gamebuino AKA
-│   ├── platformio.ini          # Cible ESP32 240MHz + LovyanGFX SPI DMA + export post-build
-│   ├── include/aka_hal.h       # HAL écran ILI9341 240x320, boutons GPIO & audio PWM
-│   ├── src/main.cpp            # Moteur embarqué 4 tables, missions, Multibille x3 & caméra
-│   └── scripts/export_aka_bin.py # Génère PINBALL.BIN (MicroSD) et l'image flash USB complète (0x0)
-├── scripts/
-│   ├── push-to-aka.sh          # Déploiement local USB ou MicroSD sous Linux / macOS
-│   └── push-to-aka.ps1         # Déploiement local USB ou MicroSD sous Windows PowerShell
+├── firmware/aka_idf/          # Projet ESP-IDF 5.5.1 (ESP32-S3) pour la Gamebuino AKA
+│   ├── main/game/              # Coeur de jeu portable : physique 360 Hz, états, sons synthétisés, plateaux générés
+│   ├── main/ui/                # Rendu logiciel 240x320 avec clipping + police 8x8
+│   ├── main/platform/          # Adaptateurs AKA : écran, boutons, audio, records sur carte SD
+│   ├── components/             # gamebuino + aka_runtime (menu système, langues, captures, retour au loader)
+│   ├── sdcard_files/           # Dossiers pinball/ (meta.json, screen.bmp, lang) et AKA/lang à copier sur la carte SD
+│   └── test/host/              # Tests PC (g++) : physique, états, 168 motifs sonores, rendu sans écriture hors écran
+├── scripts/gen-aka-tables.mjs  # Génère les plateaux du firmware depuis src/data/tables.ts (--check en CI)
 └── .github/workflows/
     ├── build-pc.yml            # CI/CD : Lint + Web (GitHub Pages) + Exécutables PC (Win/Linux/macOS)
-    └── build-aka.yml           # CI/CD : Compilation ESP32 PlatformIO + Artefacts PINBALL.BIN & Releases
+    └── build-aka.yml           # CI/CD : tests PC, build ESP-IDF 5.5.1, paquet carte SD & Releases
 ```
 
 ---
@@ -78,8 +82,17 @@ Jeu de flipper arcade néo-pixel conçu sur mesure pour la console **Gamebuino A
 ### 1. Lancer la version Web / Simulateur en développement
 
 ```bash
-npm install
+npm ci
 npm run dev
+```
+
+Vérifications (les mêmes qu'en CI) :
+
+```bash
+npm run lint   # tsc --noEmit
+npm test       # moteur physique (node:test)
+npm run aka:test   # coeur de jeu et rendu du firmware compilés sur PC
+node scripts/gen-aka-tables.mjs --check   # plateaux du firmware à jour avec tables.ts
 ```
 
 L'application démarre sur `http://localhost:3000`.
@@ -95,55 +108,41 @@ Les binaires autonomes (`.exe` portable sous Windows, `.AppImage` / `.tar.gz` so
 
 ---
 
-## Compiler & Pousser sur la console Gamebuino AKA
+## Firmware Gamebuino AKA
 
-Prérequis local : [PlatformIO Core (`pio`)](https://platformio.org/install/cli) (`pip install platformio`).
+Le firmware (`firmware/aka_idf`) est un projet **ESP-IDF 5.5.1** pour l'ESP32-S3 de la console, construit sur les composants `gamebuino` et `aka_runtime`. C'est un **moteur simplifié** par rapport au Web/PC : les 4 plateaux (générés depuis `src/data/tables.ts`), bumpers, slingshots, flippers, rampes, puits de verrouillage, Multibille, missions et records sont présents, mais pas les spinners, les cibles ni les rollovers du Web. Les textes en jeu sont en français ; le menu système (MENU) est traduit en fr, en, de, es et it.
 
-### Option A — Copier `PINBALL.BIN` sur la carte MicroSD de l'AKA (Recommandé)
+- **Sons** : effets de flipper synthétisés (bumpers, slingshots, flippers, ressort, rampes, verrouillage, Multibille, tilt, fin de partie…), avec un décor sonore propre à chaque plateau. Aucun échantillon ni musique protégée.
+- **Menu système (MENU)** : reprendre, commandes, langue, crédits, retour au loader. Appui long sur MENU : capture d'écran. RUN + MENU : retour au loader.
+- **Commandes** : A / L1 / Gauche = flippers gauches ; D / Droite = flippers droits ; R1 / Bas = ressort ; B / Haut = secousse ; C / RUN = pause.
+- **Records** : `/sdcard/pinball/records.bin`.
+- **Table Star Wars · Yavin** : univers hommage de fan (libellés, couleurs, sabres laser et sons génériques) sans logo, personnage, image ni musique de Lucasfilm.
 
-1. Téléchargez l'artefact **`Gamebuino-AKA-Pinball-Firmware`** depuis l'onglet **Actions** ou **Releases** de GitHub (ou compilez localement avec `npm run aka:build`).
-2. Copiez `PINBALL.BIN` à la racine (ou dans `/GAMES/`) de la carte MicroSD FAT32 de votre Gamebuino AKA :
+> **Limites connues :** le firmware n'a pas encore été validé sur une console réelle (la logique et le rendu sont testés sur PC, la compilation ESP-IDF est vérifiée en CI). Le volume suit le réglage du runtime AKA, qui n'a pas encore de curseur dans son menu.
 
-```bash
-# Linux / macOS
-./scripts/push-to-aka.sh sd /media/$USER/AKA_SD
+## Installer sur la console Gamebuino AKA
 
-# Windows PowerShell
-.\scripts\push-to-aka.ps1 -Mode sd -Target E:\
-```
+1. Téléchargez **`AKA-Pinball-sdcard.zip`** depuis les **Releases** (ou l'artefact de l'onglet **Actions**).
+2. Copiez les dossiers `pinball` et `AKA` à la racine de la carte SD (le dossier `AKA` est commun à tous les jeux : ne remplacez pas une version plus récente).
+3. Lancez *Pinball* depuis le loader, console tournée de 90° vers la droite.
 
-### Option B — Flasher directement en USB-C
-
-```bash
-# Via le script fourni (Linux / macOS)
-./scripts/push-to-aka.sh usb
-
-# Ou sous Windows PowerShell
-.\scripts\push-to-aka.ps1 -Mode usb -Target COM5
-
-# Ou directement depuis une Release GitHub avec esptool.py :
-esptool.py --chip esp32 --baud 921600 write_flash 0x0 gamebuino-aka-pinball-full-flash-0x0.bin
-```
-
-> **Personnalisation du brochage PCB AKA :** Si votre révision matérielle de Gamebuino AKA utilise des broches GPIO spécifiques pour l'écran SPI ou les boutons, surchargez simplement les constantes `-DAKA_PIN_...` dans `firmware/gamebuino_aka/platformio.ini` (toutes documentées dans `firmware/gamebuino_aka/include/aka_hal.h`).
-
----
+Compiler soi-même (ESP-IDF 5.5.1 installé) : `npm run aka:build`, puis `npm run aka:flash`.
 
 ## Workflows GitHub Actions (CI/CD PC & AKA)
 
 Deux workflows automatisés s'exécutent sur GitHub dès chaque `git push` :
 
 1. **`Build & Push PC + Web` (`.github/workflows/build-pc.yml`)**
-   - Vérifie le typage TypeScript (`npm run lint`) et compile le bundle Web (`npm run build`).
+   - Installe avec `npm ci` (lockfile), vérifie le typage TypeScript (`npm run lint`), lance les tests du moteur (`npm test`) et compile le bundle Web (`npm run build`).
    - Déploie automatiquement la version Web sur **GitHub Pages** (si activé dans *Settings → Pages → Source: GitHub Actions*).
    - Compile en parallèle les exécutables autonomes **Windows x64 (`.exe`)**, **Linux x64 (`.AppImage` & `.tar.gz`)** et **macOS Universal (`.zip`)**.
 2. **`Build & Push Gamebuino AKA Firmware` (`.github/workflows/build-aka.yml`)**
-   - Compile le firmware ESP32 C++17 via **PlatformIO**.
-   - Produit et archive `PINBALL.BIN` (prêt pour MicroSD) ainsi que `gamebuino-aka-pinball-full-flash-0x0.bin` (flash complet USB-C).
+   - Vérifie que les plateaux générés sont à jour, lance les tests PC du firmware, puis compile avec **ESP-IDF 5.5.1** (conteneur `espressif/idf`).
+   - Produit `AKA-Pinball-sdcard.zip` (dossiers `pinball` et `AKA` prêts pour la carte SD) et `AKA-Pinball-firmware.bin`.
 
 ### Publier une Release GitHub complète (PC + AKA) en une commande
 
-Pousser un tag `v*` déclenche automatiquement la création d'une **GitHub Release** regroupant les exécutables Windows/Linux/macOS **et** les binaires `PINBALL.BIN` pour la Gamebuino AKA :
+Pousser un tag `v*` déclenche automatiquement la création d'une **GitHub Release** regroupant les exécutables Windows/Linux/macOS **et** le paquet carte SD pour la Gamebuino AKA :
 
 ```bash
 git tag v1.0.0

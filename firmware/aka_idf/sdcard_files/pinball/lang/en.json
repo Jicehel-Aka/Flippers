@@ -1,0 +1,10 @@
+{
+  "CTRL_FLIP": "A/L1/Left, D/Right: flippers",
+  "CTRL_PLUNGER": "R1/Down: plunger (release = fire)",
+  "CTRL_NUDGE": "B/Up: nudge (watch the TILT)",
+  "CTRL_PAUSE": "C/RUN: pause",
+  "LOADER_OFF_1": "The console will power off.",
+  "LOADER_OFF_2": "Turn it back on to",
+  "LOADER_OFF_3": "open the loader.",
+  "LOADER_OFF_MANUAL": "Switch the console off."
+}
