@@ -1,0 +1,19 @@
+node_modules/
+build/
+dist/
+coverage/
+.DS_Store
+*.log
+.env*
+!.env.example
+
+# Desktop (Electron) packaging artifacts
+desktop/node_modules/
+desktop/app/
+desktop/release/
+release/
+
+# Gamebuino AKA (PlatformIO / ESP32) build artifacts
+firmware/gamebuino_aka/.pio/
+firmware/gamebuino_aka/dist/
+

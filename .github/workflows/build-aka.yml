@@ -1,0 +1,128 @@
+name: Build & Push Gamebuino AKA Firmware
+
+on:
+  push:
+    branches:
+      - main
+      - master
+    tags:
+      - 'v*'
+    paths:
+      - 'firmware/**'
+      - 'scripts/push-to-aka*'
+      - '.github/workflows/build-aka.yml'
+  pull_request:
+    branches:
+      - main
+      - master
+    paths:
+      - 'firmware/**'
+      - '.github/workflows/build-aka.yml'
+  workflow_dispatch:
+    inputs:
+      publish_release:
+        description: 'Attacher les binaires Gamebuino AKA (PINBALL.BIN + Flash USB) à une Release GitHub'
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # 1. Compilation PlatformIO ESP32 pour la console Gamebuino AKA
+  # ---------------------------------------------------------------------------
+  build-aka-firmware:
+    name: Build ESP32 Firmware (Gamebuino AKA)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Cache PlatformIO packages & toolchains
+        uses: actions/cache@v4
+        with:
+          path: ~/.platformio
+          key: ${{ runner.os }}-pio-aka-${{ hashFiles('firmware/gamebuino_aka/platformio.ini') }}
+          restore-keys: |
+            ${{ runner.os }}-pio-aka-
+
+      - name: Install PlatformIO CLI
+        run: |
+          python -m pip install --upgrade pip
+          pip install --upgrade platformio
+
+      - name: Build Gamebuino AKA Firmware (240x320 Portrait / 240x520 Tables)
+        run: pio run -d firmware/gamebuino_aka -e gamebuino_aka
+
+      - name: Package MicroSD & USB Flash bundle
+        run: |
+          mkdir -p aka-bundle
+          cp firmware/gamebuino_aka/dist/PINBALL.BIN aka-bundle/
+          cp firmware/gamebuino_aka/dist/gamebuino-aka-pinball-app-0x10000.bin aka-bundle/
+          if [ -f firmware/gamebuino_aka/dist/gamebuino-aka-pinball-full-flash-0x0.bin ]; then
+            cp firmware/gamebuino_aka/dist/gamebuino-aka-pinball-full-flash-0x0.bin aka-bundle/
+          fi
+          cat << 'EOF' > aka-bundle/LISEZMOI_AKA.txt
+          ============================================================
+          GAMEBUINO AKA PINBALL - INSTALLATION SUR LA CONSOLE
+          ============================================================
+          1. INSTALLATION CARTE MICROSD (Recommandé avec le chargeur AKA) :
+             - Copiez simplement "PINBALL.BIN" à la racine (ou dossier /GAMES)
+               de la carte MicroSD FAT32 de votre Gamebuino AKA.
+             - Tournez la console de 90° vers la droite (écran 240x320).
+
+          2. FLASH DIRECT PAR CÂBLE USB-C (esptool) :
+             esptool.py --chip esp32 --baud 921600 write_flash 0x0 gamebuino-aka-pinball-full-flash-0x0.bin
+
+          COMMANDES EN JEU (Console tournée de 90° vers la droite) :
+             - Bouton A  : Flippers Gauches
+             - Bouton D  : Flippers Droits
+             - Bouton R1 : Tendre le ressort du lance-bille
+             - Bouton B  : Secouer le flipper (Nudge / attention au TILT)
+             - Bouton C  : Menu de sélection des 4 plateaux / Pause
+             - L1 + C    : Inverser le sens portrait de 180° si besoin
+          ============================================================
+          EOF
+          ls -lh aka-bundle/
+
+      - name: Upload Gamebuino AKA Firmware Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Gamebuino-AKA-Pinball-Firmware
+          path: aka-bundle/*
+          if-no-files-found: error
+          retention-days: 90
+
+  # ---------------------------------------------------------------------------
+  # 2. Publication sur GitHub Releases (tag v* ou déclenchement manuel)
+  # ---------------------------------------------------------------------------
+  release-aka-firmware:
+    name: Publish AKA Binaries to GitHub Release
+    needs: build-aka-firmware
+    if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.publish_release == true)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download AKA Firmware bundle
+        uses: actions/download-artifact@v4
+        with:
+          name: Gamebuino-AKA-Pinball-Firmware
+          path: aka-release
+
+      - name: Attach AKA Firmware to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || format('v1.0.{0}', github.run_number) }}
+          name: Gamebuino AKA Pinball ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || format('v1.0.{0}', github.run_number) }}
+          generate_release_notes: true
+          files: |
+            aka-release/PINBALL.BIN
+            aka-release/gamebuino-aka-pinball-full-flash-0x0.bin
+            aka-release/gamebuino-aka-pinball-app-0x10000.bin
+            aka-release/LISEZMOI_AKA.txt

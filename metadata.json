@@ -1,0 +1,6 @@
+{
+  "name": "Gamebuino AKA Pinball 90°",
+  "description": "Flipper moderne haute précision conçu pour la Gamebuino AKA tenue tournée à 90° vers la droite (écran 240×320, HUD supérieur, 3 plateaux thématiques cohérents, rampes, bumpers, cibles et contrôles A/D/R1/B).",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
