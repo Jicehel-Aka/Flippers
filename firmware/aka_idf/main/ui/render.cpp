@@ -253,7 +253,8 @@ static void draw_art_layer(const View& v, const uint8_t* art) {
         const float wx = ((float)(vid::H - 1 - sy) + 0.5f - v.xPad) / v.zoom;
         const int ix = (int)floorf(wx);
         if (ix < 0 || ix >= WORLD_W) continue;     // hors plateau : le fond sombre deja pose
-        const uint8_t* row = art + (size_t)ix * WORLD_H * 2;
+        // ligne de l'image = ligne d'ecran ; elle contient la colonne x = 239 - r du plateau, donc r = 239 - ix
+        const uint8_t* row = art + (size_t)(WORLD_W - 1 - ix) * WORLD_H * 2;
         if (unit) {
             memcpy(rowbuf, row + (size_t)iyTab[0] * 2, (size_t)VIEW_H * 2);
         } else {

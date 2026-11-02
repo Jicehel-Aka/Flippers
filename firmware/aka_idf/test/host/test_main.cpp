@@ -282,6 +282,36 @@ static void test_rollovers() {
     printf("  4 tables : allumage, bonus des couloirs et des retours\n");
 }
 
+// Le decor doit tomber EXACTEMENT sous les coordonnees du jeu : les 4 anneaux de rollovers du haut (Star Wars,
+// asymetriques par rapport a l'axe central) doivent se retrouver a leur place dans l'image rendue.
+static void test_art_alignment() {
+    printf("[alignement decor / coordonnees du jeu]\n");
+    Game g;
+    g.begin(STORE());
+    g.startNewGame(2);
+    g.introTimer = 0.0f;
+    g.cameraZoom = 1.0f;
+    g.cameraY = 0.0f;
+    render::draw(g);
+    const TableDef& t = g.tbl();
+    int found = 0;
+    for (int k = 0; k < 4; k++) {
+        const RolloverDef& ro = t.rollovers[k];
+        bool ok = false;
+        for (int dx = -7; dx <= -5 && !ok; dx++) {
+            for (int dy = -1; dy <= 0 && !ok; dy++) {
+                const int px = (int)ro.x + dx, py = (int)ro.y + dy;      // pixel du plateau (portrait)
+                const uint16_t c = vid::g_fb[(239 - px) * 320 + (HUD_H + py)];  // rotation : sx = HUD_H + y, sy = 239 - x
+                const int r = (c & 31) << 3, gg = ((c >> 5) & 63) << 2, b = ((c >> 11) & 31) << 3;
+                if (abs(r - 71) < 45 && abs(gg - 85) < 45 && abs(b - 105) < 45) ok = true;
+            }
+        }
+        found += ok ? 1 : 0;
+    }
+    CHECK(found == 4, "anneaux de rollovers du decor retrouves a leur place : %d/4 (decor inverse ou decale ?)", found);
+    printf("  %d/4 anneaux du decor sous les coordonnees des rollovers\n", found);
+}
+
 static void test_art() {
     printf("[decors pre-rendus]\n");
     for (int i = 0; i < TABLE_COUNT; i++) {
@@ -410,6 +440,7 @@ int main(int argc, char** argv) {
     test_sfx_patterns();
     test_rollovers();
     test_art();
+    test_art_alignment();
     test_music();
     test_render(outDir);
     if (g_fail) { printf("\n%d ECHEC(S)\n", g_fail); return 1; }
