@@ -342,14 +342,34 @@ static void draw_art_dynamic(const Game& g, const View& v, const TableDef& t) {
             pfillcircle(lx - v.R(3) + k * v.R(6), ly, v.R(3.0f) < 2 ? 2 : v.R(3.0f), C3(226, 232, 240));
         }
     }
-    {   // ressort du lanceur
-        int top2 = v.Y(488.0f - (1.0f - g.plungerCharge) * 14.0f);
-        int bot2 = v.Y(492.0f);
-        if (bot2 < top2) { int tmp = top2; top2 = bot2; bot2 = tmp; }
-        const int px0 = v.X(218.0f), pw = v.R(14);
-        pfill(px0, top2, pw, bot2 - top2 + 3, C3(185, 28, 28));
-        for (int yy = top2; yy < bot2 + 3; yy += 3) pfill(px0, yy, pw, 1, C3(252, 165, 165));
-        pfill(px0, top2 - 2, pw, 3, C3(226, 232, 240));
+    {   // ressort du lanceur (meme dessin que le moteur Web : tete rouge sur ressort a spires, sol a y = 513)
+        const float topY = PLUNGER_TOP_Y + g.plungerCharge * 22.0f, floorY = 513.0f;
+        const float xc = v.Xf(225.0f);
+        pfill((int)lroundf(v.Xf(218.5f)), (int)lroundf(v.Yf(490.0f)), (int)lroundf(13.0f * v.zoom), (int)lroundf(5.0f * v.zoom), C3(20, 70, 40));
+        pfill((int)lroundf(xc - 1.8f * v.zoom), (int)lroundf(v.Yf(topY + 3.0f)), (int)lroundf(3.6f * v.zoom) < 1 ? 1 : (int)lroundf(3.6f * v.zoom),
+              (int)lroundf((floorY - topY - 3.0f) * v.zoom), C3(148, 163, 184));
+        const uint16_t coil = g.plungerCharge > 0.55f ? C3(250, 204, 21) : C3(226, 232, 240);
+        const float span = floorY - topY - 4.0f;
+        float px = xc, py = v.Yf(topY + 2.0f);
+        for (int i = 0; i <= 7; i++) {
+            const float y = v.Yf(topY + 3.5f + ((float)i / 7.0f) * span);
+            const float x = xc + (i % 2 == 0 ? -4.8f : 4.8f) * v.zoom;
+            if (i > 0) pthick((int)lroundf(px), (int)lroundf(py), (int)lroundf(x), (int)lroundf(y), 0.8f, coil);
+            px = x; py = y;
+        }
+        pfill((int)lroundf(xc - 6.0f * v.zoom), (int)lroundf(v.Yf(topY - 0.5f)), (int)lroundf(12.0f * v.zoom), (int)lroundf(4.2f * v.zoom) < 2 ? 2 : (int)lroundf(4.2f * v.zoom), C3(220, 38, 38));
+    }
+    // protection contre la chute directe : l'embleme de sauvegarde clignote (derniere seconde plus vite)
+    if (g.ballSaveTimer > 0.0f && !g.isTilted && (g.ballSaveTimer > 3.0f || ((g.nowMs / 60u) & 1u))) {
+        if (t.decor == 0) {
+            pfill((int)lroundf(v.Xf(98.0f)), (int)lroundf(v.Yf(484.0f)), (int)lroundf(30.0f * v.zoom), (int)lroundf(13.0f * v.zoom), C3(250, 204, 21));
+            if (v.zoom > 0.8f) ptext_center((int)lroundf(v.Xf(113.0f)), (int)lroundf(v.Yf(491.0f)) - 4, "AKA", C3(9, 13, 22));
+        } else if (t.decor == 1) {
+            pdisc(v.Xf(113.0f), v.Yf(490.0f), 6.0f * v.zoom, C3(250, 204, 21));
+        } else {
+            pdisc(v.Xf(113.0f), v.Yf(490.0f), 8.6f * v.zoom, C3(255, 255, 255));
+            pdisc(v.Xf(113.0f), v.Yf(490.0f), 7.4f * v.zoom, C3(56, 189, 248));
+        }
     }
 }
 

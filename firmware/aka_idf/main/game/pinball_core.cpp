@@ -120,11 +120,17 @@ void Game::setupFlippers() {
         float r = ef.restDeg * DEG_TO_RAD_F;
         float a = ef.activeDeg * DEG_TO_RAD_F;
         flippers[flipperCount++] = {ef.isLeft, ef.px, ef.py, ef.length, r, a, r, r};
+        // boitier biseaute sous la paroi (comme le moteur Web) : sans lui la bille passait a cote des mini-flippers hauts
+        if (ef.py < 300.0f && ef.px > 30.0f && ef.px < 196.0f && wallCount < MAX_WALLS) {
+            const float wx = ef.isLeft ? 14.0f : 210.0f;
+            walls[wallCount++] = {wx, ef.py - 30.0f, ef.px, ef.py, 0.45f, STEEL, false};
+        }
     }
 }
 
 void Game::spawnBallInShooter(int idx) {
-    balls[idx] = {221.0f, 478.0f, 0.0f, 0.0f, true, true, 0.0f, 0.0f};
+    // pose sur la tete du ressort (comme le moteur Web : x = 225, sommet du ressort a y = 478, bille de rayon 5,2)
+    balls[idx] = {225.0f, PLUNGER_TOP_Y - BALL_RADIUS, 0.0f, 0.0f, true, true, 0.0f, 0.0f};
 }
 
 void Game::advanceMission(uint8_t kind) {
@@ -162,6 +168,9 @@ void Game::startNewGame(uint8_t tableIndex) {
     lockHits = 0;
     rolloverLit = 0;
     rolloverFlash = 0.0f;
+    ballSaveTimer = 0.0f;
+    ballSaveUsed = false;
+    kickLeftLit = kickRightLit = true;
     missionIdx = 0;
     missionProgress = 0;
     tiltMeter = 0.0f;
@@ -243,7 +252,29 @@ void Game::stepSubstep(float dt, bool leftHeld, bool rightHeld) {
         b.x += b.vx * dt;
         b.y += b.vy * dt;
 
+        const bool wasInShooter = b.inShooter;
         b.inShooter = (b.x > 210.0f && b.y > 120.0f);
+        if (wasInShooter && !b.inShooter && ballSaveTimer <= 0.0f && !ballSaveUsed && !multiballActive && !isTilted) {
+            ballSaveTimer = BALL_SAVE_SEC;   // protection contre la chute directe : la bille est rendue si elle tombe tout de suite
+        }
+        // boucliers des sorties laterales : renvoient la bille vers le haut (une fois chacun par bille)
+        if (!isTilted && !b.inShooter && b.y > 438.0f && b.y < 462.0f && b.vy > 0.0f) {
+            if (kickLeftLit && b.x < 27.0f) {
+                kickLeftLit = false; b.vy = -720.0f; b.vx = 28.0f;
+                score += 12000; showBanner("KICKBACK GAUCHE !", 1.2f); emit(Sfx::Sling); touchHud();
+            } else if (kickRightLit && b.x > 199.0f && b.x < 217.0f) {
+                kickRightLit = false; b.vy = -720.0f; b.vx = -28.0f;
+                score += 12000; showBanner("BOUCLIER DROIT !", 1.2f); emit(Sfx::Sling); touchHud();
+            }
+        }
+        // La tete du ressort sert de sol dans le couloir : elle s'abaisse quand on tend le ressort
+        if (b.inShooter) {
+            const float floorY = PLUNGER_TOP_Y + plungerCharge * 22.0f;
+            if (b.y + BALL_RADIUS > floorY) {
+                b.y = floorY - BALL_RADIUS;
+                if (b.vy > 0.0f) b.vy = 0.0f;
+            }
+        }
 
         // Clapet anti-retour en haut du couloir lanceur
         if (!b.inShooter && b.x > 204.0f && b.y < 115.0f && b.vy > 0.0f) {
@@ -476,6 +507,7 @@ void Game::updatePlaying(float dt, const Input& in, bool nudgePressed, bool flip
     for (int i = 0; i < MAX_BUMPERS; i++) if (bumperFlash[i] > 0.0f) bumperFlash[i] = maxf(0.0f, bumperFlash[i] - dt);
     for (int i = 0; i < wallCount; i++) if (wallFlash[i] > 0.0f) wallFlash[i] = maxf(0.0f, wallFlash[i] - dt);
     if (rolloverFlash > 0.0f) rolloverFlash = maxf(0.0f, rolloverFlash - dt);
+    if (ballSaveTimer > 0.0f) ballSaveTimer = maxf(0.0f, ballSaveTimer - dt);
 
     bool anyInShooter = false;
     for (int i = 0; i < MAX_BALLS; i++) {
@@ -530,9 +562,20 @@ void Game::updatePlaying(float dt, const Input& in, bool nudgePressed, bool flip
     if (activeCount == 0) {
         isTilted = false;
         tiltMeter = 0.0f;
+        if (ballSaveTimer > 0.0f) {   // chute directe juste apres le tir : la bille est rendue, sans perdre de bille
+            ballSaveTimer = 0.0f;
+            ballSaveUsed = true;
+            spawnBallInShooter(0);
+            showBanner("BILLE SAUVEE !", 1.6f);
+            emit(Sfx::NewBall);
+            touchHud();
+            updateCamera(dt);
+            return;
+        }
         emit(Sfx::Drain);
         if (ballsRemaining > 1) {
             ballsRemaining--;
+            ballSaveUsed = false; kickLeftLit = kickRightLit = true;
             spawnBallInShooter(0);
             showBanner("NOUVELLE BILLE", 1.4f);
             emit(Sfx::NewBall);

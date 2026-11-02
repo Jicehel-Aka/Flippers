@@ -25,6 +25,8 @@ constexpr int   WORLD_H    = 520;
 constexpr float MAX_CAM_Y     = (float)(WORLD_H - VIEW_H);
 constexpr float OVERVIEW_ZOOM = (float)VIEW_H / (float)WORLD_H;
 constexpr float BALL_RADIUS   = 5.2f;
+constexpr float PLUNGER_TOP_Y = 478.0f;   // sommet du ressort au repos (identique au moteur Web)
+constexpr float BALL_SAVE_SEC = 20.0f;    // duree de la protection contre la chute directe, apres la sortie du couloir
 
 constexpr int TABLE_COUNT  = 4;
 constexpr int MAX_BALLS    = 3;
@@ -179,6 +181,9 @@ public:
     uint8_t lockHits = 0;
     uint8_t rolloverLit = 0;             // bit i = rollover i allume (0..3 couloirs du haut, 4..5 retours)
     float rolloverFlash = 0.0f;          // clignotement de bonus quand les 4 couloirs sont completes
+    bool ballSaveUsed = false;           // la protection ne sert qu'une fois par bille
+    bool kickLeftLit = true, kickRightLit = true;   // boucliers des sorties laterales (un coup chacun, rearmes a chaque bille)
+    float ballSaveTimer = 0.0f;          // > 0 : protection active (la bille perdue est rendue)
     uint8_t missionIdx = 0;
     uint8_t missionProgress = 0;
     float plungerCharge = 0.0f;
