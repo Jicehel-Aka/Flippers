@@ -105,7 +105,7 @@ jobs:
             D / Droite        flippers droits
             R1 / Bas          ressort (maintenir, relacher pour tirer)
             B / Haut          secousse (attention au TILT)
-            C / RUN           pause
+            (pas de touche de pause : MENU met le jeu en pause)
             MENU              menu systeme du loader (commandes, langue, retour au loader)
           TXT
           mkdir -p ../../out

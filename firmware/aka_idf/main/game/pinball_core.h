@@ -143,6 +143,7 @@ public:
     Game();
     void begin(const HighScoreStore& store);
     void update(float dt, const Input& in, uint32_t nowMs);
+    void syncInput(const Input& in);   // voir pinball_core.cpp
 
     bool popSfx(SfxEvent& out);          // vide la file d'evenements sonores
 

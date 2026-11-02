@@ -185,6 +185,32 @@ static void test_state_machine() {
     in = Input(); in.nudge = true; tick(g, in, 0.016f);
     CHECK(g.state == State::Playing, "rejouer apres le verrou");
 
+    // Reprise depuis le menu systeme : une touche deja tenue (A qui valide « Reprendre ») n'est pas un nouvel appui.
+    {
+        Game m;
+        m.begin(STORE());
+        m.startNewGame(1);
+        const uint32_t sc = m.score;
+        Input held; held.left = true;
+        m.syncInput(held);                        // pendant que le menu est ouvert
+        tick(m, held, 0.016f);                    // premiere image apres la reprise, touche encore tenue
+        CHECK(m.state == State::Playing && m.score == sc, "la reprise garde la partie en cours");
+        Input none;
+        CHECK(!none.pause, "aucune pause par defaut");
+    }
+    {   // fin de partie : A / D reviennent a la selection de table (plus de touche de pause)
+        Game e;
+        e.begin(STORE());
+        e.startNewGame(0);
+        for (int i = 0; i < MAX_BALLS; i++) e.balls[i].active = false;
+        e.ballsRemaining = 1;
+        tick(e, Input(), 0.016f);
+        CHECK(e.state == State::GameOver, "fin de partie");
+        for (int i = 0; i < 80; i++) tick(e, Input(), 0.016f);
+        Input l; l.left = true; tick(e, l, 0.016f);
+        CHECK(e.state == State::Menu, "A en fin de partie : retour a la selection de table");
+    }
+
     // record : sauvegarde unique a la fin de partie
     g_saves = 0;
     Game h;

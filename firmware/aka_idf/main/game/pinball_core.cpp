@@ -538,6 +538,16 @@ void Game::requestConfirm(uint8_t action) {
     }
 }
 
+void Game::syncInput(const Input& in) {
+    // Appele pendant que le menu systeme est ouvert : les touches deja tenues a sa fermeture
+    // (ex. A qui valide « Reprendre ») ne doivent pas compter comme de nouveaux appuis.
+    prevLeft_ = in.left;
+    prevRight_ = in.right;
+    prevPlunger_ = in.plunger;
+    prevNudge_ = in.nudge;
+    prevPause_ = in.pause;
+}
+
 void Game::update(float dtRaw, const Input& in, uint32_t now) {
     nowMs = now;
     float dt = dtRaw > MAX_FRAME_DT ? MAX_FRAME_DT : (dtRaw < 0.0f ? 0.0f : dtRaw);
@@ -593,7 +603,7 @@ void Game::update(float dtRaw, const Input& in, uint32_t now) {
             if (nowMs >= stateLockUntilMs_) {
                 if (plungerEdge || nudgeEdge) {
                     startNewGame(tableIdx);
-                } else if (pauseEdge) {
+                } else if (leftEdge || rightEdge) {   // pas de touche de pause : A / D reviennent a la selection de table
                     state = State::Menu;
                     setupFlippers();
                     touchHud();

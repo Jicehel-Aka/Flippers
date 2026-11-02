@@ -57,6 +57,7 @@ extern "C" void app_main(void) {
         input_poll(g_keys);
         if (!akaRuntime.update(g_keys)) {   // le menu systeme est ouvert et se dessine lui-meme
             platform::audio_silence();
+            g_game.syncInput(platform::input_from_keys(g_keys));   // la reprise ne rejoue pas la touche qui a valide « Reprendre »
             last = millis();
             vTaskDelay(pdMS_TO_TICKS(16));
             continue;

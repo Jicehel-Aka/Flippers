@@ -13,7 +13,9 @@ pinball::Input input_from_keys(const Keys& k) {
     in.right   = k.D || k.right;
     in.plunger = k.R1 || k.down;
     in.nudge   = k.B || k.up;
-    in.pause   = k.C || k.RUN;
+    // Pas de touche de pause : la pause, c'est le menu systeme (MENU). C et RUN (RUN+MENU = retour au loader)
+    // ne doivent JAMAIS mettre le jeu en pause par accident.
+    in.pause   = false;
     return in;
 }
 
