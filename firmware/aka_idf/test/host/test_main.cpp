@@ -254,6 +254,19 @@ static void test_multiball_and_lock() {
     CHECK(strstr(g.bannerText, "ESCADRON") != nullptr, "bandeau Star Wars: %s", g.bannerText);
 }
 
+static void test_art() {
+    printf("[decors pre-rendus]\n");
+    for (int i = 0; i < TABLE_COUNT; i++) {
+        const uint8_t* a = render::table_art(i);
+        CHECK(a != nullptr, "plateau %d : image de decor introuvable (node scripts/gen-aka-art.mjs)", i);
+        if (!a) continue;
+        unsigned nonBlack = 0;
+        for (int k = 0; k < 240 * 520; k += 7) { uint16_t px = (uint16_t)(a[k * 2] | (a[k * 2 + 1] << 8)); if (px) nonBlack++; }
+        CHECK(nonBlack > 240 * 520 / 7 / 2, "plateau %d : image de decor presque noire", i);
+    }
+    printf("  %d images de decor presentes\n", TABLE_COUNT);
+}
+
 static void test_music() {
     printf("[musique]\n");
     for (int decor = 0; decor < 4; decor++) {
@@ -358,6 +371,7 @@ int main(int argc, char** argv) {
     test_state_machine();
     test_multiball_and_lock();
     test_sfx_patterns();
+    test_art();
     test_music();
     test_render(outDir);
     if (g_fail) { printf("\n%d ECHEC(S)\n", g_fail); return 1; }

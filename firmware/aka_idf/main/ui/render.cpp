@@ -198,9 +198,87 @@ static void draw_decor(const Game& g, const View& v, const TableDef& t) {
     }
 }
 
+// ---------------------------------------------------------------------------
+// Decor pre-rendu (images generees depuis le moteur de rendu du jeu Web)
+// ---------------------------------------------------------------------------
+// art : 240 lignes ECRAN de 520 pixels. A l'echelle 1 une ligne d'ecran se recopie d'un seul bloc ;
+// sinon (vue d'ensemble, zoom d'arrivee) on echantillonne au plus proche voisin.
+static void draw_art_layer(const View& v, const uint8_t* art) {
+    static uint16_t rowbuf[VIEW_H];
+    static int iyTab[VIEW_H];
+    bool allIn = true;
+    for (int k = 0; k < VIEW_H; k++) {
+        int iy = (int)floorf(v.camY + ((float)k + 0.5f) / v.zoom);
+        iyTab[k] = iy;
+        if (iy < 0 || iy >= WORLD_H) allIn = false;
+    }
+    const bool unit = fabsf(v.zoom - 1.0f) < 0.0005f && allIn;
+    const uint16_t black = C3(4, 6, 10);
+    for (int sy = 0; sy < vid::H; sy++) {
+        const float wx = ((float)(vid::H - 1 - sy) + 0.5f - v.xPad) / v.zoom;
+        const int ix = (int)floorf(wx);
+        if (ix < 0 || ix >= WORLD_W) continue;     // hors plateau : le fond sombre deja pose
+        const uint8_t* row = art + (size_t)ix * WORLD_H * 2;
+        if (unit) {
+            memcpy(rowbuf, row + (size_t)iyTab[0] * 2, (size_t)VIEW_H * 2);
+        } else {
+            for (int k = 0; k < VIEW_H; k++) {
+                const int iy = iyTab[k];
+                if (iy < 0 || iy >= WORLD_H) { rowbuf[k] = black; continue; }
+                uint16_t px;
+                memcpy(&px, row + (size_t)iy * 2, 2);
+                rowbuf[k] = px;
+            }
+        }
+        vid::raw_blit_row(HUD_H, sy, rowbuf, VIEW_H);
+    }
+}
+
+// Elements animes dessines PAR-DESSUS le decor : eclats des bumpers et slingshots, puits de verrouillage, ressort.
+static void draw_art_dynamic(const Game& g, const View& v, const TableDef& t) {
+    for (int w = 0; w < g.wallCount; w++) {
+        const Segment& sg = g.walls[w];
+        if (!(sg.scoring && g.wallFlash[w] > 0.0f)) continue;
+        pthick(v.X(sg.x1), v.Y(sg.y1), v.X(sg.x2), v.Y(sg.y2), 2.5f, C3(255, 255, 255));
+    }
+    for (int k = 0; k < t.bumperCount; k++) {
+        if (!(g.bumperFlash[k] > 0.0f)) continue;
+        const BumperDef& b = t.bumpers[k];
+        const int bx = v.X(b.x), by = v.Y(b.y), br = v.R(b.r);
+        pcircle(bx, by, br + 3, lighten(b.rim, 50));
+        pcircle(bx, by, br + 5, darken(b.rim, 40));
+        pfillcircle(bx, by, br, C3(255, 255, 255));
+        pfillcircle(bx, by, br * 2 / 3 > 0 ? br * 2 / 3 : 1, lighten(b.fill, 60));
+    }
+    {   // puits Multibille : clignote quand il est arme, billes verrouillees visibles
+        const int lx = v.X(t.lockPos.x), ly = v.Y(t.lockPos.y);
+        if (g.lockLit && ((g.nowMs / 200u) & 1u)) {
+            pcircle(lx, ly, v.R(t.lockRadius + 3.0f), C3(250, 250, 120));
+            pcircle(lx, ly, v.R(t.lockRadius + 5.0f), C3(250, 250, 120));
+        }
+        for (int k = 0; k < g.lockedBalls; k++) {
+            pfillcircle(lx - v.R(3) + k * v.R(6), ly, v.R(3.0f) < 2 ? 2 : v.R(3.0f), C3(226, 232, 240));
+        }
+    }
+    {   // ressort du lanceur
+        int top2 = v.Y(488.0f - (1.0f - g.plungerCharge) * 14.0f);
+        int bot2 = v.Y(492.0f);
+        if (bot2 < top2) { int tmp = top2; top2 = bot2; bot2 = tmp; }
+        const int px0 = v.X(218.0f), pw = v.R(14);
+        pfill(px0, top2, pw, bot2 - top2 + 3, C3(185, 28, 28));
+        for (int yy = top2; yy < bot2 + 3; yy += 3) pfill(px0, yy, pw, 1, C3(252, 165, 165));
+        pfill(px0, top2 - 2, pw, 3, C3(226, 232, 240));
+    }
+}
+
 static void draw_playfield(const Game& g, const View& v, const TableDef& t) {
     // Fond : hors table = presque noir ; table = degrade vertical (16 bandes) + cadre lumineux
     pfill(0, HUD_H, SCREEN_W, VIEW_H, C3(4, 6, 10));
+    const uint8_t* art = table_art(g.tableIdx);
+    if (art) {
+        draw_art_layer(v, art);
+        draw_art_dynamic(g, v, t);
+    } else {   // pas d'image : rendu vectoriel de secours
     const int tx = v.X(0), tw = (int)lroundf(WORLD_W * v.zoom);
     const int top = v.Y(0), bot = v.Y((float)WORLD_H);
     for (int b = 0; b < 16; b++) {
@@ -311,6 +389,8 @@ static void draw_playfield(const Game& g, const View& v, const TableDef& t) {
             pfillcircle(mx, cy, v.R(4.5f), c);
             pcircle(mx, cy, v.R(4.5f), C3(255, 255, 255));
         }
+    }
+
     }
 
     // Flippers : batte effilee a reflet, pivot metallique

@@ -26,6 +26,7 @@ constexpr int H = 240;
 uint16_t rgb(uint8_t r, uint8_t g, uint8_t b);                    // format materiel
 void raw_pixel(int x, int y, uint16_t color);                      // (x, y) dans l'ecran
 void raw_fill_rect(int x, int y, int w, int h, uint16_t color);    // rectangle entierement dans l'ecran
+void raw_blit_row(int x, int y, const uint16_t* px, int n);          // n pixels (format materiel) sur une ligne, entierement dans l'ecran
 void present();
 
 // --- primitives ecretees (gfx_prims.cpp) ---------------------------------------

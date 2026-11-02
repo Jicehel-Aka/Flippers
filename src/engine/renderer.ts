@@ -98,6 +98,8 @@ function sampleSmoothRampSpline(pts: Vec2[], subdivisionsPerSeg: number = 7): Sp
 export class PinballCanvasRenderer {
   private artImages: Map<string, HTMLImageElement> = new Map();
   private splineCache: Map<string, SplineSample[]> = new Map();
+  /** Vrai pendant le rendu du décor statique (firmware AKA) : ni flippers, ni billes, ni ressort. */
+  private staticArt = false;
 
   constructor() {
     if (typeof window !== 'undefined') {
@@ -257,6 +259,23 @@ export class PinballCanvasRenderer {
     ctx.scale(scaleX, scaleY);
     this.renderWorldPlayfield(ctx, tempSim);
     ctx.restore();
+  }
+
+  /**
+   * Décor statique d'une table (240x520, sans flippers, billes ni ressort) : sert à générer les images
+   * du firmware AKA (scripts/gen-aka-art.mjs). Les éléments animés sont redessinés par la console.
+   */
+  public renderTableArtwork(ctx: CanvasRenderingContext2D, tableId: PinballTableDef['id']) {
+    const tempSim = new PinballSimulation();
+    tempSim.selectTableById(tableId);
+    tempSim.gameState = 'PLAYING';
+    tempSim.clock = 1.8;
+    this.staticArt = true;
+    try {
+      this.renderWorldPlayfield(ctx, tempSim);
+    } finally {
+      this.staticArt = false;
+    }
   }
 
   private renderScrollRadar(
@@ -1590,6 +1609,7 @@ export class PinballCanvasRenderer {
     sim: PinballSimulation,
     table: PinballTableDef
   ) {
+    if (this.staticArt) return;
     const pal = table.palette;
 
     const drawTaperedCapsule = (
@@ -1918,6 +1938,7 @@ export class PinballCanvasRenderer {
   }
 
   private renderPlunger(ctx: CanvasRenderingContext2D, sim: PinballSimulation) {
+    if (this.staticArt) return;
     const xCenter = 225;
     const floorY = 513;
     const topY = 478 + sim.plungerTension * 22;
@@ -1961,6 +1982,7 @@ export class PinballCanvasRenderer {
     table: PinballTableDef,
     elevation: number
   ) {
+    if (this.staticArt) return;
     ctx.save();
     const r = b.radius * (1 + 0.16 * elevation);
 
