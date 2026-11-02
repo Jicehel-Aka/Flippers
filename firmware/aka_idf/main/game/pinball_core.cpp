@@ -123,8 +123,8 @@ void Game::buildStaticWalls() {
 
 void Game::setupFlippers() {
     flipperCount = 0;
-    flippers[flipperCount++] = {true,  72.0f,  468.0f, 31.0f,  25.2f * DEG_TO_RAD_F, -28.6f * DEG_TO_RAD_F,  25.2f * DEG_TO_RAD_F,  25.2f * DEG_TO_RAD_F};
-    flippers[flipperCount++] = {false, 154.0f, 468.0f, 31.0f, 154.8f * DEG_TO_RAD_F, 208.6f * DEG_TO_RAD_F, 154.8f * DEG_TO_RAD_F, 154.8f * DEG_TO_RAD_F};
+    flippers[flipperCount++] = {true,  72.0f,  468.0f, 34.0f,  25.2f * DEG_TO_RAD_F, -28.6f * DEG_TO_RAD_F,  25.2f * DEG_TO_RAD_F,  25.2f * DEG_TO_RAD_F};
+    flippers[flipperCount++] = {false, 154.0f, 468.0f, 34.0f, 154.8f * DEG_TO_RAD_F, 208.6f * DEG_TO_RAD_F, 154.8f * DEG_TO_RAD_F, 154.8f * DEG_TO_RAD_F};
     const TableDef& t = tbl();
     for (uint8_t i = 0; i < t.extraFlipperCount; i++) {
         const ExtraFlipperDef& ef = t.extraFlippers[i];
