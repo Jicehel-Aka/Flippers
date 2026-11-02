@@ -37,6 +37,39 @@ static void prect(int x, int y, int w, int h, uint16_t col) {
     vid::rect(SX(y), SY(x + w - 1), h, w, col);
 }
 
+// Trait epais (quadrilatere plein) en coordonnees portrait, demi-largeur hw (pixels ecran).
+static void pthick(int x0, int y0, int x1, int y1, float hw, uint16_t col) {
+    const float dx = (float)(x1 - x0), dy = (float)(y1 - y0);
+    const float len = sqrtf(dx * dx + dy * dy);
+    if (len < 0.5f) { pfillcircle(x0, y0, (int)(hw + 0.5f), col); return; }
+    const int nx = (int)lroundf(-dy / len * hw), ny = (int)lroundf(dx / len * hw);
+    ptri(x0 + nx, y0 + ny, x0 - nx, y0 - ny, x1 + nx, y1 + ny, col);
+    ptri(x0 - nx, y0 - ny, x1 + nx, y1 + ny, x1 - nx, y1 - ny, col);
+}
+
+// Trait effile (flipper) : demi-largeur hw0 au pivot, hw1 a la pointe.
+static void ptaper(int x0, int y0, int x1, int y1, float hw0, float hw1, uint16_t col) {
+    const float dx = (float)(x1 - x0), dy = (float)(y1 - y0);
+    const float len = sqrtf(dx * dx + dy * dy);
+    if (len < 0.5f) return;
+    const float ux = -dy / len, uy = dx / len;
+    const int ax = x0 + (int)lroundf(ux * hw0), ay = y0 + (int)lroundf(uy * hw0);
+    const int bx = x0 - (int)lroundf(ux * hw0), by = y0 - (int)lroundf(uy * hw0);
+    const int cx = x1 + (int)lroundf(ux * hw1), cy = y1 + (int)lroundf(uy * hw1);
+    const int ex = x1 - (int)lroundf(ux * hw1), ey = y1 - (int)lroundf(uy * hw1);
+    ptri(ax, ay, bx, by, cx, cy, col);
+    ptri(bx, by, cx, cy, ex, ey, col);
+}
+
+// Melange de deux couleurs RGB888 : a + (b - a) * num / den
+static uint16_t mix(uint32_t a, uint32_t b, int num, int den) {
+    int r = (int)((a >> 16) & 255), g = (int)((a >> 8) & 255), bl = (int)(a & 255);
+    int r2 = (int)((b >> 16) & 255), g2 = (int)((b >> 8) & 255), b2 = (int)(b & 255);
+    return C3(r + (r2 - r) * num / den, g + (g2 - g) * num / den, bl + (b2 - bl) * num / den);
+}
+static uint16_t lighten(uint32_t c, int pct) { return mix(c, 0xFFFFFF, pct, 100); }
+static uint16_t darken(uint32_t c, int pct) { return mix(c, 0x000000, pct, 100); }
+
 // Texte 8x8 (ASCII) agrandi d'un facteur `s`, en coordonnees portrait. Les pixels allumes d'une meme
 // rangee sont fusionnes en traits pour limiter le nombre d'appels au pilote.
 static void ptext(int x, int y, const char* str, uint16_t col, int s = 1) {
@@ -166,29 +199,52 @@ static void draw_decor(const Game& g, const View& v, const TableDef& t) {
 }
 
 static void draw_playfield(const Game& g, const View& v, const TableDef& t) {
-    // Fond : hors table = presque noir ; table = deux teintes (haut / bas)
+    // Fond : hors table = presque noir ; table = degrade vertical (16 bandes) + cadre lumineux
     pfill(0, HUD_H, SCREEN_W, VIEW_H, C3(4, 6, 10));
-    int tx = v.X(0), tw = (int)lroundf(WORLD_W * v.zoom);
-    int mid = v.Y(WORLD_H * 0.5f);
-    int top = v.Y(0), bot = v.Y((float)WORLD_H);
-    pfill(tx, top, tw, mid - top, C(t.bgTop));
-    pfill(tx, mid, tw, bot - mid, C(t.bgBot));
+    const int tx = v.X(0), tw = (int)lroundf(WORLD_W * v.zoom);
+    const int top = v.Y(0), bot = v.Y((float)WORLD_H);
+    for (int b = 0; b < 16; b++) {
+        int y0 = top + (bot - top) * b / 16, y1 = top + (bot - top) * (b + 1) / 16;
+        pfill(tx, y0, tw, y1 - y0 + 1, mix(t.bgTop, t.bgBot, b, 15));
+    }
+    // halo central + lampes (inserts) qui guident la bille vers les flippers
+    for (int r = 4; r >= 1; r--)
+        pfillcircle(v.X(113), v.Y(250), v.R(18.0f * (float)r), mix(t.bgTop, 0xFFFFFF, 2 * (5 - r), 100));
+    for (int k = 0; k < 4; k++) {
+        const bool on = (((g.nowMs / 180u) + (uint32_t)k) % 4u) == 0u;
+        pfillcircle(v.X(113), v.Y(350.0f + (float)k * 14.0f), v.R(2.5f), on ? lighten(t.accent, 40) : darken(t.accent, 70));
+    }
+    prect(tx, top, tw, bot - top, darken(t.accent, 40));
+    prect(tx + 1, top + 1, tw - 2, bot - top - 2, darken(t.accent, 65));
 
     draw_decor(g, v, t);
 
-    // Rampes (double rail + traverses) et anneau d'entree
+    // Rampes : bande pleine ombree, rails lumineux sur les bords, chevrons le long du trajet, anneau d'entree
     for (int r = 0; r < 2; r++) {
         const RampDef& rp = t.ramps[r];
-        for (int s = 0; s < 4; s++) {
-            int x1 = v.X(rp.pts[s].x), y1 = v.Y(rp.pts[s].y);
-            int x2 = v.X(rp.pts[s + 1].x), y2 = v.Y(rp.pts[s + 1].y);
-            int hw = v.R(rp.wireform ? 4.5f : 6.5f);
-            if (hw < 2) hw = 2;
-            pline(x1 - hw, y1, x2 - hw, y2, C(rp.color));
-            pline(x1 + hw, y1, x2 + hw, y2, C(rp.color));
-            if (!rp.wireform) pline(x1, y1, x2, y2, dim(rp.color, 1, 3));
+        int hw = v.R(rp.wireform ? 4.5f : 6.5f);
+        if (hw < 2) hw = 2;
+        for (int sgm = 0; sgm < 4; sgm++) {
+            int x1 = v.X(rp.pts[sgm].x), y1 = v.Y(rp.pts[sgm].y);
+            int x2 = v.X(rp.pts[sgm + 1].x), y2 = v.Y(rp.pts[sgm + 1].y);
+            if (!rp.wireform) pthick(x1, y1, x2, y2, (float)hw, darken(rp.color, 72));            // dessous de la rampe
+            pthick(x1, y1, x2, y2, (float)(hw - 1 > 1 ? hw - 1 : 1), mix(t.bgBot, rp.color, rp.wireform ? 12 : 30, 100));
+            pline(x1 - hw, y1, x2 - hw, y2, lighten(rp.color, 25));                                 // rails
+            pline(x1 + hw, y1, x2 + hw, y2, lighten(rp.color, 25));
+            pline(x1 - hw - 1, y1, x2 - hw - 1, y2, darken(rp.color, 50));
+            pline(x1 + hw + 1, y1, x2 + hw + 1, y2, darken(rp.color, 50));
+            // chevrons : un point lumineux qui court le long de la rampe
+            const int n = 3;
+            for (int c = 0; c < n; c++) {
+                const int ph = (int)((g.nowMs / 90u) % (uint32_t)n);
+                if (c != ph) continue;
+                pfillcircle((x1 + x2) / 2, (y1 + y2) / 2, 2, lighten(rp.color, 60));
+            }
         }
-        pcircle(v.X(rp.pts[0].x), v.Y(rp.pts[0].y), v.R(rp.entryRadius * 0.6f), C(t.accent));
+        const int ex = v.X(rp.pts[0].x), ey = v.Y(rp.pts[0].y), er = v.R(rp.entryRadius * 0.6f);
+        pfillcircle(ex, ey, er, darken(rp.color, 70));
+        pcircle(ex, ey, er, C(t.accent));
+        pcircle(ex, ey, er + 1, darken(t.accent, 50));
     }
 
     // Puits Multibille
@@ -200,31 +256,48 @@ static void draw_playfield(const Game& g, const View& v, const TableDef& t) {
         for (int k = 0; k < g.lockedBalls; k++) pfillcircle(lx - v.R(3) + k * v.R(6), ly, v.R(2.5f), C3(226, 232, 240));
     }
 
-    // Murs et slingshots (clignotent quand ils sont touches)
+    // Murs et slingshots (clignotent quand ils sont touches) : rails epais avec reflet
     for (int w = 0; w < g.wallCount; w++) {
-        const Segment& s = g.walls[w];
-        uint16_t col = g.wallFlash[w] > 0.0f ? C3(255, 255, 255) : C(s.color);
-        pline(v.X(s.x1), v.Y(s.y1), v.X(s.x2), v.Y(s.y2), col);
-        if (s.scoring) pline(v.X(s.x1) + 1, v.Y(s.y1), v.X(s.x2) + 1, v.Y(s.y2), col);
+        const Segment& sg = g.walls[w];
+        const bool fl = g.wallFlash[w] > 0.0f;
+        const int x1 = v.X(sg.x1), y1 = v.Y(sg.y1), x2 = v.X(sg.x2), y2 = v.Y(sg.y2);
+        const float hw = sg.scoring ? 2.5f : 1.5f;
+        pthick(x1, y1, x2, y2, hw + 1.0f, darken(sg.color, 60));
+        pthick(x1, y1, x2, y2, hw, fl ? C3(255, 255, 255) : C(sg.color));
+        pline(x1, y1, x2, y2, fl ? C3(255, 255, 160) : lighten(sg.color, 45));
     }
 
-    // Ressort du lanceur
+    // Ressort du lanceur : fourreau + ressort a spires
     {
         int top2 = v.Y(488.0f - (1.0f - g.plungerCharge) * 14.0f);
         int bot2 = v.Y(492.0f);
         if (bot2 < top2) { int tmp = top2; top2 = bot2; bot2 = tmp; }
-        pfill(v.X(214.0f), top2, v.R(14), bot2 - top2 + 3, C3(239, 68, 68));
+        const int px0 = v.X(214.0f), pw = v.R(14);
+        pfill(px0 - 1, v.Y(470.0f), pw + 2, v.Y(496.0f) - v.Y(470.0f), C3(30, 41, 59));
+        pfill(px0, top2, pw, bot2 - top2 + 3, C3(185, 28, 28));
+        for (int yy = top2; yy < bot2 + 3; yy += 3) pfill(px0, yy, pw, 1, C3(252, 165, 165));
+        pfill(px0, top2 - 2, pw, 3, C3(226, 232, 240));
     }
 
-    // Bumpers
+    // Bumpers : ombre, jupe, anneau lumineux, calotte degradee, reflet (blanc au choc)
     for (int k = 0; k < t.bumperCount; k++) {
         const BumperDef& b = t.bumpers[k];
-        int bx = v.X(b.x), by = v.Y(b.y), br = v.R(b.r);
-        bool flash = g.bumperFlash[k] > 0.0f;
-        pfillcircle(bx, by, br, flash ? C3(255, 255, 255) : C(b.fill));
-        pcircle(bx, by, br, C(b.rim));
-        pcircle(bx, by, br > 2 ? br - 2 : 1, dim(b.rim, 1, 2));
-        pfillcircle(bx, by, br / 3 > 0 ? br / 3 : 1, flash ? C(b.fill) : C3(255, 255, 255));
+        const int bx = v.X(b.x), by = v.Y(b.y), br = v.R(b.r);
+        const bool flash = g.bumperFlash[k] > 0.0f;
+        pfillcircle(bx + 2, by + 2, br + 1, C3(2, 3, 6));                                     // ombre portee
+        if (flash) {
+            pcircle(bx, by, br + 4, lighten(b.rim, 50));                                      // onde de choc
+            pcircle(bx, by, br + 6, darken(b.rim, 40));
+        } else {
+            pcircle(bx, by, br + 3, darken(b.rim, 60));                                       // halo
+        }
+        pfillcircle(bx, by, br + 1, darken(b.rim, 45));                                       // jupe
+        pfillcircle(bx, by, br, C(b.rim));                                                    // anneau
+        const int cap = br > 3 ? br - 2 : br;
+        pfillcircle(bx, by, cap, flash ? C3(255, 255, 255) : darken(b.fill, 25));              // calotte (ombre)
+        pfillcircle(bx - cap / 5, by - cap / 5, cap * 4 / 5, flash ? lighten(b.fill, 75) : C(b.fill));
+        pfillcircle(bx - cap / 4, by - cap / 4, cap / 2 > 0 ? cap / 2 : 1, flash ? C3(255, 255, 255) : lighten(b.fill, 35));
+        pfillcircle(bx - cap / 3, by - cap / 3, cap / 5 > 0 ? cap / 5 : 1, C3(255, 255, 255)); // reflet
     }
 
     // Medaillon des 3 missions au-dessus des flippers
@@ -240,26 +313,35 @@ static void draw_playfield(const Game& g, const View& v, const TableDef& t) {
         }
     }
 
-    // Flippers
+    // Flippers : batte effilee a reflet, pivot metallique
     for (int f = 0; f < g.flipperCount; f++) {
         const FlipperRuntime& fl = g.flippers[f];
-        int x1 = v.X(fl.px), y1 = v.Y(fl.py);
-        int x2 = v.X(fl.px + cosf(fl.angleRad) * fl.length);
-        int y2 = v.Y(fl.py + sinf(fl.angleRad) * fl.length);
-        pline(x1, y1 - 1, x2, y2 - 1, C3(255, 255, 255));
-        pline(x1, y1, x2, y2, C(t.flipperCol));
-        pline(x1, y1 + 1, x2, y2 + 1, C(t.flipperCol));
-        pfillcircle(x1, y1, v.R(3.5f) < 2 ? 2 : v.R(3.5f), C(t.accent));
+        const int x1 = v.X(fl.px), y1 = v.Y(fl.py);
+        const int x2 = v.X(fl.px + cosf(fl.angleRad) * fl.length);
+        const int y2 = v.Y(fl.py + sinf(fl.angleRad) * fl.length);
+        const float h0 = (float)v.R(5.0f) < 2.5f ? 2.5f : (float)v.R(5.0f);
+        const float h1 = h0 * 0.55f;
+        ptaper(x1 + 1, y1 + 2, x2 + 1, y2 + 2, h0 + 1.0f, h1 + 1.0f, C3(2, 3, 6));              // ombre
+        ptaper(x1, y1, x2, y2, h0 + 1.0f, h1 + 1.0f, darken(t.flipperCol, 55));                  // contour
+        ptaper(x1, y1, x2, y2, h0, h1, C(t.flipperCol));                                          // corps
+        ptaper(x1, y1 - 1, x2, y2 - 1, h0 * 0.45f, h1 * 0.4f, lighten(t.flipperCol, 45));         // reflet
+        pfillcircle(x2, y2, (int)(h1 + 0.5f), lighten(t.flipperCol, 20));                         // bout arrondi
+        const int pr = v.R(3.5f) < 2 ? 2 : v.R(3.5f);
+        pfillcircle(x1, y1, pr + 1, C3(30, 41, 59));                                              // pivot
+        pfillcircle(x1, y1, pr, C(t.accent));
+        pfillcircle(x1 - 1, y1 - 1, pr > 2 ? pr / 2 : 1, C3(255, 255, 255));
     }
 
-    // Billes, et fleche radar quand une bille est au-dessus de la vue
+    // Billes (spheres chromees), et fleche radar quand une bille est au-dessus de la vue
     for (int i = 0; i < MAX_BALLS; i++) {
         if (!g.balls[i].active) continue;
-        int bx = v.X(g.balls[i].x), by = v.Y(g.balls[i].y);
-        int br = v.R(BALL_RADIUS) < 2 ? 2 : v.R(BALL_RADIUS);
+        const int bx = v.X(g.balls[i].x), by = v.Y(g.balls[i].y);
+        const int br = v.R(BALL_RADIUS) < 2 ? 2 : v.R(BALL_RADIUS);
         if (by + br >= HUD_H) {
-            pfillcircle(bx, by, br, C3(226, 232, 240));
-            pfillcircle(bx - 1, by - 1, br / 3 > 0 ? br / 3 : 1, C3(255, 255, 255));
+            pfillcircle(bx + 2, by + 2, br, C3(2, 3, 6));                                         // ombre
+            pfillcircle(bx, by, br, C3(100, 116, 139));
+            pfillcircle(bx - 1, by - 1, br > 2 ? br - 1 : br, C3(203, 213, 225));
+            pfillcircle(bx - br / 3, by - br / 3, br / 3 > 0 ? br / 3 : 1, C3(255, 255, 255));    // reflet
         } else {
             ptri(bx, HUD_H + 3, bx - 4, HUD_H + 10, bx + 4, HUD_H + 10, C(t.accent));
         }
@@ -274,7 +356,7 @@ static void panel(const TableDef& t, uint32_t border, int h = 106) {
 
 static void draw_overlays(const Game& g, const TableDef& t) {
     const int y0 = HUD_H + 18;
-    uint16_t grey = C3(148, 163, 184), white = C3(255, 255, 255), green = C3(52, 211, 153), red = C3(248, 113, 113);
+    uint16_t grey = C3(148, 163, 184), white = C3(255, 255, 255), green = C3(52, 211, 153);
     if (g.state == State::Menu) {
         panel(t, t.accent, 132);
         ptext_center(120, y0 + 8, "GAMEBUINO AKA PINBALL", C(t.accent));
@@ -286,14 +368,6 @@ static void draw_overlays(const Game& g, const TableDef& t) {
         snprintf(buf, sizeof(buf), "RECORD %lu", (unsigned long)g.highScores[g.tableIdx]);
         ptext_center(120, y0 + 92, buf, white);
         ptext_center(120, y0 + 108, "A/D: TABLE  R1/B: JOUER", green);
-    } else if (g.state == State::Paused) {
-        bool armRestart = g.confirmAction == 1 && g.nowMs < g.confirmUntilMs;
-        bool armMenu = g.confirmAction == 2 && g.nowMs < g.confirmUntilMs;
-        panel(t, t.accent);
-        ptext(30, y0 + 10, "PAUSE", C(t.accent), 2);
-        ptext(30, y0 + 34, "C / R1 : REPRENDRE", white);
-        ptext(30, y0 + 56, armRestart ? "B : CONFIRMER ?" : "B : RECOMMENCER (x2)", armRestart ? red : grey);
-        ptext(30, y0 + 76, armMenu ? "A : CONFIRMER ?" : "A : MENU TABLES (x2)", armMenu ? red : grey);
     } else if (g.state == State::GameOver) {
         panel(t, 0xEF4444);
         ptext_center(120, y0 + 10, "FIN DE PARTIE", C3(239, 68, 68), 1);
@@ -307,7 +381,7 @@ static void draw_overlays(const Game& g, const TableDef& t) {
             ptext_center(120, y0 + 48, buf, grey);
         }
         ptext_center(120, y0 + 76, "R1/B: REJOUER", green);
-        ptext_center(120, y0 + 90, "C: MENU", green);
+        ptext_center(120, y0 + 90, "A/D: TABLES", green);
     } else if (g.bannerTimer > 0.0f) {
         pfill(14, HUD_H + 6, 212, 20, C3(15, 23, 42));
         prect(14, HUD_H + 6, 212, 20, C(t.accent));
