@@ -1,6 +1,6 @@
 # Gamebuino AKA Pinball (Web · PC · Firmware ESP32 AKA)
 
-Jeu de flipper arcade néo-pixel conçu sur mesure pour la console **Gamebuino AKA** tenue **tournée de 90° vers la droite** (`240 × 320 px` en mode portrait), accompagné d'un simulateur interactif **Web / PC (Windows, Linux, macOS)** et du **firmware embarqué C++17 ESP32** prêt à flasher ou copier sur carte MicroSD.
+Jeu de flipper arcade néo-pixel conçu sur mesure pour la console **Gamebuino AKA** tenue **tournée de 90° vers la droite** (`240 × 320 px` en mode portrait), accompagné d'un simulateur interactif **Web / PC (Windows, Linux, macOS)** et d'un **firmware embarqué C++17 ESP32** *(expérimental : voir « Firmware : état actuel »)*.
 
 ---
 
@@ -15,7 +15,9 @@ Jeu de flipper arcade néo-pixel conçu sur mesure pour la console **Gamebuino A
 - **Multibille physique ×3 & Système de Missions**
   - Verrouillez **2 billes** dans le puits `LOCK` pour libérer **3 billes simultanées** sur le plateau.
   - Chaque flipper intègre **3 missions scénarisées** (suivies par le médaillon central à 3 gemmes) menant à la **Finale Maître (`+100 000 pts` + Multibille ×3)**.
-- **1 à 4 joueurs en local** au tour par tour, synthèse audio arcade temps réel (WebAudio sur PC/Web, PWM sur ESP32) et support manette Gamepad API.
+- **1 à 4 joueurs en local** au tour par tour *(version Web / PC)*, synthèse audio arcade temps réel (WebAudio sur PC/Web, PWM sur ESP32) et support manette Gamepad API *(Web / PC)*.
+- **Physique à pas fixe** : 720 Hz sur Web/PC, 360 Hz sur le firmware. Les trajectoires ne dépendent pas de la fréquence d'affichage.
+- **Pause automatique** quand la fenêtre Web/PC perd le focus. *Recommencer* et *Quitter au menu* demandent une **confirmation en deux appuis** (2,5 s).
 
 ---
 
@@ -39,6 +41,7 @@ Jeu de flipper arcade néo-pixel conçu sur mesure pour la console **Gamebuino A
 | **Tendre le ressort (Lanceur)** | **Gâchette R1** *(maintenir puis relâcher)* | `Espace`, `Entrée` ou `R` | `Bouton Sud (A)` |
 | **Secousse physique (Nudge)** | **Bouton B** *(attention au TILT)* | `B`, `Z`, `W`, `Flèche Haut` | `Bouton Nord (Y)` / `Ouest (X)` |
 | **Menu / Table / Pause** | **Bouton C** | `C`, `P`, `Échap` | `Start` |
+| **Nombre de joueurs (Web / PC)** | — | `N` (+1) ou `Flèche Bas` (−1) au menu | — |
 | **Inverser rotation 180° (AKA)** | **L1 + C** | — | — |
 | **Plein écran (PC)** | — | `F11` ou `Alt + Entrée` | — |
 
@@ -54,6 +57,7 @@ Jeu de flipper arcade néo-pixel conçu sur mesure pour la console **Gamebuino A
 │   ├── data/tables.ts          # Géométrie, rampes, bumpers et missions des 4 plateaux (240x520)
 │   ├── engine/physicsEngine.ts # Moteur physique 720Hz, Multibille x3, zoom d'arrivée & caméra
 │   └── engine/renderer.ts      # Rendu 2D haute précision, rampes Catmull-Rom & HUD 240x46
+├── tests/engine.test.mjs       # Tests headless du moteur (node:test) : stabilité, déterminisme, framerate, pause...
 ├── desktop/                    # Wrapper Electron autonome (Windows .exe, Linux .AppImage, macOS .zip)
 │   ├── main.cjs                # Fenêtre arcade 60 FPS sans latence audio + plein écran F11
 │   ├── preload.cjs             # Pont sécurisé Electron
@@ -62,7 +66,8 @@ Jeu de flipper arcade néo-pixel conçu sur mesure pour la console **Gamebuino A
 │   ├── platformio.ini          # Cible ESP32 240MHz + LovyanGFX SPI DMA + export post-build
 │   ├── include/aka_hal.h       # HAL écran ILI9341 240x320, boutons GPIO & audio PWM
 │   ├── src/main.cpp            # Moteur embarqué 4 tables, missions, Multibille x3 & caméra
-│   └── scripts/export_aka_bin.py # Génère PINBALL.BIN (MicroSD) et l'image flash USB complète (0x0)
+│   ├── scripts/export_aka_bin.py # Génère PINBALL.BIN (MicroSD) et l'image flash USB complète (0x0)
+│   └── test/host/              # Test hôte : compile main.cpp sur PC avec des mocks Arduino/LovyanGFX et le joue
 ├── scripts/
 │   ├── push-to-aka.sh          # Déploiement local USB ou MicroSD sous Linux / macOS
 │   └── push-to-aka.ps1         # Déploiement local USB ou MicroSD sous Windows PowerShell
@@ -78,8 +83,16 @@ Jeu de flipper arcade néo-pixel conçu sur mesure pour la console **Gamebuino A
 ### 1. Lancer la version Web / Simulateur en développement
 
 ```bash
-npm install
+npm ci
 npm run dev
+```
+
+Vérifications (les mêmes qu'en CI) :
+
+```bash
+npm run lint   # tsc --noEmit
+npm test       # moteur physique (node:test)
+bash firmware/gamebuino_aka/test/host/run.sh   # firmware compilé sur PC avec des mocks
 ```
 
 L'application démarre sur `http://localhost:3000`.
@@ -94,6 +107,18 @@ npm run desktop:dist
 Les binaires autonomes (`.exe` portable sous Windows, `.AppImage` / `.tar.gz` sous Linux, `.zip` sous macOS) sont générés dans `desktop/release/`.
 
 ---
+
+## Firmware : état actuel
+
+Le firmware (`firmware/gamebuino_aka`) est une **version simplifiée** du jeu, distincte du moteur Web/PC :
+1 joueur, 4 plateaux, bumpers, rampes, verrou Multibille, missions, tilt, records sauvegardés en NVS. Il n'a **pas** les cibles,
+spinners, couloirs, skill shot, combos ni le multijoueur de la version Web/PC.
+
+> **À vérifier avant de flasher** : il cible un `esp32dev` générique (Arduino + LovyanGFX) avec un brochage **indicatif**. Il n'a pas été
+> validé sur la console AKA réelle (ESP32-S3, bibliothèque `components/gamebuino` sous ESP-IDF), et le format de `PINBALL.BIN`
+> n'est pas celui d'un chargeur AKA. Le portage en composant ESP-IDF, avec les tables générées depuis `tables.ts`, reste à faire.
+
+Côté affichage, un écran complet (153 600 octets) prend ~31 ms en SPI à 40 MHz : comptez **25 à 30 images/s**, pas 60.
 
 ## Compiler & Pousser sur la console Gamebuino AKA
 
@@ -134,11 +159,11 @@ esptool.py --chip esp32 --baud 921600 write_flash 0x0 gamebuino-aka-pinball-full
 Deux workflows automatisés s'exécutent sur GitHub dès chaque `git push` :
 
 1. **`Build & Push PC + Web` (`.github/workflows/build-pc.yml`)**
-   - Vérifie le typage TypeScript (`npm run lint`) et compile le bundle Web (`npm run build`).
+   - Installe avec `npm ci` (lockfile), vérifie le typage TypeScript (`npm run lint`), lance les tests du moteur (`npm test`) et compile le bundle Web (`npm run build`).
    - Déploie automatiquement la version Web sur **GitHub Pages** (si activé dans *Settings → Pages → Source: GitHub Actions*).
    - Compile en parallèle les exécutables autonomes **Windows x64 (`.exe`)**, **Linux x64 (`.AppImage` & `.tar.gz`)** et **macOS Universal (`.zip`)**.
 2. **`Build & Push Gamebuino AKA Firmware` (`.github/workflows/build-aka.yml`)**
-   - Compile le firmware ESP32 C++17 via **PlatformIO**.
+   - Lance le test hôte du firmware (g++ + mocks), puis compile le firmware ESP32 C++17 via **PlatformIO**.
    - Produit et archive `PINBALL.BIN` (prêt pour MicroSD) ainsi que `gamebuino-aka-pinball-full-flash-0x0.bin` (flash complet USB-C).
 
 ### Publier une Release GitHub complète (PC + AKA) en une commande
