@@ -375,6 +375,37 @@ static void test_containment() {
     }
 }
 
+static const TableDef& tbl_of(int t) { return table(t); }
+
+static void test_ramp_follow() {
+    printf("[rampes : trajectoire continue]\n");
+    int checked = 0;
+    for (int t = 0; t < TABLE_COUNT; t++) {
+        for (int r = 0; r < 2; r++) {
+            Game g; g.begin(STORE()); g.startNewGame((uint8_t)t); g.introTimer = 0.0f;
+            g.ballSaveUsed = true;
+            const Vec2 en = tbl_of(t).ramps[r].pts[0];
+            g.balls[0] = {en.x, en.y + 4.0f, 0.0f, -260.0f, true, false, 0.0f, 0.0f};
+            Input in;
+            float px = g.balls[0].x, py = g.balls[0].y, maxJump = 0.0f;
+            bool onRamp = false, left = false;
+            for (int f = 0; f < 60 * 5 && !left; f++) {
+                tick(g, in, 1.0f / 60.0f);
+                const Ball& b = g.balls[0];
+                if (b.ramp >= 0) onRamp = true;
+                const float d = hypotf(b.x - px, b.y - py);
+                if (onRamp && b.ramp >= 0 && d > maxJump) maxJump = d;
+                if (onRamp && b.ramp < 0) left = true;
+                px = b.x; py = b.y;
+            }
+            CHECK(onRamp && left, "table %d rampe %d : la bille doit entrer puis ressortir (%d/%d)", t, r, onRamp, left);
+            CHECK(maxJump < 8.0f, "table %d rampe %d : saut de %.1f px sur la rampe (teleportation)", t, r, maxJump);
+            checked++;
+        }
+    }
+    printf("  %d rampes suivies sans teleportation\n", checked);
+}
+
 static void test_music() {
     printf("[musique]\n");
     for (int decor = 0; decor < DECOR_COUNT; decor++) {
@@ -493,6 +524,7 @@ int main(int argc, char** argv) {
     test_art_alignment();
     test_launch_and_save();
     test_containment();
+    test_ramp_follow();
     test_music();
     test_render(outDir);
     if (g_fail) { printf("\n%d ECHEC(S)\n", g_fail); return 1; }

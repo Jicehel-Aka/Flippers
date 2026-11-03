@@ -256,6 +256,42 @@ void Game::stepSubstep(float dt, bool leftHeld, bool rightHeld) {
         Ball& b = balls[i];
         if (!b.active) continue;
 
+        if (b.ramp >= 0) {   // sur une rampe : trajectoire guidee le long des 5 points, sans collisions du plateau
+            const RampDef& rp = t.ramps[b.ramp];
+            float total = 0.0f, segLen[4];
+            for (int k = 0; k < 4; k++) {
+                const float sx = rp.pts[k + 1].x - rp.pts[k].x, sy = rp.pts[k + 1].y - rp.pts[k].y;
+                segLen[k] = sqrtf(sx * sx + sy * sy);
+                total += segLen[k];
+            }
+            b.rampSpeed = maxf(120.0f, b.rampSpeed - 40.0f * dt);   // la bille ralentit un peu en montant
+            b.rampDist += b.rampSpeed * dt;
+            if (b.rampDist >= total) {
+                const Vec2 a = rp.pts[3], e = rp.pts[4];
+                float ddx = e.x - a.x, ddy = e.y - a.y;
+                const float dl = maxf(1.0f, sqrtf(ddx * ddx + ddy * ddy));
+                b.x = e.x; b.y = e.y;
+                b.vx = ddx / dl * 90.0f;
+                if (fabsf(b.vx) < 25.0f) b.vx = (e.x < 112.0f) ? 35.0f : -35.0f;   // jamais vx = 0 (voir plus haut)
+                b.vy = maxf(85.0f, ddy / dl * 140.0f);
+                b.ramp = -1;
+                b.rampCool = 0.75f;
+                b.stuckTime = 0.0f;
+                continue;
+            }
+            float d = b.rampDist;
+            for (int k = 0; k < 4; k++) {
+                if (d <= segLen[k] || k == 3) {
+                    const float u = segLen[k] > 0.0f ? d / segLen[k] : 0.0f;
+                    b.x = rp.pts[k].x + (rp.pts[k + 1].x - rp.pts[k].x) * u;
+                    b.y = rp.pts[k].y + (rp.pts[k + 1].y - rp.pts[k].y) * u;
+                    break;
+                }
+                d -= segLen[k];
+            }
+            continue;
+        }
+
         b.vy += t.gravity * dt;
         b.x += b.vx * dt;
         b.y += b.vy * dt;
@@ -366,13 +402,13 @@ void Game::stepSubstep(float dt, bool leftHeld, bool rightHeld) {
                 float dy = b.y - entry.y;
                 float rad = t.ramps[r].entryRadius;
                 if (dx * dx + dy * dy < rad * rad) {
-                    b.x = exitP.x;
-                    b.y = exitP.y;
-                    // Jamais vx = 0 : une bille qui retombe pile sur l'extremite d'un mur (sommet d'un
-                    // slingshot, sous la sortie des rampes) y resterait en equilibre indefiniment.
-                    b.vx = (exitP.x < 112.0f) ? -35.0f : 35.0f;
-                    if (exitP.y < 300.0f) b.vx = (exitP.x < 112.0f) ? 35.0f : -35.0f;
-                    b.vy = 95.0f;
+                    // la bille quitte le plateau et suit la rampe point par point (pas de teleportation)
+                    b.ramp = (int8_t)r;
+                    b.rampDist = 0.0f;
+                    b.rampSpeed = clampf(sqrtf(b.vx * b.vx + b.vy * b.vy) * 0.8f, 150.0f, 330.0f);
+                    b.vx = 0.0f;
+                    b.vy = 0.0f;
+                    (void)exitP;
                     b.rampCool = 0.75f;
                     score += t.ramps[r].points;
                     advanceMission(1);

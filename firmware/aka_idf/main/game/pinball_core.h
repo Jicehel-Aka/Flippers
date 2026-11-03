@@ -121,6 +121,9 @@ struct Ball {
     bool inShooter;
     float rampCool;           // secondes avant de pouvoir reprendre une rampe / le verrou
     float stuckTime;          // secondes quasi immobile (anti-blocage)
+    int8_t ramp = -1;         // indice de la rampe suivie (-1 : bille sur le plateau)
+    float rampDist = 0.0f;    // distance parcourue le long de la rampe (px)
+    float rampSpeed = 0.0f;   // vitesse le long de la rampe (px/s)
 };
 
 struct FlipperRuntime {

@@ -2231,6 +2231,54 @@ export class PinballCanvasRenderer {
         }
       }
 
+      // 3C. Effet d'étages : la rampe s'élève par paliers (contremarches avec ombre portée et rivets)
+      for (const [fi, frac] of [0.33, 0.66].entries()) {
+        const idx = Math.floor(samples.length * frac);
+        const s = samples[idx];
+        if (!s) continue;
+        ctx.save();
+        ctx.lineCap = 'butt';
+        // plateau supérieur légèrement éclairci
+        ctx.beginPath();
+        for (let i = idx; i < samples.length; i++) {
+          if (i === idx) ctx.moveTo(samples[i].x, samples[i].y);
+          else ctx.lineTo(samples[i].x, samples[i].y);
+        }
+        ctx.lineWidth = halfW * 2 - 2.4;
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.07)';
+        ctx.stroke();
+        // contremarche : ombre, tranche sombre puis arête brillante
+        const ax = s.x + s.nx * (halfW + 0.6);
+        const ay = s.y + s.ny * (halfW + 0.6);
+        const bx = s.x - s.nx * (halfW + 0.6);
+        const by = s.y - s.ny * (halfW + 0.6);
+        ctx.beginPath();
+        ctx.moveTo(ax + 0.8, ay + 3.4 + fi);
+        ctx.lineTo(bx + 0.8, by + 3.4 + fi);
+        ctx.lineWidth = 2.6;
+        ctx.strokeStyle = 'rgba(2, 6, 16, 0.5)';
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(ax, ay + 1.4);
+        ctx.lineTo(bx, by + 1.4);
+        ctx.lineWidth = 2.2;
+        ctx.strokeStyle = '#0F172A';
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(ax, ay - 0.4);
+        ctx.lineTo(bx, by - 0.4);
+        ctx.lineWidth = 1.3;
+        ctx.strokeStyle = '#F8FAFC';
+        ctx.stroke();
+        for (const [rx, ry] of [[ax, ay - 0.4], [bx, by - 0.4]]) {
+          ctx.beginPath();
+          ctx.arc(rx, ry, 1.1, 0, Math.PI * 2);
+          ctx.fillStyle = '#CBD5E1';
+          ctx.fill();
+        }
+        ctx.restore();
+      }
+
       // 4. Hinged Brushed-Steel Entrance Threshold Plate + Entry Beacons!
       const s0 = samples[0];
       ctx.save();

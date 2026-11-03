@@ -33,6 +33,8 @@ interface Spec {
   rampNames: [string, string];
   rampColors: [string, string, string, string]; // chute G, rail G, chute D, rail D
   rampStyles: ['MOLDED_ACRYLIC' | 'WIREFORM_RAIL', 'MOLDED_ACRYLIC' | 'WIREFORM_RAIL'];
+  /** Milieux des rampes : 2 points intermédiaires + sortie (l'entrée est fixe : (48,334) à gauche, (178,334) à droite). */
+  rampPaths: [number[][], number[][]];
   rollovers: string[]; // 4 lettres du haut puis 2 retours
   banks: [BankSpec, BankSpec, BankSpec, BankSpec];
   lockName: string;
@@ -103,13 +105,13 @@ function build(s: Spec): PinballTableDef {
       {
         id: `${p}_ramp_l`, name: s.rampNames[0], style: s.rampStyles[0],
         entry: { x: 48, y: 334 }, entryRadius: 15, entryDir: { x: -0.32, y: -0.95 },
-        path: [{ x: 48, y: 334 }, { x: 28, y: 278 }, { x: 26, y: 202 }, { x: 34, y: 134 }],
+        path: [{ x: 48, y: 334 }, ...s.rampPaths[0].map(([x, y]) => ({ x, y }))],
         points: 18000, chuteColor: s.rampColors[0], railColor: s.rampColors[1],
       },
       {
         id: `${p}_ramp_r`, name: s.rampNames[1], style: s.rampStyles[1],
         entry: { x: 178, y: 334 }, entryRadius: 15, entryDir: { x: 0.32, y: -0.95 },
-        path: [{ x: 178, y: 334 }, { x: 198, y: 278 }, { x: 200, y: 202 }, { x: 192, y: 134 }],
+        path: [{ x: 178, y: 334 }, ...s.rampPaths[1].map(([x, y]) => ({ x, y }))],
         points: 18000, chuteColor: s.rampColors[2], railColor: s.rampColors[3],
       },
     ],
@@ -163,6 +165,7 @@ export const EXTRA_TABLES: PinballTableDef[] = [
     ],
     rampNames: ['RIVIÈRE DE LAVE', 'PONT DE LIANES'], rampColors: ['#F97316', '#FDE68A', '#16A34A', '#FDE68A'],
     rampStyles: ['MOLDED_ACRYLIC', 'WIREFORM_RAIL'], rollovers: ['R', 'O', 'C', 'K', '◆', '◆'],
+    rampPaths: [[[26, 290], [44, 226], [30, 142]], [[204, 262], [176, 200], [190, 138]]],
     banks: [
       { name: 'PIERRE', role: 'MULTIPLIER', kind: 'DROP', letters: ['P', 'I', 'E', 'R'], colors: C4('#F97316', '#FACC15', '#16A34A', '#DC2626') },
       { name: 'MAMMOUTH', role: 'MULTIBALL', kind: 'STANDUP', letters: ['M', 'A', 'M', 'O'], colors: C4('#FACC15', '#F97316', '#DC2626', '#16A34A') },
@@ -197,6 +200,7 @@ export const EXTRA_TABLES: PinballTableDef[] = [
     ],
     rampNames: ['RAIL DE LA MINE', 'DILIGENCE'], rampColors: ['#B45309', '#FDE68A', '#F59E0B', '#E2E8F0'],
     rampStyles: ['MOLDED_ACRYLIC', 'MOLDED_ACRYLIC'], rollovers: ['C', 'O', 'L', 'T', '★', '★'],
+    rampPaths: [[[24, 262], [26, 192], [46, 140]], [[204, 300], [204, 214], [184, 146]]],
     banks: [
       { name: 'SALOON', role: 'MULTIPLIER', kind: 'DROP', letters: ['S', 'A', 'L', 'O'], colors: C4('#F59E0B', '#DC2626', '#FDE68A', '#16A34A') },
       { name: 'DUEL', role: 'MULTIBALL', kind: 'STANDUP', letters: ['D', 'U', 'E', 'L'], colors: C4('#DC2626', '#FDE68A', '#F59E0B', '#2563EB') },
@@ -232,6 +236,7 @@ export const EXTRA_TABLES: PinballTableDef[] = [
     ],
     rampNames: ['BRUME VIOLETTE', 'ESCALIER DU CAVEAU'], rampColors: ['#8B5CF6', '#E9D5FF', '#F97316', '#FED7AA'],
     rampStyles: ['MOLDED_ACRYLIC', 'WIREFORM_RAIL'], rollovers: ['B', 'O', 'O', '!', '☠', '☠'],
+    rampPaths: [[[30, 276], [52, 220], [32, 150]], [[196, 270], [172, 216], [194, 142]]],
     banks: [
       { name: 'SORT', role: 'MULTIPLIER', kind: 'DROP', letters: ['S', 'O', 'R', 'T'], colors: C4('#F97316', '#A3E635', '#8B5CF6', '#DC2626') },
       { name: 'HANTÉ', role: 'MULTIBALL', kind: 'STANDUP', letters: ['H', 'A', 'N', 'T'], colors: C4('#A3E635', '#F97316', '#8B5CF6', '#DC2626') },
@@ -266,6 +271,7 @@ export const EXTRA_TABLES: PinballTableDef[] = [
     ],
     rampNames: ['RUBAN ROSE', 'ARC-EN-CIEL'], rampColors: ['#F472B6', '#FFFFFF', '#A78BFA', '#FDE047'],
     rampStyles: ['MOLDED_ACRYLIC', 'MOLDED_ACRYLIC'], rollovers: ['L', 'O', 'V', 'E', '♥', '♥'],
+    rampPaths: [[[24, 284], [46, 214], [28, 136]], [[206, 276], [184, 206], [200, 134]]],
     banks: [
       { name: 'CANDY', role: 'MULTIPLIER', kind: 'DROP', letters: ['C', 'A', 'N', 'D'], colors: C4('#F472B6', '#FDE047', '#A78BFA', '#38BDF8') },
       { name: 'STAR', role: 'MULTIBALL', kind: 'STANDUP', letters: ['S', 'T', 'A', 'R'], colors: C4('#FDE047', '#F472B6', '#38BDF8', '#A78BFA') },
@@ -301,6 +307,7 @@ export const EXTRA_TABLES: PinballTableDef[] = [
     ],
     rampNames: ['SUCRE D’ORGE', 'TOBOGGAN CARAMEL'], rampColors: ['#FB7185', '#FFFFFF', '#FACC15', '#FFFFFF'],
     rampStyles: ['MOLDED_ACRYLIC', 'MOLDED_ACRYLIC'], rollovers: ['Y', 'U', 'M', '!', '●', '●'],
+    rampPaths: [[[30, 270], [30, 200], [54, 140]], [[196, 262], [198, 196], [172, 142]]],
     banks: [
       { name: 'SUCRE', role: 'MULTIPLIER', kind: 'DROP', letters: ['S', 'U', 'C', 'R'], colors: C4('#FB7185', '#FACC15', '#2DD4BF', '#A78BFA') },
       { name: 'BOCAL', role: 'MULTIBALL', kind: 'STANDUP', letters: ['B', 'O', 'C', 'A'], colors: C4('#FACC15', '#FB7185', '#A78BFA', '#2DD4BF') },
@@ -335,6 +342,7 @@ export const EXTRA_TABLES: PinballTableDef[] = [
     ],
     rampNames: ['VOIE 1', 'VOIE 2'], rampColors: ['#94A3B8', '#F59E0B', '#94A3B8', '#E2E8F0'],
     rampStyles: ['WIREFORM_RAIL', 'WIREFORM_RAIL'], rollovers: ['G', 'A', 'R', 'E', '►', '◄'],
+    rampPaths: [[[36, 260], [36, 200], [36, 138]], [[190, 260], [190, 200], [190, 138]]],
     banks: [
       { name: 'RAIL', role: 'MULTIPLIER', kind: 'DROP', letters: ['R', 'A', 'I', 'L'], colors: C4('#F59E0B', '#DC2626', '#E2E8F0', '#16A34A') },
       { name: 'TRAIN', role: 'MULTIBALL', kind: 'STANDUP', letters: ['T', 'R', 'A', 'I'], colors: C4('#DC2626', '#F59E0B', '#16A34A', '#E2E8F0') },

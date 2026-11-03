@@ -35,7 +35,7 @@ Jeu de flipper arcade néo-pixel conçu sur mesure pour la console **Gamebuino A
 | **9. Candy Pop** | **2 flippers**, univers pastel façon manga girly : cœurs, étoiles et nœud de ruban | *Ruban rose* + *Arc-en-ciel* | *Rubans*, *Cœurs*, *Étoiles* |
 | **10. Bonbons** | **2 flippers**, 6 bumpers gourmands, bonbons emballés, sucette spirale et comptoir rayé | *Sucre d'orge* + *Toboggan caramel* | *Sucres*, *Gourmand*, *Bocal* |
 | **11. Train** | **2 flippers**, rails et traverses, signal ferroviaire, phare de locomotive et vapeur | *Voie 1* + *Voie 2* (rails chromés) | *Voies*, *Vapeur*, *Express* |
-| **5. Flipper Classique** | **2 flippers seulement**, table mécanique d'arcade : triangle de 3 bumpers sous un verrou central, cartouche « FLIPPER » et voyants dorés | Deux **rampes miroir** (ambre à gauche, rail doré à droite) | *Rampes x2*, *Triangle Or*, *Cibles* |
+| **5. Flipper Classique** | **2 flippers seulement**, table mécanique d'arcade : triangle de 3 bumpers sous un verrou central, cartouche « FLIPPER » et voyants dorés | Deux rampes aux tracés différents (ambre à gauche, rail doré à droite) | *Rampes x2*, *Triangle Or*, *Cibles* |
 
 ---
 
