@@ -995,9 +995,9 @@ export const PINBALL_TABLES: PinballTableDef[] = [
     skillShotLabel: 'TIR PARFAIT',
     gravity: 320,
     palette: {
-      bgPrimary: '#2B0D14',
-      bgSecondary: '#4A1522',
-      cabinetFrame: '#CA8A04',
+      bgPrimary: '#0B5563',
+      bgSecondary: '#1A8A8F',
+      cabinetFrame: '#B7791F',
       cabinetHighlight: '#FEF3C7',
       wallMetal: '#CBD5E1',
       wallHighlight: '#FFFFFF',

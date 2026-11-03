@@ -1049,44 +1049,99 @@ export class PinballCanvasRenderer {
       ctx.fillText(`×${mult}`, fx, fy + 18);
       ctx.restore();
     } else if (table.id === 'classique') {
-      // Table mécanique classique : champ bordeaux, rayons dorés, triangle de bumpers et cartouche central
+      // Table mécanique des années 50 : champ turquoise, voyants ovales en arc, jupes de bumpers champignons,
+      // cartouches de points et rangée de voyants blancs (décor original, sans personnage ni marque)
+      const oval = (x: number, y: number, w: number, h: number, rot: number, fill: string, stroke: string) => {
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate(rot);
+        ctx.beginPath();
+        ctx.ellipse(0, 0, w, h, 0, 0, Math.PI * 2);
+        ctx.fillStyle = fill;
+        ctx.fill();
+        ctx.lineWidth = 1;
+        ctx.strokeStyle = stroke;
+        ctx.stroke();
+        ctx.restore();
+      };
+      const pill = (x: number, y: number, w: number, h: number, bg: string, fg: string, l1: string, l2?: string) => {
+        ctx.save();
+        ctx.fillStyle = bg;
+        ctx.strokeStyle = fg;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.roundRect(x - w / 2, y - h / 2, w, h, h / 2.4);
+        ctx.fill();
+        ctx.stroke();
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = fg;
+        ctx.font = '700 7px "JetBrains Mono", monospace';
+        ctx.fillText(l1, x, l2 ? y - 3.2 : y);
+        if (l2) {
+          ctx.font = '700 4.6px "JetBrains Mono", monospace';
+          ctx.fillText(l2, x, y + 3.6);
+        }
+        ctx.restore();
+      };
+
+      // Nuages et rayons doux
       ctx.save();
       ctx.translate(113, 150);
-      for (let i = 0; i < 24; i++) {
-        const a = (i * Math.PI) / 12;
+      for (let i = 0; i < 28; i++) {
+        const a = (i * Math.PI) / 14;
         ctx.beginPath();
-        ctx.moveTo(Math.cos(a) * 22, Math.sin(a) * 22);
-        ctx.lineTo(Math.cos(a) * 92, Math.sin(a) * 92);
-        ctx.strokeStyle = i % 2 === 0 ? 'rgba(253, 224, 71, 0.16)' : 'rgba(220, 38, 38, 0.2)';
-        ctx.lineWidth = 3;
+        ctx.moveTo(Math.cos(a) * 24, Math.sin(a) * 24);
+        ctx.lineTo(Math.cos(a) * 100, Math.sin(a) * 100);
+        ctx.strokeStyle = i % 2 === 0 ? 'rgba(254, 243, 199, 0.13)' : 'rgba(220, 38, 38, 0.1)';
+        ctx.lineWidth = 3.2;
         ctx.stroke();
       }
       ctx.restore();
 
+      // Arc de voyants ovales sous la voûte (alternance crème / rouge)
+      for (let i = 0; i < 13; i++) {
+        const a = Math.PI + 0.22 + (i / 12) * (Math.PI - 0.44);
+        const x = 113 + Math.cos(a) * 88;
+        const y = 150 + Math.sin(a) * 84;
+        oval(x, y, 3.6, 7.4, a + Math.PI / 2, i % 2 === 0 ? '#FEF3C7' : '#DC2626', '#7C2D12');
+      }
       ctx.save();
-      ctx.strokeStyle = 'rgba(253, 224, 71, 0.5)';
-      ctx.lineWidth = 1.4;
-      ctx.beginPath();
-      ctx.moveTo(78, 138);
-      ctx.lineTo(148, 138);
-      ctx.lineTo(113, 178);
-      ctx.closePath();
-      ctx.stroke();
-      for (const r of [34, 56]) {
-        ctx.beginPath();
-        ctx.arc(113, 150, r, 0, Math.PI * 2);
-        ctx.strokeStyle = r === 34 ? 'rgba(245, 158, 11, 0.4)' : 'rgba(245, 158, 11, 0.2)';
-        ctx.stroke();
-      }
+      ctx.font = '700 6px "JetBrains Mono", monospace';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = '#FEF3C7';
+      ctx.fillText('AVANCE', 113, 80);
       ctx.restore();
 
-      // Cartouche central « FLIPPER » avec le multiplicateur de bonus
+      // Jupes de bumpers champignons autour du triangle
+      for (const [bx, by, col] of [[78, 138, '#DC2626'], [148, 138, '#2563EB'], [113, 178, '#EAB308']] as [number, number, string][]) {
+        ctx.beginPath();
+        ctx.arc(bx, by, 16.5, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(254, 243, 199, 0.18)';
+        ctx.fill();
+        ctx.lineWidth = 1.6;
+        ctx.strokeStyle = col;
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(bx, by, 13.4, 0, Math.PI * 2);
+        ctx.lineWidth = 0.8;
+        ctx.strokeStyle = '#FEF3C7';
+        ctx.stroke();
+      }
+
+      // Cartouches de points
+      pill(54, 234, 40, 18, '#FEF3C7', '#7C2D12', '100', 'POINTS');
+      pill(172, 234, 40, 18, '#FEF3C7', '#7C2D12', '100', 'POINTS');
+      pill(113, 214, 36, 14, '#DC2626', '#FEF3C7', '300', 'SPÉCIAL');
+
+      // Cartouche central avec le multiplicateur de bonus
       ctx.save();
       ctx.fillStyle = '#1A0709';
-      ctx.strokeStyle = '#F59E0B';
-      ctx.lineWidth = 1.2;
+      ctx.strokeStyle = '#FDE047';
+      ctx.lineWidth = 1.4;
       ctx.beginPath();
-      ctx.roundRect(78, 262, 70, 30, 4);
+      ctx.roundRect(76, 262, 74, 32, 5);
       ctx.fill();
       ctx.stroke();
       ctx.font = '700 11px "JetBrains Mono", monospace';
@@ -1096,22 +1151,14 @@ export class PinballCanvasRenderer {
       ctx.fillText('FLIPPER', 113, 273);
       ctx.font = '700 8px "JetBrains Mono", monospace';
       ctx.fillStyle = '#FEF3C7';
-      ctx.fillText(`BONUS ×${mult}`, 113, 285);
+      ctx.fillText(`BONUS ×${mult}`, 113, 285.5);
       ctx.restore();
 
-      // Voyants dorés alignés au-dessus des slingshots
-      ctx.save();
+      // Rangée de voyants ovales blancs (bonus) au-dessus des slingshots
       for (let k = 0; k < 5; k++) {
-        const lx = 85 + k * 14;
-        ctx.beginPath();
-        ctx.arc(lx, 344, 3.2, 0, Math.PI * 2);
-        ctx.fillStyle = k <= mult - 1 ? '#FDE047' : 'rgba(253, 224, 71, 0.18)';
-        ctx.fill();
-        ctx.strokeStyle = '#F59E0B';
-        ctx.lineWidth = 0.9;
-        ctx.stroke();
+        const lit = k <= mult - 1;
+        oval(81 + k * 16, 346, 4, 8, 0, lit ? '#FDE047' : '#FEF3C7', '#7C2D12');
       }
-      ctx.restore();
     } else {
       // Temple Solaire: Golden Sun Calendar + Stepped Pyramid
       ctx.save();
