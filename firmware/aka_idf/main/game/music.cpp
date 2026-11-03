@@ -258,7 +258,9 @@ bool music_note(uint8_t decor, uint32_t step, MusicNote& out) {
     const Theme& t = THEMES[d];
     const uint32_t pos = step % MUSIC_STEPS;
     const uint32_t phraseSlot = pos / PHRASE_STEPS;
-    const uint8_t phraseId = ORDER[phraseSlot];
+    // quatre passages differents avant de retomber sur le meme : l'ordre des phrases tourne et la tonalite change
+    const uint32_t pass = (step / MUSIC_STEPS) & 3u;
+    const uint8_t phraseId = ORDER[(phraseSlot + pass * 5u) % 16u];
     const uint32_t inPhrase = pos % PHRASE_STEPS;
     const bool lyrical = (d == 1 || d == 2 || d == 3 || d == 9 || d == 11);
     const uint8_t feel = lyrical ? FEEL_LYRICAL[phraseSlot] : FEEL_RHYTHMIC[phraseSlot];
@@ -273,7 +275,10 @@ bool music_note(uint8_t decor, uint32_t step, MusicNote& out) {
     const int8_t s = t.ph[phraseId][idx];
     if (s == R) return false;
 
-    float freq = t.rootHz * powf(2.0f, (float)s / 12.0f);
+    static const int8_t SHIFT[4] = {0, 5, 0, 7};
+    static const int8_t SHIFT_LYR[4] = {0, 2, 0, -2};
+    const int semis = s + (lyrical ? SHIFT_LYR[pass] : SHIFT[pass]);
+    float freq = t.rootHz * powf(2.0f, (float)semis / 12.0f);
     // Contraste de timbre et de tenue sur les phrases de pont / apogee (E et F)
     const bool useAlt = (phraseId == 4 || phraseId == 5);
     if (freq > 1950.0f) freq *= 0.5f;

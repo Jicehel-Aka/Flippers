@@ -35,6 +35,8 @@ static pinball::Game g_game;
 
 static uint32_t millis() { return (uint32_t)(esp_timer_get_time() / 1000); }
 
+static void on_select_table() { g_game.returnToSelection(); }   // entree « Choisir un jeu » du menu systeme
+
 extern "C" void app_main(void) {
     g_core.init();
     gfx.set_backlight_percent(80);
@@ -45,6 +47,7 @@ extern "C" void app_main(void) {
     static const char* const kControls[] = {"CTRL_FLIP", "CTRL_PLUNGER", "CTRL_NUDGE", "CTRL_PAUSE", nullptr};
     akaRuntime.setControlsKeys(kControls);
     akaRuntime.setCredits("AKA Pinball", "jeancharleslebeau", "MIT", "Gamebuino AKA");
+    akaRuntime.setGameMenuCallback(on_select_table);
     akaRuntime.setBeforeExitCallback([] { platform::audio_silence(); });
     mkdir("/sdcard/pinball", 0777);
 

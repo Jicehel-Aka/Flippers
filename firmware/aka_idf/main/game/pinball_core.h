@@ -270,6 +270,7 @@ public:
     void begin(const HighScoreStore& store);
     void update(float dt, const Input& in, uint32_t nowMs);
     void syncInput(const Input& in);   // voir pinball_core.cpp
+    void returnToSelection();          // menu systeme -> retour a la selection de table (la partie en cours est enregistree)
 
     bool popSfx(SfxEvent& out);          // vide la file d'evenements sonores
 
@@ -306,6 +307,8 @@ public:
     uint8_t bonusMult = 1;               // banque MULTIPLIER : x1..x8 (bonus de fin de bille)
     float vukFlash = 0.0f;
     float multiDelay = 0.0f;
+    uint8_t bumperStreak = 0;            // touches de bumpers rapprochees (anti-boucle)
+    float bumperStreakTimer = 0.0f;
     uint8_t multiQueue = 0;              // billes de multibille encore a envoyer dans le lanceur
 
     uint32_t score = 0;

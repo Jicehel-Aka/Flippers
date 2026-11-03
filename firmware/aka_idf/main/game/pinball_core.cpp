@@ -200,6 +200,7 @@ void Game::startNewGame(uint8_t tableIndex) {
     for (int i = 0; i < MAX_UP_BUMPERS; i++) upBumperFlash[i] = 0.0f;
     for (int i = 0; i < MAX_SPINNERS; i++) { spinAngle[i] = 0.0f; spinVel[i] = 0.0f; spinCount[i] = 0; }
     toyState = ToyState{0, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f};
+    bumperStreak = 0; bumperStreakTimer = 0.0f;
     rampBoost = 1; bonusMult = 1; vukFlash = 0.0f; multiQueue = 0; multiDelay = 0.0f;
     rng_ = 12345u + tableIdx;
     score = 0;
@@ -265,6 +266,7 @@ bool Game::collideBallSegment(Ball& b, float x1, float y1, float x2, float y2, f
         if (wallIndex >= 0 && walls[wallIndex].scoring) {
             score += 500;
             wallFlash[wallIndex] = 0.12f;
+            b.rampCool = maxf(b.rampCool, 0.45f);   // une bille renvoyee par le triangle ne s'engouffre pas dans la rampe voisine
             advanceMission(2);
             emit(Sfx::Sling);
             touchHud();
@@ -629,6 +631,7 @@ void Game::stepSubstep(float dt, bool leftHeld, bool rightHeld) {
     for (int k = 0; k < MAX_TARGETS + MAX_UP_TARGETS; k++) if (targetFlash[k] > 0.0f) targetFlash[k] = maxf(0.0f, targetFlash[k] - dt);
     for (int k = 0; k < MAX_UP_BUMPERS; k++) if (upBumperFlash[k] > 0.0f) upBumperFlash[k] = maxf(0.0f, upBumperFlash[k] - dt);
     if (vukFlash > 0.0f) vukFlash = maxf(0.0f, vukFlash - dt);
+    if (bumperStreakTimer > 0.0f) bumperStreakTimer = maxf(0.0f, bumperStreakTimer - dt);
     for (int bk = 0; bk < MAX_BANKS; bk++) {   // les cibles escamotables d'une banque complete remontent
         if (dropReset[bk] <= 0.0f) continue;
         dropReset[bk] -= dt;
@@ -853,8 +856,20 @@ void Game::stepSubstep(float dt, bool leftHeld, bool rightHeld) {
                 dy /= d;
                 b.x = bmp.x + dx * minD;
                 b.y = bmp.y + dy * minD;
-                b.vx = dx * 235.0f;
-                b.vy = dy * 235.0f;
+                {   // le renvoi est legerement devie (pseudo-aleatoire) et une serie de touches trop rapprochees est cassee
+                    const float jit = (frand() - 0.5f) * 0.45f;
+                    const float cj = cosf(jit), sj = sinf(jit);
+                    const float rx = dx * cj - dy * sj, ry = dx * sj + dy * cj;
+                    b.vx = rx * 235.0f;
+                    b.vy = ry * 235.0f;
+                    bumperStreak = bumperStreakTimer > 0.0f ? (uint8_t)(bumperStreak + 1) : 1;
+                    bumperStreakTimer = 1.1f;
+                    if (bumperStreak >= 6) {
+                        b.vy = maxf(b.vy, 170.0f);
+                        b.vx += (b.x < 112.0f ? 70.0f : -70.0f);
+                        bumperStreak = 0;
+                    }
+                }
                 bool golden = t.rotateBumper && k == litBumper % t.bumperCount;
                 score += golden ? bmp.points * 3 : bmp.points;
                 if (golden) litBumper = (uint8_t)((litBumper + 1 + (huntHits++ % 2)) % t.bumperCount);
@@ -1222,6 +1237,15 @@ void Game::requestConfirm(uint8_t action) {
         confirmUntilMs = nowMs + 2500;
         emit(Sfx::Confirm);
     }
+}
+
+void Game::returnToSelection() {
+    if (state == State::Playing || state == State::Paused) commitScore();
+    confirmAction = 0;
+    state = State::Menu;
+    setupFlippers();
+    touchHud();
+    emit(Sfx::MenuOk);
 }
 
 void Game::syncInput(const Input& in) {
