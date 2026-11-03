@@ -35,7 +35,12 @@ const BUMPER_COLORS: Record<
   ICE: { dark: '#0C4A6E', main: '#0284C7', light: '#E0F2FE', glow: '#38BDF8' },
 };
 
-const PLATE_DY: Record<string, number> = { candy: -186, crypte: -192 };
+/**
+ * Cartouche-titre des tables thématiques : au centre du plateau (y 262) par défaut, mais ce centre est
+ * traversé par les rampes sur plusieurs tables. Celles-ci passent donc en cartouche compact dans l'arche
+ * haute (y 21), zone toujours dégagée et visible quand la bille monte.
+ */
+const PLATE_TOP = new Set(['prehistoire', 'halloween', 'candy', 'bonbons', 'train', 'crypte']);
 
 export class PinballCanvasRenderer {
   private artImages: Map<string, HTMLImageElement> = new Map();
@@ -754,19 +759,21 @@ export class PinballCanvasRenderer {
     clock: number
   ) {
     const plate = (title: string, bg: string, border: string, fg: string) => {
+      const compact = PLATE_TOP.has(id);
+      const h = compact ? 20 : 32;
+      const y0 = compact ? 21 : 262;
       ctx.save();
-      ctx.translate(0, PLATE_DY[id] ?? 0);
       // Ombre portée sous le cartouche métallique
       ctx.fillStyle = 'rgba(2, 6, 16, 0.55)';
       ctx.beginPath();
-      ctx.roundRect(74, 264.5, 78, 32, 5);
+      ctx.roundRect(74, y0 + 2.5, 78, h, 5);
       ctx.fill();
 
       ctx.fillStyle = bg;
       ctx.strokeStyle = border;
       ctx.lineWidth = 1.5;
       ctx.beginPath();
-      ctx.roundRect(74, 262, 78, 32, 5);
+      ctx.roundRect(74, y0, 78, h, 5);
       ctx.fill();
       ctx.stroke();
 
@@ -774,10 +781,10 @@ export class PinballCanvasRenderer {
       ctx.strokeStyle = `${border}66`;
       ctx.lineWidth = 0.7;
       ctx.beginPath();
-      ctx.roundRect(76.5, 264.5, 73, 27, 3.5);
+      ctx.roundRect(76.5, y0 + 2.5, 73, h - 5, 3.5);
       ctx.stroke();
       ctx.fillStyle = border;
-      for (const [rx, ry] of [[78, 266], [148, 266], [78, 290], [148, 290]]) {
+      for (const [rx, ry] of [[78, y0 + 4], [148, y0 + 4], [78, y0 + h - 4], [148, y0 + h - 4]]) {
         ctx.beginPath();
         ctx.arc(rx, ry, 1.1, 0, Math.PI * 2);
         ctx.fill();
@@ -786,11 +793,11 @@ export class PinballCanvasRenderer {
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillStyle = fg;
-      ctx.font = '700 9.5px "JetBrains Mono", monospace';
-      ctx.fillText(title, 113, 273);
-      ctx.font = '700 7.8px "JetBrains Mono", monospace';
+      ctx.font = `700 ${compact ? 8.6 : 9.5}px "JetBrains Mono", monospace`;
+      ctx.fillText(title, 113, y0 + (compact ? 6.8 : 11));
+      ctx.font = `700 ${compact ? 6.4 : 7.8}px "JetBrains Mono", monospace`;
       ctx.fillStyle = '#FFFFFF';
-      ctx.fillText(`BONUS ×${mult}`, 113, 285.5);
+      ctx.fillText(`BONUS ×${mult}`, 113, y0 + (compact ? 14.6 : 23.5));
       ctx.restore();
     };
     const poly = (pts: number[][], fill: string, stroke?: string, lw = 1) => {

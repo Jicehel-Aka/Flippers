@@ -2,14 +2,13 @@
 ===============================================================================
   pinball_core.h — Coeur du jeu de flipper, PORTABLE (aucune dependance materielle)
 -------------------------------------------------------------------------------
-  Physique a pas fixe (360 Hz), 12 plateaux distincts generes depuis
-  src/data/tables.config.json : etages superieurs jouables (layer = 2), rampes
-  Catmull-Rom 9 points sans teleportation, conduits aeriens continus (VUK),
-  decors interactifs propres a chaque table, cibles tombantes/fixes, spinners,
-  missions, verrou multibille, tilt, records.
+  Physique a pas fixe (360 Hz), 4 plateaux generes depuis src/data/tables.ts,
+  missions, rampes, verrou multibille, tilt, records.
 
   Ce code ne connait ni ESP-IDF, ni gb_graphics, ni FreeRTOS : il est compile tel
   quel par la console (firmware/aka_idf) ET par le test PC (firmware/aka_idf/test).
+  La plateforme lui donne l'etat des boutons, l'heure, un stockage de records, et
+  recupere les evenements sonores (SfxEvent) pour les jouer.
 ===============================================================================
 */
 #pragma once
@@ -29,23 +28,20 @@ constexpr float BALL_RADIUS   = 5.2f;
 constexpr float PLUNGER_TOP_Y = 478.0f;   // sommet du ressort au repos (identique au moteur Web)
 constexpr float BALL_SAVE_SEC = 20.0f;    // duree de la protection contre la chute directe, apres la sortie du couloir
 
-constexpr int TABLE_COUNT     = 12;
-constexpr int MAX_BALLS       = 3;
-constexpr int MAX_BUMPERS     = 6;
-constexpr int MAX_WALLS       = 128;
-constexpr int MAX_PEGS        = 36;
-constexpr int MAX_FLIPPERS    = 4;
-constexpr int RAMP_PTS        = 9;
-constexpr int VUK_PTS         = 7;
-constexpr int MAX_TARGETS     = 12;
-constexpr int MAX_SPINNERS    = 3;
-constexpr int MAX_EXTRA_WALLS = 8;
-constexpr int MAX_EXTRA_PEGS  = 8;
-constexpr int MAX_TOYS        = 2;
-constexpr int MAX_UPPER_VERTS = 6;
-constexpr int MAX_UPPER_BMPS  = 3;
-constexpr int MAX_UPPER_TGTS  = 4;
-constexpr int MAX_UPPER_ROLLS = 3;
+constexpr int TABLE_COUNT  = 12;
+constexpr int MAX_BALLS    = 3;
+constexpr int MAX_BUMPERS  = 6;
+constexpr int MAX_WALLS    = 128;
+constexpr int MAX_FLIPPERS = 5;           // 2 principaux + 2 supplementaires + 1 de l'etage
+constexpr int MAX_TARGETS  = 8;
+constexpr int MAX_UP_TARGETS = 3;
+constexpr int MAX_BANKS    = 3;           // 2 banques du plateau + 1 banque de l'etage
+constexpr int MAX_SPINNERS = 2;
+constexpr int MAX_PEGS     = 6;
+constexpr int MAX_XWALLS   = 4;
+constexpr int MAX_TOYS     = 1;
+constexpr int MAX_UP_BUMPERS = 2;
+constexpr int MAX_UP_ROLLOVERS = 2;
 
 constexpr float PHYSICS_DT    = 1.0f / 360.0f;   // independant de la cadence d'affichage
 constexpr int   MAX_SUBSTEPS  = 16;              // 16 / 360 s = 44 ms > dt maximal (40 ms)
@@ -64,53 +60,16 @@ struct ExtraFlipperDef {
     bool isLeft;
     float px, py, length;
     float restDeg, activeDeg;
-    uint8_t layer;            // 0 : plateau principal ; 2 : etage superieur
 };
 
 struct RampDef {
-    Vec2 pts[RAMP_PTS];       // entree = pts[0], sortie = pts[RAMP_PTS - 1]
-    Vec2 entryDir;
+    Vec2 pts[5];              // entree = pts[0], sortie = pts[4]
     bool wireform;
-    bool allowSideEntry;
-    bool exitsToUpper;        // true : depose la bille sur l'etage superieur (layer = 2)
+    bool toUpper;             // la sortie depose la bille sur l'etage superieur (couche 2)
     float entryRadius;
     uint32_t color;
     uint32_t points;
     const char* name;
-};
-
-struct VukDef {
-    bool active;
-    float x, y, r;
-    Vec2 pts[VUK_PTS];        // conduit aerien continu du puits jusqu'a la sortie
-    Vec2 ejectVel;
-    bool exitsToUpper;
-    uint32_t points;
-    uint32_t color;
-    const char* name;
-};
-
-struct TargetDef {
-    float x1, y1, x2, y2;
-    uint8_t kind;             // 0 = DROP (tombante), 1 = STANDUP (fixe)
-    uint8_t bankId;           // 0..3 : indice de banque sur la table
-    uint8_t bankRole;         // 0 = MULTIPLIER, 1 = MULTIBALL, 2 = KICKBACK, 3 = JACKPOT_BOOST
-    char letter;
-    uint32_t color;
-    uint16_t points;
-};
-
-struct SpinnerDef {
-    float x, y, width, angle;
-    uint16_t points;
-};
-
-struct ExtraWallDef {
-    float x1, y1, x2, y2, bounce;
-};
-
-struct PegDef {
-    float x, y, r;
 };
 
 // kind : 0 bumpers, 1 rampes, 2 cibles / verrou
@@ -131,6 +90,67 @@ struct RolloverDef {
 };
 constexpr int MAX_ROLLOVERS = 6;
 
+// Cible fixe (STANDUP) ou escamotable (DROP) ; les cibles d'une meme banque se completent ensemble.
+struct TargetDef {
+    float x1, y1, x2, y2;
+    char letter;
+    uint8_t bank;             // indice de banque dans la table (0..MAX_BANKS-1)
+    uint8_t role;             // 0 multiplicateur, 1 multibille, 2 boucliers, 3 rampes x2
+    bool drop;                // true : s'efface quand elle est touchee, revient quand la banque est complete
+    uint16_t points;
+    uint32_t color;
+};
+
+struct SpinnerDef {
+    float x, y, width, angle;
+    uint16_t points;          // points par demi-tour
+};
+
+struct XWallDef { float x1, y1, x2, y2, bounce; };
+struct PegDef { float x, y, r, bounce; };
+
+// Ejecteur (VUK) : la bille est captee, puis voyage dans un conduit aerien jusqu'a la sortie.
+struct VukDef {
+    bool present;
+    float x, y, r;
+    Vec2 pts[5];              // conduit : pts[0] = entree, pts[4] = sortie
+    float evx, evy;           // vitesse d'ejection
+    uint16_t points;
+    uint32_t color;
+    const char* name;
+};
+
+// Elements mecaniques interactifs : kind 0 BASH, 1 SWING_DOORS, 2 TURNTABLE, 3 GRAVITY_WELL, 4 SLIDING_CRYPT, 5 ROTO_TARGET
+struct ToyDef {
+    bool present;
+    uint8_t kind;
+    uint8_t visual;           // meme ordre que InteractiveToyVisual (0 ESP32_CHIP ... 11 SARCOPHAGUS)
+    float x, y, r;
+    uint16_t points;
+    uint8_t hitsRequired;
+    uint32_t reward;
+    uint32_t color;
+    const char* name;
+};
+
+// Etage superieur (couche 2) : polygone, rebords ouverts, flipper, bumpers, cibles, couloirs
+struct UpperDeckDef {
+    bool present;
+    uint8_t n;                // sommets du polygone
+    Vec2 b[6];
+    uint8_t openMask;         // bit i : l'arete i -> i+1 est ouverte (la bille retombe sur le plateau)
+    uint32_t fill, border;
+    const char* name;
+    uint8_t bumperCount;
+    BumperDef bumpers[MAX_UP_BUMPERS];
+    uint8_t targetCount;
+    TargetDef targets[MAX_UP_TARGETS];
+    uint8_t rolloverCount;
+    RolloverDef rollovers[MAX_UP_ROLLOVERS];
+    uint8_t flipperCount;
+    ExtraFlipperDef flippers[1];
+};
+
 struct HousingDef {
     uint8_t n;                // nombre de sommets (polygone ferme)
     Vec2 p[5];
@@ -149,42 +169,11 @@ struct HuntDef {
     const char* name;
 };
 
-// Etage superieur jouable (layer = 2) surplombant le plateau principal
-struct UpperDeckDef {
-    bool active;
-    uint8_t n;
-    Vec2 bounds[MAX_UPPER_VERTS];
-    uint8_t openEdgeMask;     // bit i = arete i -> (i+1)%n ouverte (redescente au niveau 0)
-    uint32_t fillCol;
-    uint32_t borderCol;
-    uint8_t bumperCount;
-    BumperDef bumpers[MAX_UPPER_BMPS];
-    uint8_t targetCount;
-    TargetDef targets[MAX_UPPER_TGTS];
-    uint8_t rolloverCount;
-    RolloverDef rollovers[MAX_UPPER_ROLLS];
-};
-
-// Decor mecanique interactif propre au theme de la table
-// kind   : 0 aucun, 1 BASH_TOY, 2 SWING_DOORS, 3 TURNTABLE, 4 GRAVITY_WELL, 5 SLIDING_CRYPT, 6 ROTO_TARGET
-// visual : 0 ESP32_CHIP, 1 SATURN_RING, 2 DEATH_STAR_CORE, 3 SUN_WHEEL, 4 EM_ROTO_BELL, 5 VOLCANO,
-//          6 SALOON_DOORS, 7 PUMPKIN_KING, 8 RIBBON_VORTEX, 9 LOLLIPOP_WHEEL, 10 RAIL_TURNTABLE, 11 SARCOPHAGUS
-struct ToyDef {
-    uint8_t kind;
-    uint8_t visual;
-    float x, y, r;
-    uint16_t points;
-    uint8_t hitsReq;
-    uint32_t reward;
-    uint32_t color;
-    const char* name;
-};
-
 struct TableDef {
     const char* name;
     const char* subName;
     const char* multiballName;
-    uint8_t decor;            // 0..11 : identifiant de decor et de theme musical
+    uint8_t decor;            // 0 circuit, 1 espace, 2 Star Wars, 3 temple, 4 classique, 5 prehistoire, 6 far west, 7 halloween, 8 candy, 9 bonbons, 10 train, 11 crypte
     uint32_t bgTop, bgBot, accent, rail, flipperCol;
     float gravity;
     uint8_t bumperCount;
@@ -193,6 +182,16 @@ struct TableDef {
     ExtraFlipperDef extraFlippers[2];
     RampDef ramps[2];
     VukDef vuk;
+    uint8_t targetCount;
+    TargetDef targets[MAX_TARGETS];
+    uint8_t spinnerCount;
+    SpinnerDef spinners[MAX_SPINNERS];
+    uint8_t xwallCount;
+    XWallDef xwalls[MAX_XWALLS];
+    uint8_t pegCount;
+    PegDef pegs[MAX_PEGS];
+    ToyDef toy;
+    UpperDeckDef upper;
     Vec2 lockPos;
     float lockRadius;
     MissionDef missions[3];
@@ -200,17 +199,6 @@ struct TableDef {
     RolloverDef rollovers[MAX_ROLLOVERS];
     uint8_t housingCount;     // boitiers biseautes pleins (collision identique au moteur Web)
     HousingDef housings[6];
-    uint8_t targetCount;
-    TargetDef targets[MAX_TARGETS];
-    uint8_t spinnerCount;
-    SpinnerDef spinners[MAX_SPINNERS];
-    uint8_t extraWallCount;
-    ExtraWallDef extraWalls[MAX_EXTRA_WALLS];
-    uint8_t extraPegCount;
-    PegDef extraPegs[MAX_EXTRA_PEGS];
-    UpperDeckDef upper;
-    uint8_t toyCount;
-    ToyDef toys[MAX_TOYS];
     HuntDef hunt;
     bool rotateBumper;        // un bumper dore (x3) qui change a chaque touche
 };
@@ -230,15 +218,12 @@ struct Ball {
     bool inShooter;
     float rampCool;           // secondes avant de pouvoir reprendre une rampe / le verrou
     float stuckTime;          // secondes quasi immobile (anti-blocage)
-    int8_t ramp = -1;         // indice de la rampe suivie (-1 : hors rampe)
-    float rampDist = 0.0f;    // distance parcourue le long de la rampe ou du conduit (px)
+    int8_t ramp = -1;         // rampe suivie : 0..1 rampes, 2 conduit du VUK, -1 : bille libre
+    float rampDist = 0.0f;    // distance parcourue le long de la rampe (px)
     float rampSpeed = 0.0f;   // vitesse le long de la rampe (px/s)
-    uint8_t layer = 0;        // 0 = plateau bas, 1 = rampe/conduit aerien, 2 = etage superieur
-    int8_t inVuk = -1;        // >= 0 : dans le conduit aerien VUK continu
-    float vukHold = 0.0f;     // centrage bref au fond du puits avant l'ascension dans le tube
-    bool rampWeak = false;    // tir trop faible : ralentit en cote puis redescend naturellement
-    float entryOffX = 0.0f;   // decalage initial lisse sur les premiers pixels de rampe (0 saut)
-    float entryOffY = 0.0f;
+    uint8_t layer = 0;        // 0 plateau, 2 etage superieur
+    bool held = false;        // captee dans l'ejecteur (VUK)
+    float holdTimer = 0.0f;
 };
 
 struct FlipperRuntime {
@@ -246,7 +231,7 @@ struct FlipperRuntime {
     float px, py, length;
     float restRad, activeRad;
     float angleRad, prevAngleRad;
-    uint8_t layer = 0;
+    uint8_t layer = 0;        // 0 plateau, 2 etage superieur
 };
 
 // Etat des boutons (maintenu). Les fronts sont calcules par le jeu.
@@ -295,43 +280,39 @@ public:
     uint8_t flipperCount = 2;
     Segment walls[MAX_WALLS];
     uint8_t wallCount = 0;
-    PegDef pegs[MAX_PEGS];
-    uint8_t pegCount = 0;
+    Segment upWalls[6];                  // rebords fermes de l'etage superieur
+    uint8_t upWallCount = 0;
     float wallFlash[MAX_WALLS] = {};
     float bumperFlash[MAX_BUMPERS] = {};
-    float upperBumperFlash[MAX_UPPER_BMPS] = {};
-    uint16_t targetDownMask = 0;         // bit k = cible tombante k abattue
-    uint16_t targetLitMask = 0;          // bit k = lampe de la cible k allumee
-    float bankResetTimer[4] = {};        // remontee differee des banques de cibles DROP
-    uint8_t upperTargetLitMask = 0;
-    uint8_t upperRollLit = 0;
-    float spinnerAngle[MAX_SPINNERS] = {};
-    float spinnerVel[MAX_SPINNERS] = {};
-    float vukFlash = 0.0f;
-
-    float toyAngle[MAX_TOYS] = {};
-    float toySpin[MAX_TOYS] = {};
-    float toyOpen[MAX_TOYS] = {};
-    float toyFlash[MAX_TOYS] = {};
-    float toyActive[MAX_TOYS] = {};
-    float toyCool[MAX_TOYS] = {};
-    uint8_t toyHits[MAX_TOYS] = {};
-
     uint8_t huntSlot = 0;
     uint16_t huntHits = 0;
     float huntFlash = 0.0f;
     uint8_t litBumper = 0;
-    uint8_t bonusMult = 1;
+
+    // --- Mecaniques portees du moteur Web (cibles, spinners, jouets, etage) ---------
+    uint16_t targetHit = 0;              // bit i : cible i du plateau touchee (les cibles DROP sont alors escamotees)
+    uint8_t upTargetHit = 0;
+    uint8_t upRolloverLit = 0;
+    float dropReset[MAX_BANKS] = {};     // delai avant le retour des cibles escamotables d'une banque complete
+    float targetFlash[MAX_TARGETS + MAX_UP_TARGETS] = {};
+    float upBumperFlash[MAX_UP_BUMPERS] = {};
+    float spinAngle[MAX_SPINNERS] = {};
+    float spinVel[MAX_SPINNERS] = {};
+    uint8_t spinCount[MAX_SPINNERS] = {};
+    struct ToyState { uint16_t hits; float flash, angle, spinVel, openRatio, activeTimer, cooldown; };
+    ToyState toyState;
+    uint8_t rampBoost = 1;               // banque JACKPOT_BOOST : points des rampes x1..x3
+    uint8_t bonusMult = 1;               // banque MULTIPLIER : x1..x8 (bonus de fin de bille)
+    float vukFlash = 0.0f;
+    float multiDelay = 0.0f;
+    uint8_t multiQueue = 0;              // billes de multibille encore a envoyer dans le lanceur
 
     uint32_t score = 0;
-    uint32_t highScores[TABLE_COUNT] = {
-        25000, 25000, 25000, 25000, 25000, 25000,
-        25000, 25000, 25000, 25000, 25000, 25000
-    };
+    uint32_t highScores[TABLE_COUNT] = {25000, 25000, 25000, 25000};
     uint8_t ballsRemaining = 3;
     uint8_t lockedBalls = 0;
     bool multiballActive = false;
-    bool lockLit = false;                // le puits ne capture que lorsqu'il est allume (5 touches de bumpers ou banque MULTIBALL)
+    bool lockLit = false;                // le puits ne capture que lorsqu'il est allume (5 touches de bumpers)
     uint8_t lockHits = 0;
     uint8_t rolloverLit = 0;             // bit i = rollover i allume (0..3 couloirs du haut, 4..5 retours)
     float rolloverFlash = 0.0f;          // clignotement de bonus quand les 4 couloirs sont completes
@@ -376,12 +357,16 @@ private:
     void buildStaticWalls();
     void setupFlippers();
     void spawnBallInShooter(int idx);
-    void triggerMultiball(Ball* triggerBall);
-    void advanceMission(uint8_t kind);
-    void collideBallSegment(Ball& b, float x1, float y1, float x2, float y2, float restitution,
+    void advanceMission(uint8_t kind, bool joker = false);
+    void stepUpper(Ball& b, float dt, bool leftHeld, bool rightHeld);
+    void stepToy(Ball& b, float dt);
+    void onTargetHit(uint8_t idx, bool upper);
+    float frand();
+    uint32_t rng_ = 12345u;
+    void startMultiball();
+    bool circleHit(Ball& b, float cx, float cy, float r, float rest, float kick);
+    bool collideBallSegment(Ball& b, float x1, float y1, float x2, float y2, float restitution,
                             float extraKick, int wallIndex, float thick = 0.0f);
-    void collideBallPeg(Ball& b, float px, float py, float pr, float restitution);
-    void stepUpperBall(Ball& b, float dt, bool leftHeld, bool rightHeld);
     void stepSubstep(float dt, bool leftHeld, bool rightHeld);
     void updatePlaying(float dt, const Input& in, bool nudgePressed, bool launchEdgeFlipper);
     void updateCamera(float dt);

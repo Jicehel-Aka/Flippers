@@ -119,6 +119,21 @@ Les définitions complètes des 12 plateaux résident dans **`src/data/tables.co
 
 ---
 
+## Firmware AKA : parité avec le Web / PC
+
+Le firmware rejoue **les mêmes 12 plateaux** que le Web (générés depuis `src/data/tables.config.json`) avec **les mêmes mécaniques jouables** :
+
+- **Étages supérieurs** (Carte-fille JTAG, Terrasse solaire, Balcon du Far West, Galerie du Manoir) : la rampe dédiée dépose la bille à l'étage (couche 2), avec ses bumpers (×2), cibles, passages et son flipper ; la bille retombe par le rebord ouvert.
+- **Cibles fixes et escamotables** regroupées en banques (bonus ×N, multibille, boucliers doubles, rampes ×2/×3) ; les cibles escamotables remontent quand la banque est complète.
+- **Spinners** (points par demi-tour, avancement de mission), murs et plots supplémentaires, coins des boîtiers.
+- **Les 6 décors interactifs** : bumper géant suractivé, portes battantes, plateau tournant, puits gravitationnel, sarcophage coulissant, roto-cible.
+- **Éjecteur VUK** : capture puis conduit aérien suivi point par point (sans téléportation).
+- Rampes suivies sans téléportation, boîtiers, puits Multibille, missions, cibles mobiles (WANTED, fantômes, mammouths, sucettes, locomotive, zombies) et bumper doré ×3.
+
+Différences assumées : pas de combo ni de multiplicateur ×1,5 en multibille (le firmware garde un score simple), et le verrou Multibille reste celui de la console (puits allumé par 5 bumpers). Le décor pré-rendu doit être régénéré (`npm run aka:art`) à chaque modification d'un plateau ; les cartouches-titres des tables dont le centre est traversé par des rampes sont posés dans l'arche haute pour rester lisibles.
+
+---
+
 ## Développement local & Vérifications
 
 ```bash

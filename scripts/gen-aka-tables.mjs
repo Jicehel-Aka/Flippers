@@ -126,16 +126,39 @@ function resample5(path) {
   return out;
 }
 
+const ROLE = { MULTIPLIER: 0, MULTIBALL: 1, KICKBACK: 2, JACKPOT_BOOST: 3 };
+const TOY_KIND = { BASH_TOY: 0, SWING_DOORS: 1, TURNTABLE: 2, GRAVITY_WELL: 3, SLIDING_CRYPT: 4, ROTO_TARGET: 5 };
+const TOY_VISUAL = ['ESP32_CHIP', 'SATURN_RING', 'DEATH_STAR_CORE', 'SUN_WHEEL', 'EM_ROTO_BELL', 'VOLCANO', 'SALOON_DOORS', 'PUMPKIN_KING', 'RIBBON_VORTEX', 'LOLLIPOP_WHEEL', 'RAIL_TURNTABLE', 'SARCOPHAGUS'];
+const padList = (items, n, empty) => {
+  const a = items.slice();
+  while (a.length < n) a.push(empty);
+  return a;
+};
+const targetC = (tg, bank) =>
+  `{${f(tg.x1)}, ${f(tg.y1)}, ${f(tg.x2)}, ${f(tg.y2)}, '${rollChar(tg.letter)}', ${bank}, ${ROLE[tg.bankRole] ?? 0}, ${tg.kind === 'DROP'}, ${tg.points}, ${hex(tg.lampColor)}}`;
+const EMPTY_TARGET = "{0, 0, 0, 0, ' ', 0, 0, false, 0, 0}";
+const EMPTY_BUMPER = '{0, 0, 0, 0, 0, 0, ""}';
+const EMPTY_ROLL = "{0, 0, 0, ' ', 0, 0}";
+// Conduit aerien du VUK : meme courbe que buildVukTubeSpline (arche vers le haut/centre), rechantillonnee sur 5 points.
+function vukTube(from, to) {
+  const mx = (from.x + to.x) * 0.5, my = (from.y + to.y) * 0.5;
+  const dx = to.x - from.x, dy = to.y - from.y;
+  const chord = Math.hypot(dx, dy) || 1;
+  const archSign = mx <= 113 ? 1 : -1;
+  const ctrl = {
+    x: Math.max(24, Math.min(200, mx + (-dy / chord) * Math.min(28, chord * 0.22) * archSign)),
+    y: Math.max(36, Math.min(448, my + -Math.min(24, chord * 0.16))),
+  };
+  return resample5([from, ctrl, to]);
+}
+
 let o = '';
 o += '// GENERE par scripts/gen-aka-tables.mjs depuis src/data/tables.ts : NE PAS EDITER A LA MAIN.\n';
 o += '// Regenerer avec : node scripts/gen-aka-tables.mjs\n';
 o += 'static const TableDef TABLES[TABLE_COUNT] = {\n';
 for (const t of PINBALL_TABLES) {
   const p = t.palette;
-  const akaExtraFlippers = [
-    ...t.extraFlippers,
-    ...(t.upperPlayfield?.flippers ?? []),
-  ];
+  const akaExtraFlippers = t.extraFlippers;
   if (t.bumpers.length > 6) throw new Error(`${t.id}: plus de 6 bumpers`);
   if (akaExtraFlippers.length > 2) throw new Error(`${t.id}: plus de 2 flippers supplementaires`);
   if (t.ramps.length < 2) throw new Error(`${t.id}: moins de 2 rampes`);
@@ -173,9 +196,61 @@ for (const t of PINBALL_TABLES) {
     const pts = resample5(r.path)
       .map((q) => `{${f(q.x)}, ${f(q.y)}}`)
       .join(', ');
-    o += `      {{${pts}}, ${r.style === 'WIREFORM_RAIL'}, ${f(r.entryRadius)}, ${hex(r.chuteColor)}, ${r.points}, ${cstr(r.name)}},\n`;
+    o += `      {{${pts}}, ${r.style === 'WIREFORM_RAIL'}, ${!!(r.exitsToUpperDeck && t.upperPlayfield)}, ${f(r.entryRadius)}, ${hex(r.chuteColor)}, ${r.points}, ${cstr(r.name)}},\n`;
   }
   o += '    },\n';
+  // --- ejecteur (VUK) -----------------------------------------------------------
+  const vuk = t.scoops.find((sc) => sc.kind !== 'UPPER_LOCK');
+  if (vuk) {
+    const tube = vukTube({ x: vuk.x, y: vuk.y }, vuk.ejectTo).map((q) => `{${f(q.x)}, ${f(q.y)}}`).join(', ');
+    o += `    {true, ${f(vuk.x)}, ${f(vuk.y)}, ${f(vuk.radius)}, {${tube}}, ${f(vuk.ejectVelocity.x)}, ${f(vuk.ejectVelocity.y)}, ${vuk.points}, ${hex(vuk.color)}, ${cstr(vuk.name)}},\n`;
+  } else {
+    o += '    {false, 0, 0, 0, {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}}, 0, 0, 0, 0, ""},\n';
+  }
+  // --- cibles du plateau : banques numerotees par ordre d'apparition -----------------
+  if (t.targets.length > 8) throw new Error(`${t.id}: plus de 8 cibles`);
+  const bankIds = [];
+  for (const tg of t.targets) if (!bankIds.includes(tg.bankId)) bankIds.push(tg.bankId);
+  if (bankIds.length > 2) throw new Error(`${t.id}: plus de 2 banques de cibles`);
+  o += `    ${t.targets.length}, {${padList(t.targets.map((tg) => targetC(tg, bankIds.indexOf(tg.bankId))), 8, EMPTY_TARGET).join(', ')}},\n`;
+  // --- spinners, murs et plots supplementaires ----------------------------------
+  if (t.spinners.length > 2) throw new Error(`${t.id}: plus de 2 spinners`);
+  o += `    ${t.spinners.length}, {${padList(t.spinners.map((sp) => `{${f(sp.x)}, ${f(sp.y)}, ${f(sp.width)}, ${f(sp.angle)}, ${sp.pointsPerSpin}}`), 2, '{0, 0, 0, 0, 0}').join(', ')}},\n`;
+  if (t.extraWalls.length > 4) throw new Error(`${t.id}: plus de 4 murs supplementaires`);
+  o += `    ${t.extraWalls.length}, {${padList(t.extraWalls.map((w) => `{${f(w.x1)}, ${f(w.y1)}, ${f(w.x2)}, ${f(w.y2)}, ${f(w.restitution ?? 0.45)}}`), 4, '{0, 0, 0, 0, 0}').join(', ')}},\n`;
+  if (t.extraPegs.length > 6) throw new Error(`${t.id}: plus de 6 plots supplementaires`);
+  o += `    ${t.extraPegs.length}, {${padList(t.extraPegs.map((pg) => `{${f(pg.x)}, ${f(pg.y)}, ${f(pg.radius)}, ${f(pg.restitution ?? 0.55)}}`), 6, '{0, 0, 0, 0}').join(', ')}},\n`;
+  // --- jouet interactif ------------------------------------------------------------
+  const toy = (t.interactiveToys ?? [])[0];
+  if ((t.interactiveToys ?? []).length > 1) throw new Error(`${t.id}: un seul jouet interactif supporte`);
+  if (toy) {
+    o += `    {true, ${TOY_KIND[toy.kind]}, ${TOY_VISUAL.indexOf(toy.visual)}, ${f(toy.x)}, ${f(toy.y)}, ${f(toy.radius)}, ${toy.points}, ${toy.hitsRequired}, ${toy.rewardPoints}, ${hex(toy.accentColor)}, ${cstr(toy.name)}},\n`;
+  } else {
+    o += '    {false, 0, 0, 0, 0, 0, 0, 0, 0, 0, ""},\n';
+  }
+  // --- etage superieur (couche 2) -------------------------------------------------
+  const up = t.upperPlayfield;
+  if (up) {
+    if (up.bounds.length > 6) throw new Error(`${t.id}: etage a plus de 6 sommets`);
+    if (up.bumpers.length > 2 || up.targets.length > 3 || up.rollovers.length > 2 || up.flippers.length > 1)
+      throw new Error(`${t.id}: etage trop charge pour le firmware`);
+    const mask = up.openEdgeIndices.reduce((m, i) => m | (1 << i), 0);
+    const bl = padList(up.bounds.map((q) => `{${f(q.x)}, ${f(q.y)}}`), 6, '{0, 0}');
+    const ub = up.bumpers.map((b) => {
+      const [fill, rim] = BUMPER_COLORS[b.colorStyle] ?? BUMPER_COLORS.GOLD;
+      return `{${f(b.x)}, ${f(b.y)}, ${f(b.radius)}, ${fill}, ${rim}, ${b.points}, ${cstr(b.label)}}`;
+    });
+    const ut = up.targets.map((tg) => targetC(tg, 2));
+    const ur = up.rollovers.map((r) => `{${f(r.x)}, ${f(r.y)}, ${f(r.radius)}, '${rollChar(r.letter)}', ${r.points}, 2}`);
+    const uf = up.flippers.map((e) => `{${e.side === 'LEFT'}, ${f(e.pivot.x)}, ${f(e.pivot.y)}, ${f(e.length)}, ${deg(e.restAngle)}, ${deg(e.activeAngle)}}`);
+    o += `    {true, ${up.bounds.length}, {${bl.join(', ')}}, ${mask}, ${hex(up.fillColor)}, ${hex(up.borderColor)}, ${cstr(up.name)},\n`;
+    o += `      ${ub.length}, {${padList(ub, 2, EMPTY_BUMPER).join(', ')}},\n`;
+    o += `      ${ut.length}, {${padList(ut, 3, EMPTY_TARGET).join(', ')}},\n`;
+    o += `      ${ur.length}, {${padList(ur, 2, EMPTY_ROLL).join(', ')}},\n`;
+    o += `      ${uf.length}, {${padList(uf, 1, '{false, 0, 0, 0, 0, 0}').join(', ')}}},\n`;
+  } else {
+    o += `    {false, 0, {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}}, 0, 0, 0, "",\n      0, {${EMPTY_BUMPER}, ${EMPTY_BUMPER}},\n      0, {${EMPTY_TARGET}, ${EMPTY_TARGET}, ${EMPTY_TARGET}},\n      0, {${EMPTY_ROLL}, ${EMPTY_ROLL}},\n      0, {{false, 0, 0, 0, 0, 0}}},\n`;
+  }
   o += `    {${f(lock.x)}, ${f(lock.y)}}, ${f(lock.radius)},\n    {\n`;
   for (const m of t.missions) {
     o += `      {${cstr(m.title)}, ${MISSION_KIND[m.targetKind]}, ${m.goal}, ${m.rewardPoints}, ${hex(m.accentColor)}},\n`;

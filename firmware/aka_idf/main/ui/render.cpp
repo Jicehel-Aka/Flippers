@@ -315,9 +315,125 @@ static void draw_lamps(const Game& g, const View& v, const TableDef& t) {
     }
 }
 
+// Mecaniques interactives par-dessus le decor : cibles touchees / escamotees, spinners, jouet, ejecteur, etage.
+static void draw_target_state(const View& v, const TargetDef& tg, bool hit, float flash) {
+    const int x1 = v.X(tg.x1), y1 = v.Y(tg.y1), x2 = v.X(tg.x2), y2 = v.Y(tg.y2);
+    if (tg.drop && hit) {                       // cible escamotee : fente sombre
+        pthick(x1, y1, x2, y2, 3.5f * (v.zoom < 0.7f ? 0.7f : 1.0f), C3(12, 14, 22));
+        pline(x1, y1, x2, y2, darken(tg.color, 120));
+        return;
+    }
+    if (flash > 0.0f) {                         // impact : blanc
+        pthick(x1, y1, x2, y2, 3.5f, C3(255, 255, 255));
+    } else if (hit) {                           // cible fixe touchee : lampe allumee
+        pthick(x1, y1, x2, y2, 3.0f, lighten(tg.color, 40));
+        pline(x1, y1, x2, y2, C3(255, 255, 255));
+    }
+}
+
+static void draw_mechanics(const Game& g, const View& v, const TableDef& t) {
+    for (uint8_t k = 0; k < t.targetCount; k++)
+        draw_target_state(v, t.targets[k], ((g.targetHit >> k) & 1u) != 0, g.targetFlash[k]);
+
+    for (uint8_t k = 0; k < t.spinnerCount; k++) {   // spinner : la palette tourne autour de son axe
+        const SpinnerDef& sp = t.spinners[k];
+        const float cx = v.Xf(sp.x), cy = v.Yf(sp.y);
+        const float hw = sp.width * 0.5f * v.zoom;
+        const float ca = cosf(sp.angle), sa = sinf(sp.angle);
+        const float open = fabsf(cosf(g.spinAngle[k] * 2.0f));          // 1 : palette de profil, 0 : vue de face
+        const bool spinning = fabsf(g.spinVel[k]) > 1.0f;
+        const uint16_t col = spinning ? C3(250, 250, 160) : C3(203, 213, 225);
+        pthick((int)lroundf(cx - ca * hw), (int)lroundf(cy - sa * hw), (int)lroundf(cx + ca * hw), (int)lroundf(cy + sa * hw),
+               spinning ? 1.0f + 2.0f * (1.0f - open) : 1.2f, col);
+        pdisc(cx, cy, 1.6f * v.zoom + 0.6f, C3(51, 65, 85));
+    }
+
+    if (t.toy.present) {
+        const ToyDef& ty = t.toy;
+        const Game::ToyState& st = g.toyState;
+        const float cx = v.Xf(ty.x), cy = v.Yf(ty.y), r = ty.r * v.zoom;
+        const uint16_t col = C(ty.color);
+        switch (ty.kind) {
+            case 2: case 5: case 3: {   // plateau tournant / roto-cible / puits : rayons qui tournent
+                const int spokes = ty.kind == 3 ? 4 : 3;
+                for (int i = 0; i < spokes; i++) {
+                    const float a = st.angle + (float)i * (6.2831853f / (float)spokes);
+                    pthick((int)lroundf(cx + cosf(a) * r * 0.25f), (int)lroundf(cy + sinf(a) * r * 0.25f),
+                           (int)lroundf(cx + cosf(a) * r * 0.92f), (int)lroundf(cy + sinf(a) * r * 0.92f), 1.4f, lighten(ty.color, 30));
+                }
+                pdisc(cx, cy, r * 0.2f + 0.6f, st.flash > 0.0f ? C3(255, 255, 255) : darken(ty.color, 40));
+                break;
+            }
+            case 1: {                   // portes battantes : deux vantaux articules sur les montants
+                const float ang = st.openRatio * 0.9f;
+                const float lx = ty.x - ty.r, rx = ty.x + ty.r, ly = ty.y;
+                const float len = ty.r * 0.9f;
+                pthick(v.X(lx), v.Y(ly), (int)lroundf(v.Xf(lx) + cosf(ang) * len * v.zoom), (int)lroundf(v.Yf(ly) + sinf(ang) * len * v.zoom), 2.2f, lighten(ty.color, 20));
+                pthick(v.X(rx), v.Y(ly), (int)lroundf(v.Xf(rx) - cosf(ang) * len * v.zoom), (int)lroundf(v.Yf(ly) + sinf(ang) * len * v.zoom), 2.2f, lighten(ty.color, 20));
+                break;
+            }
+            case 4: {                   // sarcophage : dalle coulissante, ouverte = fente lumineuse
+                if (st.activeTimer > 0.0f) {
+                    pfillcircle((int)lroundf(cx), (int)lroundf(cy), (int)lroundf(r * 0.8f), (((g.nowMs / 120u) & 1u) != 0u) ? C3(250, 250, 160) : col);
+                } else if (st.openRatio > 0.0f) {
+                    pfill((int)lroundf(cx - r * 0.6f), (int)lroundf(cy - 1.0f), (int)lroundf(r * 1.2f * st.openRatio) + 1, 3, col);
+                }
+                break;
+            }
+            default:                    // bumper geant : anneau de choc, double anneau quand il est suractive
+                if (st.activeTimer > 0.0f) pring(cx, cy, r + 3.0f + ((g.nowMs / 100u) & 1u ? 1.5f : 0.0f), 1.3f, C3(253, 224, 71));
+                break;
+        }
+        if (st.flash > 0.0f) {
+            pring(cx, cy, r + 2.0f, 1.2f, C3(255, 255, 255));
+            pring(cx, cy, r + 4.5f, 1.0f, col);
+        }
+    }
+
+    if (t.vuk.present) {         // ejecteur : voyant clignotant quand il capte / ejecte
+        const float cx = v.Xf(t.vuk.x), cy = v.Yf(t.vuk.y), r = t.vuk.r * v.zoom;
+        if (g.vukFlash > 0.0f) {
+            pring(cx, cy, r + 2.5f, 1.4f, C3(255, 255, 255));
+            pring(cx, cy, r + 5.0f, 1.0f, C(t.vuk.color));
+        }
+    }
+
+    if (t.upper.present) {       // etage superieur : cibles, bumpers, passages
+        const UpperDeckDef& u = t.upper;
+        for (uint8_t k = 0; k < u.targetCount; k++)
+            draw_target_state(v, u.targets[k], ((g.upTargetHit >> k) & 1u) != 0, g.targetFlash[MAX_TARGETS + k]);
+        for (uint8_t k = 0; k < u.bumperCount; k++) {
+            if (!(g.upBumperFlash[k] > 0.0f)) continue;
+            const BumperDef& b = u.bumpers[k];
+            const float bx = v.Xf(b.x), by = v.Yf(b.y), br = b.r * v.zoom;
+            pring(bx, by, br + 4.0f, 1.0f, lighten(b.rim, 50));
+            pdisc(bx, by, br, C3(255, 255, 255));
+            pdisc(bx, by, br * 0.66f, lighten(b.fill, 60));
+        }
+        for (uint8_t k = 0; k < u.rolloverCount; k++) {
+            if (!(g.upRolloverLit & (1u << k))) continue;
+            const RolloverDef& ro = u.rollovers[k];
+            const float cx = v.Xf(ro.x), cy = v.Yf(ro.y), cr = ro.r * v.zoom;
+            pdisc(cx, cy, cr + 0.6f * v.zoom, C3(255, 255, 255));
+            pdisc(cx, cy, cr - 0.6f * v.zoom, C(u.border));
+        }
+        bool ballUp = false;
+        for (int i = 0; i < MAX_BALLS; i++) if (g.balls[i].active && g.balls[i].layer == 2) ballUp = true;
+        if (ballUp) {            // bille a l'etage : le contour de l'etage pulse
+            const uint16_t pc = (((g.nowMs / 160u) & 1u) != 0u) ? C(u.border) : lighten(u.border, 60);
+            for (uint8_t i = 0; i < u.n; i++) {
+                if (u.openMask & (1u << i)) continue;
+                const Vec2 a = u.b[i], c = u.b[(i + 1) % u.n];
+                pline(v.X(a.x), v.Y(a.y), v.X(c.x), v.Y(c.y), pc);
+            }
+        }
+    }
+}
+
 // Elements animes dessines PAR-DESSUS le decor : eclats des bumpers et slingshots, puits de verrouillage, ressort.
 static void draw_art_dynamic(const Game& g, const View& v, const TableDef& t) {
     draw_lamps(g, v, t);
+    draw_mechanics(g, v, t);
     for (int w = 0; w < g.wallCount; w++) {
         const Segment& sg = g.walls[w];
         if (!(sg.scoring && g.wallFlash[w] > 0.0f)) continue;
