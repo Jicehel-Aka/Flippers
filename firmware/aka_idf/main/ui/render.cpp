@@ -332,6 +332,30 @@ static void draw_art_dynamic(const Game& g, const View& v, const TableDef& t) {
         pdisc(bx, by, br, C3(255, 255, 255));
         pdisc(bx, by, br * 0.66f, lighten(b.fill, 60));
     }
+    if (t.rotateBumper && t.bumperCount) {   // bumper dore (x3)
+        const BumperDef& gb = t.bumpers[g.litBumper % t.bumperCount];
+        const float pul = ((g.nowMs / 120u) & 1u) ? 3.0f : 4.5f;
+        pring(v.Xf(gb.x), v.Yf(gb.y), gb.r * v.zoom + pul, 1.4f, C3(253, 224, 71));
+    }
+    if (t.hunt.kind) {   // cible mobile : WANTED, fantome, mammouth, sucette, locomotive
+        const HuntDef& hd = t.hunt;
+        const Vec2& sp = hd.slots[g.huntSlot % hd.slotCount];
+        const float hx = v.Xf(sp.x), hy = v.Yf(sp.y), hr = hd.radius * v.zoom;
+        const bool fl = g.huntFlash > 0.0f;
+        pdisc(hx, hy, hr + 2.5f * v.zoom, fl ? C3(255, 255, 255) : darken(hd.color, 90));
+        pdisc(hx, hy, hr, C(hd.color));
+        const uint16_t ink = C3(28, 25, 23);
+        switch (hd.kind) {
+            case 1: pdisc(hx, hy, hr * 0.62f, ink); pdisc(hx, hy - hr * 0.15f, hr * 0.28f, C(hd.color)); break;   // affiche
+            case 2: pdisc(hx, hy, hr * 0.62f, C3(240, 253, 244)); pdisc(hx - hr * 0.25f, hy - hr * 0.1f, hr * 0.15f, ink);
+                    pdisc(hx + hr * 0.25f, hy - hr * 0.1f, hr * 0.15f, ink); break;                                  // fantome
+            case 3: pdisc(hx, hy, hr * 0.55f, ink); pdisc(hx + hr * 0.4f, hy + hr * 0.3f, hr * 0.25f, C3(254, 243, 199)); break;
+            case 4: pdisc(hx, hy, hr * 0.6f, C3(255, 241, 242)); pdisc(hx, hy, hr * 0.3f, C(hd.color)); break;       // sucette
+            case 6: pdisc(hx, hy, hr * 0.62f, C3(20, 83, 45)); pdisc(hx - hr * 0.25f, hy - hr * 0.1f, hr * 0.15f, C3(240, 253, 244));
+                    pdisc(hx + hr * 0.25f, hy - hr * 0.1f, hr * 0.15f, C3(240, 253, 244)); break;                   // zombie
+            default: pdisc(hx, hy, hr * 0.62f, ink); pdisc(hx, hy - hr * 0.4f, hr * 0.25f, C3(254, 243, 199)); break; // locomotive
+        }
+    }
     {   // puits Multibille : clignote quand il est arme, billes verrouillees visibles
         const int lx = v.X(t.lockPos.x), ly = v.Y(t.lockPos.y);
         if (g.lockLit && ((g.nowMs / 200u) & 1u)) {
@@ -505,9 +529,10 @@ static void draw_playfield(const Game& g, const View& v, const TableDef& t) {
         const float h1 = h0 * 0.55f;
         ptaper(x1 + 1, y1 + 2, x2 + 1, y2 + 2, h0 + 1.0f, h1 + 1.0f, C3(2, 3, 6));              // ombre
         ptaper(x1, y1, x2, y2, h0 + 1.0f, h1 + 1.0f, darken(t.flipperCol, 55));                  // contour
-        ptaper(x1, y1, x2, y2, h0, h1, C(t.flipperCol));                                          // corps
-        ptaper(x1, y1 - 1, x2, y2 - 1, h0 * 0.45f, h1 * 0.4f, lighten(t.flipperCol, 45));         // reflet
-        pfillcircle(x2, y2, (int)(h1 + 0.5f), lighten(t.flipperCol, 20));                         // bout arrondi
+        ptaper(x1, y1, x2, y2, h0, h1, C(t.flipperCol));                                          // liseré colore
+        ptaper(x1, y1, x2, y2, h0 * 0.68f, h1 * 0.62f, lighten(t.flipperCol, 175));               // dessus blanc (chrome)
+        ptaper(x1, y1 - 1, x2, y2 - 1, h0 * 0.3f, h1 * 0.3f, C3(255, 255, 255));                  // reflet
+        pfillcircle(x2, y2, (int)(h1 * 0.68f + 0.5f), lighten(t.flipperCol, 175));                // bout arrondi
         const int pr = v.R(3.5f) < 2 ? 2 : v.R(3.5f);
         pfillcircle(x1, y1, pr + 1, C3(30, 41, 59));                                              // pivot
         pfillcircle(x1, y1, pr, C(t.accent));

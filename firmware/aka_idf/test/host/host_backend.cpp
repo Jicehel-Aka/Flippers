@@ -62,20 +62,27 @@ unsigned count_non_background(uint16_t bg) {
 
 } // namespace vid
 
-// Decors des plateaux : lus depuis main/art/art<N>.bin (ART_DIR fourni par run.sh)
+// Decors des plateaux : lus depuis main/art/art<N>.z (flux deflate), decompresses avec le meme code que le firmware
 #include "../../main/ui/render.h"
+#include "../../main/game/inflate.h"
 namespace render {
 const uint8_t* table_art(int tableIdx) {
-    static unsigned char* cache[8];
-    if (tableIdx < 0 || tableIdx >= 8) return nullptr;
+    static unsigned char* cache[32];
+    if (tableIdx < 0 || tableIdx >= 32) return nullptr;
     if (!cache[tableIdx]) {
         char path[512];
-        snprintf(path, sizeof(path), "%s/art%d.bin", ART_DIR, tableIdx);
+        snprintf(path, sizeof(path), "%s/art%d.z", ART_DIR, tableIdx);
         FILE* f = fopen(path, "rb");
         if (!f) return nullptr;
-        cache[tableIdx] = (unsigned char*)malloc(240 * 520 * 2);
-        if (fread(cache[tableIdx], 1, 240 * 520 * 2, f) != (size_t)(240 * 520 * 2)) { free(cache[tableIdx]); cache[tableIdx] = nullptr; }
+        fseek(f, 0, SEEK_END);
+        const long n = ftell(f);
+        fseek(f, 0, SEEK_SET);
+        unsigned char* z = (unsigned char*)malloc((size_t)n);
+        if (fread(z, 1, (size_t)n, f) != (size_t)n) { fclose(f); free(z); return nullptr; }
         fclose(f);
+        cache[tableIdx] = (unsigned char*)malloc(240 * 520 * 2);
+        if (pinball::inflate_raw(z, (size_t)n, cache[tableIdx], 240 * 520 * 2) != 240 * 520 * 2) { free(cache[tableIdx]); cache[tableIdx] = nullptr; }
+        free(z);
     }
     return cache[tableIdx];
 }

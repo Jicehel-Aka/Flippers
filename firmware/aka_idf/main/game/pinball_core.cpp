@@ -167,6 +167,7 @@ void Game::startNewGame(uint8_t tableIndex) {
     for (int i = 0; i < MAX_BALLS; i++) balls[i] = {0, 0, 0, 0, false, false, 0.0f, 0.0f};
     spawnBallInShooter(0);
     for (int i = 0; i < MAX_BUMPERS; i++) bumperFlash[i] = 0.0f;
+    huntSlot = 0; huntHits = 0; huntFlash = 0.0f; litBumper = 0;
     score = 0;
     ballsRemaining = 3;
     lockedBalls = 0;
@@ -256,6 +257,42 @@ void Game::stepSubstep(float dt, bool leftHeld, bool rightHeld) {
         Ball& b = balls[i];
         if (!b.active) continue;
 
+        if (b.ramp >= 0) {   // sur une rampe : trajectoire guidee le long des 5 points, sans collisions du plateau
+            const RampDef& rp = t.ramps[b.ramp];
+            float total = 0.0f, segLen[4];
+            for (int k = 0; k < 4; k++) {
+                const float sx = rp.pts[k + 1].x - rp.pts[k].x, sy = rp.pts[k + 1].y - rp.pts[k].y;
+                segLen[k] = sqrtf(sx * sx + sy * sy);
+                total += segLen[k];
+            }
+            b.rampSpeed = maxf(120.0f, b.rampSpeed - 40.0f * dt);   // la bille ralentit un peu en montant
+            b.rampDist += b.rampSpeed * dt;
+            if (b.rampDist >= total) {
+                const Vec2 a = rp.pts[3], e = rp.pts[4];
+                float ddx = e.x - a.x, ddy = e.y - a.y;
+                const float dl = maxf(1.0f, sqrtf(ddx * ddx + ddy * ddy));
+                b.x = e.x; b.y = e.y;
+                b.vx = ddx / dl * 90.0f;
+                if (fabsf(b.vx) < 25.0f) b.vx = (e.x < 112.0f) ? 35.0f : -35.0f;   // jamais vx = 0 (voir plus haut)
+                b.vy = maxf(85.0f, ddy / dl * 140.0f);
+                b.ramp = -1;
+                b.rampCool = 0.75f;
+                b.stuckTime = 0.0f;
+                continue;
+            }
+            float d = b.rampDist;
+            for (int k = 0; k < 4; k++) {
+                if (d <= segLen[k] || k == 3) {
+                    const float u = segLen[k] > 0.0f ? d / segLen[k] : 0.0f;
+                    b.x = rp.pts[k].x + (rp.pts[k + 1].x - rp.pts[k].x) * u;
+                    b.y = rp.pts[k].y + (rp.pts[k + 1].y - rp.pts[k].y) * u;
+                    break;
+                }
+                d -= segLen[k];
+            }
+            continue;
+        }
+
         b.vy += t.gravity * dt;
         b.x += b.vx * dt;
         b.y += b.vy * dt;
@@ -317,7 +354,9 @@ void Game::stepSubstep(float dt, bool leftHeld, bool rightHeld) {
                 b.y = bmp.y + dy * minD;
                 b.vx = dx * 235.0f;
                 b.vy = dy * 235.0f;
-                score += bmp.points;
+                bool golden = t.rotateBumper && k == litBumper % t.bumperCount;
+                score += golden ? bmp.points * 3 : bmp.points;
+                if (golden) litBumper = (uint8_t)((litBumper + 1 + (huntHits++ % 2)) % t.bumperCount);
                 bumperFlash[k] = 0.14f;
                 if (!lockLit && !multiballActive && ++lockHits >= 5) {
                     lockLit = true;
@@ -326,6 +365,41 @@ void Game::stepSubstep(float dt, bool leftHeld, bool rightHeld) {
                 }
                 advanceMission(0);
                 emit(Sfx::Bumper, k);
+                touchHud();
+            }
+        }
+
+        // Cible mobile (WANTED, fantome...) : change d'emplacement a chaque touche
+        if (t.hunt.kind && !b.inShooter) {
+            const HuntDef& hd = t.hunt;
+            const Vec2& sp = hd.slots[huntSlot % hd.slotCount];
+            float dx = b.x - sp.x;
+            float dy = b.y - sp.y;
+            float minD = BALL_RADIUS + hd.radius;
+            float d2 = dx * dx + dy * dy;
+            if (d2 < minD * minD && d2 > 0.001f) {
+                float d = sqrtf(d2);
+                dx /= d;
+                dy /= d;
+                b.x = sp.x + dx * minD;
+                b.y = sp.y + dy * minD;
+                b.vx = dx * 190.0f;
+                b.vy = dy * 190.0f;
+                huntHits++;
+                huntFlash = 0.35f;
+                score += hd.points;
+                uint8_t n = hd.slotCount;
+                huntSlot = hd.sequential
+                    ? (uint8_t)((huntSlot + 1) % n)
+                    : (uint8_t)((huntSlot + 1 + ((huntHits * 7) % (n > 1 ? n - 1 : 1))) % n);
+                if (huntHits % hd.goal == 0) {
+                    score += hd.reward;
+                    bannerf(1.8f, "%s ! +%luK", hd.name, (unsigned long)(hd.reward / 1000));
+                    emit(Sfx::Mission, 1);
+                } else {
+                    emit(Sfx::Bumper, 0);
+                }
+                advanceMission(2);
                 touchHud();
             }
         }
@@ -366,13 +440,13 @@ void Game::stepSubstep(float dt, bool leftHeld, bool rightHeld) {
                 float dy = b.y - entry.y;
                 float rad = t.ramps[r].entryRadius;
                 if (dx * dx + dy * dy < rad * rad) {
-                    b.x = exitP.x;
-                    b.y = exitP.y;
-                    // Jamais vx = 0 : une bille qui retombe pile sur l'extremite d'un mur (sommet d'un
-                    // slingshot, sous la sortie des rampes) y resterait en equilibre indefiniment.
-                    b.vx = (exitP.x < 112.0f) ? -35.0f : 35.0f;
-                    if (exitP.y < 300.0f) b.vx = (exitP.x < 112.0f) ? 35.0f : -35.0f;
-                    b.vy = 95.0f;
+                    // la bille quitte le plateau et suit la rampe point par point (pas de teleportation)
+                    b.ramp = (int8_t)r;
+                    b.rampDist = 0.0f;
+                    b.rampSpeed = clampf(sqrtf(b.vx * b.vx + b.vy * b.vy) * 0.8f, 150.0f, 330.0f);
+                    b.vx = 0.0f;
+                    b.vy = 0.0f;
+                    (void)exitP;
                     b.rampCool = 0.75f;
                     score += t.ramps[r].points;
                     advanceMission(1);
@@ -513,6 +587,7 @@ void Game::updatePlaying(float dt, const Input& in, bool nudgePressed, bool flip
     (void)flipperEdge;
     if (bannerTimer > 0.0f) bannerTimer = maxf(0.0f, bannerTimer - dt);
     for (int i = 0; i < MAX_BUMPERS; i++) if (bumperFlash[i] > 0.0f) bumperFlash[i] = maxf(0.0f, bumperFlash[i] - dt);
+    if (huntFlash > 0.0f) huntFlash = maxf(0.0f, huntFlash - dt);
     for (int i = 0; i < wallCount; i++) if (wallFlash[i] > 0.0f) wallFlash[i] = maxf(0.0f, wallFlash[i] - dt);
     if (rolloverFlash > 0.0f) rolloverFlash = maxf(0.0f, rolloverFlash - dt);
     if (ballSaveTimer > 0.0f) ballSaveTimer = maxf(0.0f, ballSaveTimer - dt);

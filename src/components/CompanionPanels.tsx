@@ -1,6 +1,7 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { Check, Copy, RotateCw } from 'lucide-react';
-import { PINBALL_TABLES } from '../data/tables';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Check, Copy, RotateCw, Sliders, Wrench } from 'lucide-react';
+import { MUSIC_THEME_META } from '../audio/musicEngine';
+import { PINBALL_TABLES, isBuiltinTableId, isTableModified } from '../data/tables';
 import { PinballCanvasRenderer } from '../engine/renderer';
 import {
   InputControlsState,
@@ -9,21 +10,32 @@ import {
   TableThemeId,
   VIEWPORT_HEIGHT,
   WORLD_HEIGHT,
+  resolveDecorTheme,
+  resolveMusicTheme,
 } from '../types/pinball';
 
-export type ActivePanelTab = 'tables' | 'rules' | 'controls' | 'cpp';
+export type ActivePanelTab = 'tables' | 'editor' | 'rules' | 'controls' | 'cpp';
+
+type CategoryFilter = 'all' | 'scifi' | 'adventure' | 'fantasy' | 'custom';
+
+const SCIFI_THEMES = new Set(['aka_esp32', 'space_odyssey', 'star_galaxy', 'classique']);
+const ADVENTURE_THEMES = new Set(['solaire', 'prehistoire', 'farwest', 'train']);
+const FANTASY_THEMES = new Set(['halloween', 'candy', 'bonbons', 'crypte']);
 
 interface CompanionPanelsProps {
   activeTab: ActivePanelTab;
   snapshot: LiveGameSnapshot;
   activeInputs: InputControlsState;
+  catalogVersion: number;
   onSelectTable: (id: TableThemeId) => void;
   onStartGame: () => void;
+  onEditTable: (id: TableThemeId) => void;
   onOpenInScreenMenu: () => void;
 }
 
 interface TablePreviewThumbProps {
   tableId: TableThemeId;
+  catalogVersion: number;
   showCameraWindow: boolean;
   cameraY: number;
   cameraZoom: number;
@@ -31,6 +43,7 @@ interface TablePreviewThumbProps {
 
 const TablePreviewThumb: React.FC<TablePreviewThumbProps> = ({
   tableId,
+  catalogVersion,
   showCameraWindow,
   cameraY,
   cameraZoom,
@@ -43,9 +56,10 @@ const TablePreviewThumb: React.FC<TablePreviewThumbProps> = ({
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
     const renderer = new PinballCanvasRenderer();
     renderer.renderTablePreview(ctx, tableId, canvas.width, canvas.height);
-  }, [tableId]);
+  }, [tableId, catalogVersion]);
 
   useEffect(() => {
     const overlay = overlayRef.current;
@@ -147,11 +161,16 @@ export const CompanionPanels: React.FC<CompanionPanelsProps> = ({
   activeTab,
   snapshot,
   activeInputs,
+  catalogVersion,
   onSelectTable,
   onStartGame,
+  onEditTable,
   onOpenInScreenMenu,
 }) => {
   const [copied, setCopied] = useState(false);
+  const [category, setCategory] = useState<CategoryFilter>('all');
+  const [query, setQuery] = useState('');
+
   const currentTable: PinballTableDef =
     PINBALL_TABLES.find((t) => t.id === snapshot.selectedTableId) ?? PINBALL_TABLES[0];
   const activePlayer = snapshot.players[snapshot.activePlayerIndex];
@@ -159,6 +178,30 @@ export const CompanionPanels: React.FC<CompanionPanelsProps> = ({
   const multiballReadout = snapshot.multiballActive
     ? `MULTIBILLE ×${snapshot.activeBallsCount} ACTIF`
     : `Verrous Multibille : ${snapshot.lockedBallsCount}/2`;
+
+  const hasCustomOrModified = useMemo(
+    () => PINBALL_TABLES.some((t) => !isBuiltinTableId(t.id) || isTableModified(t.id)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [catalogVersion]
+  );
+
+  const filteredTables = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return PINBALL_TABLES.filter((t) => {
+      const decor = resolveDecorTheme(t);
+      if (category === 'scifi' && !SCIFI_THEMES.has(decor)) return false;
+      if (category === 'adventure' && !ADVENTURE_THEMES.has(decor)) return false;
+      if (category === 'fantasy' && !FANTASY_THEMES.has(decor)) return false;
+      if (category === 'custom' && isBuiltinTableId(t.id) && !isTableModified(t.id)) return false;
+      if (!q) return true;
+      return (
+        t.name.toLowerCase().includes(q) ||
+        t.layoutBadge.toLowerCase().includes(q) ||
+        t.description.toLowerCase().includes(q)
+      );
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [category, query, catalogVersion]);
 
   const handleCopyCpp = () => {
     navigator.clipboard?.writeText(AKA_CPP_SKETCH).then(() => {
@@ -177,7 +220,7 @@ export const CompanionPanels: React.FC<CompanionPanelsProps> = ({
               Tableau des scores & Mission active
             </h2>
             <p className="text-xs text-slate-400 mt-0.5 font-mono tabular-nums">
-               Plateau 240×520 px · Bille {snapshot.currentBallNumber}/{snapshot.totalBallsPerGame}{' '}
+              Plateau 240×520 px · Bille {snapshot.currentBallNumber}/{snapshot.totalBallsPerGame}{' '}
               · {currentTable.name}
             </p>
           </div>
@@ -272,21 +315,76 @@ export const CompanionPanels: React.FC<CompanionPanelsProps> = ({
       {/* Contextual Panel Body */}
       {activeTab === 'tables' && (
         <section className="space-y-4">
-          <div>
-            <h2 className="text-lg font-semibold text-white">
-              4 architectures de plateaux uniques (240×520 px)
-            </h2>
-            <p className="text-sm text-slate-400 mt-0.5">
-              Chaque flipper possède sa propre disposition de flippers, rampes moulées ou en rails
-              chromés, formations de bumpers et 3 missions dédiées.
-            </p>
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-semibold text-white">
+                {PINBALL_TABLES.length} plateaux thématiques aux architectures uniques (240×520 px)
+              </h2>
+              <p className="text-xs text-slate-400 mt-0.5">
+                Décors illustrés sur mesure, éléments mécaniques spécialisés, bandes-son longues de
+                32 mesures et configuration ouverte <span className="font-mono">tables.config.json</span>.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => onEditTable(currentTable.id)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#1A202E] border border-slate-700 text-xs font-medium text-amber-300 hover:text-amber-200 hover:border-amber-400/50 transition-colors cursor-pointer shrink-0"
+            >
+              <Sliders className="w-3.5 h-3.5" />
+              <span>Éditeur de tables maison</span>
+            </button>
           </div>
 
-          <div className="grid grid-cols-1 gap-3.5">
-            {PINBALL_TABLES.map((table) => {
+          {/* Barre de recherche & filtres d'univers */}
+          <div className="flex flex-wrap items-center justify-between gap-2.5">
+            <div className="flex flex-wrap items-center gap-1.5 text-xs">
+              {(
+                [
+                  ['all', `Tous (${PINBALL_TABLES.length})`],
+                  ['scifi', 'Sci-Fi & Rétro'],
+                  ['adventure', 'Aventure & Rail'],
+                  ['fantasy', 'Fantaisie & Gothique'],
+                  ...(hasCustomOrModified ? ([['custom', 'Maison / Modifiés']] as const) : []),
+                ] as const
+              ).map(([id, label]) => (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => setCategory(id)}
+                  className={`px-2.5 py-1 rounded-md transition-colors cursor-pointer ${
+                    category === id
+                      ? 'bg-amber-400 text-slate-950 font-semibold'
+                      : 'bg-[#12161F] border border-slate-800 text-slate-300 hover:text-white'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            <input
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Filtrer un plateau…"
+              className="bg-[#12161F] border border-slate-800 rounded-lg px-3 py-1 text-xs text-slate-200 placeholder:text-slate-500 focus:outline-none focus:border-amber-400 w-full sm:w-[180px]"
+            />
+          </div>
+
+          <div className="grid grid-cols-1 gap-3.5 max-h-[640px] overflow-y-auto pr-1">
+            {filteredTables.map((table) => {
               const selected = table.id === snapshot.selectedTableId;
               const hi = snapshot.highScores[table.id] ?? 0;
-              const totalFlippers = 2 + table.extraFlippers.length;
+              const totalFlippers =
+                2 + table.extraFlippers.length + (table.upperPlayfield?.flippers.length ?? 0);
+              const musicInfo = MUSIC_THEME_META[resolveMusicTheme(table)];
+              const statusNote = !isBuiltinTableId(table.id)
+                ? ' · Maison'
+                : isTableModified(table.id)
+                  ? ' · Modifié'
+                  : '';
+
               return (
                 <div
                   key={table.id}
@@ -307,6 +405,7 @@ export const CompanionPanels: React.FC<CompanionPanelsProps> = ({
                 >
                   <TablePreviewThumb
                     tableId={table.id}
+                    catalogVersion={catalogVersion}
                     showCameraWindow={selected && snapshot.gameState === 'PLAYING'}
                     cameraY={snapshot.cameraY}
                     cameraZoom={snapshot.cameraZoom}
@@ -317,14 +416,19 @@ export const CompanionPanels: React.FC<CompanionPanelsProps> = ({
                       <div className="flex items-baseline justify-between gap-2">
                         <h3 className="text-base font-semibold text-white truncate">
                           {table.name}
+                          {statusNote && (
+                            <span className="text-xs font-normal text-amber-300">{statusNote}</span>
+                          )}
                         </h3>
                         <span className="font-mono text-xs text-amber-400 tabular-nums shrink-0">
                           Record {hi.toLocaleString('fr-FR')}
                         </span>
                       </div>
 
-                      <p className="text-xs text-amber-300/90 mt-0.5">{table.layoutBadge}</p>
-                      <p className="text-xs text-slate-300 mt-2 leading-relaxed">
+                      <p className="text-xs text-amber-300/90 mt-0.5">
+                        {table.layoutBadge} · {musicInfo.bpm} BPM
+                      </p>
+                      <p className="text-xs text-slate-300 mt-1.5 leading-relaxed">
                         {table.description}
                       </p>
                     </div>
@@ -332,22 +436,38 @@ export const CompanionPanels: React.FC<CompanionPanelsProps> = ({
                     <div className="pt-2.5 mt-2.5 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-400 font-mono">
                       <span>
                         {totalFlippers} flippers · {table.ramps.length} rampes ·{' '}
-                        {table.bumpers.length} bumpers · 3 missions
+                        {table.bumpers.length + (table.upperPlayfield?.bumpers.length ?? 0)} bumpers
+                        {table.upperPlayfield ? ' · Étage sup.' : ''}
                       </span>
-                      {selected && (
+
+                      <div className="flex items-center gap-3 font-sans">
                         <button
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
-                            onStartGame();
+                            onEditTable(table.id);
                           }}
-                          className="text-amber-300 font-sans font-semibold hover:underline whitespace-nowrap shrink-0 cursor-pointer"
+                          className="flex items-center gap-1 text-slate-400 hover:text-white transition-colors cursor-pointer"
                         >
-                          {snapshot.gameState === 'PLAYING'
-                            ? 'Voir l’aperçu & relancer →'
-                            : 'Jouer sur ce plateau →'}
+                          <Wrench className="w-3 h-3" />
+                          <span>Personnaliser</span>
                         </button>
-                      )}
+
+                        {selected && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onStartGame();
+                            }}
+                            className="text-amber-300 font-semibold hover:underline whitespace-nowrap shrink-0 cursor-pointer"
+                          >
+                            {snapshot.gameState === 'PLAYING'
+                              ? 'Relancer ici →'
+                              : 'Jouer sur ce plateau →'}
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -359,12 +479,21 @@ export const CompanionPanels: React.FC<CompanionPanelsProps> = ({
 
       {activeTab === 'rules' && (
         <section className="rounded-xl bg-[#12161F] border border-slate-800/90 p-5 space-y-5">
-          <div>
-            <p className="text-xs text-amber-400 font-medium">{currentTable.layoutBadge}</p>
-            <h2 className="text-xl font-semibold text-white mt-0.5">{currentTable.name}</h2>
-            <p className="text-sm text-slate-300 mt-1.5 leading-relaxed">
-              {currentTable.description}
-            </p>
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="text-xs text-amber-400 font-medium">{currentTable.layoutBadge}</p>
+              <h2 className="text-xl font-semibold text-white mt-0.5">{currentTable.name}</h2>
+              <p className="text-sm text-slate-300 mt-1.5 leading-relaxed">
+                {currentTable.description}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => onEditTable(currentTable.id)}
+              className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-medium text-amber-300 shrink-0 cursor-pointer"
+            >
+              Éditer ce plateau
+            </button>
           </div>
 
           {/* 3 Table-Specific Missions */}
@@ -412,8 +541,29 @@ export const CompanionPanels: React.FC<CompanionPanelsProps> = ({
           {/* Table Specific Mechanics */}
           <div className="space-y-3 text-xs text-slate-300 leading-relaxed">
             <p>
-              <strong className="text-white">Rampes 3D :</strong> {currentTable.rulesSummary.rampsRule}
+              <strong className="text-white">Ambiance musicale :</strong>{' '}
+              {MUSIC_THEME_META[resolveMusicTheme(currentTable)].style} (
+              {MUSIC_THEME_META[resolveMusicTheme(currentTable)].bpm} BPM, cycle de 32 mesures avec
+              variations continues).
             </p>
+            <p>
+              <strong className="text-white">Rampes 3D continues :</strong>{' '}
+              {currentTable.rulesSummary.rampsRule}
+            </p>
+            {currentTable.upperPlayfield && (
+              <p>
+                <strong className="text-sky-300">
+                  Étage supérieur ({currentTable.upperPlayfield.name}) :
+                </strong>{' '}
+                Niveau surélevé indépendant équipé de son propre mini-flipper et de cibles dédiées ; la bille survole les obstacles du plateau bas avant de redescendre par le rebord ouvert.
+              </p>
+            )}
+            {currentTable.rulesSummary.specialRule && (
+              <p>
+                <strong className="text-amber-300">Décor interactif & spécialité :</strong>{' '}
+                {currentTable.rulesSummary.specialRule}
+              </p>
+            )}
             <p>
               <strong className="text-white">Multibille ×3 & Caméra :</strong>{' '}
               {currentTable.rulesSummary.multiballRule} En Multibille, la caméra suit toujours
@@ -519,9 +669,10 @@ export const CompanionPanels: React.FC<CompanionPanelsProps> = ({
               </h2>
               <p className="text-xs text-slate-400 mt-0.5">
                 Cœur C++ portable à 360 Hz sur <span className="font-mono text-slate-200">gamebuino</span> &{' '}
-                <span className="font-mono text-slate-200">aka_runtime</span> (ESP32-S3), avec les
-                4 plateaux générés depuis <span className="font-mono text-slate-200">src/data/tables.ts</span>{' '}
-                et paquet carte SD <span className="font-mono text-slate-200">AKA-Pinball-sdcard.zip</span>.
+                <span className="font-mono text-slate-200">aka_runtime</span> (ESP32-S3), avec les{' '}
+                {PINBALL_TABLES.length} plateaux générés depuis{' '}
+                <span className="font-mono text-slate-200">src/data/tables.config.json</span> et
+                paquet carte SD <span className="font-mono text-slate-200">AKA-Pinball-sdcard.zip</span>.
               </p>
             </div>
 

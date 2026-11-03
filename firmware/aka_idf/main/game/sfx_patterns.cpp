@@ -123,12 +123,62 @@ void starwars(Pattern& p, Sfx id, uint8_t arg) {
     }
 }
 
+// Specialisations thematiques pour les decors hors Star Wars (bumpers et rampes typés par univers).
+void themed_override(uint8_t decor, Pattern& p, Sfx id, uint8_t arg) {
+    B b{p};
+    const float up = (float)(arg % 6) * 48.0f;
+    if (id == Sfx::Bumper) {
+        switch (decor) {
+            case 4: // Classique : cloche electromecanique
+                b.add(0, 780 + up, 780 + up, 0.85f, 0.05f, 160, WAVE_SINE)
+                 .add(0, 2150 + up * 2.0f, 2150 + up * 2.0f, 0.35f, 0.02f, 65, WAVE_SINE);
+                return;
+            case 5: // Prehistoire : tambour de pierre
+                b.add(0, 240 + up * 0.5f, 68, 0.9f, 0.05f, 115, WAVE_TRIANGLE)
+                 .add(0, 620 + up, 290, 0.45f, 0.02f, 40, WAVE_SINE);
+                return;
+            case 6: // Far West : ricochet western
+                b.add(0, 520 + up, 1280 + up, 0.8f, 0.4f, 35, WAVE_SQUARE)
+                 .add(35, 1280 + up, 240, 0.65f, 0.03f, 100, WAVE_TRIANGLE);
+                return;
+            case 7: // Halloween : orgue diminué
+                b.add(0, 392 + up, 370 + up, 0.55f, 0.04f, 125, WAVE_SQUARE)
+                 .add(0, 554 + up, 520 + up, 0.45f, 0.04f, 125, WAVE_TRIANGLE);
+                return;
+            case 8: // Candy Pop
+            case 9: // Bonbons : bulle acidulee
+                b.add(0, 560 + up, 980 + up, 0.8f, 0.05f, 95, WAVE_SINE)
+                 .add(20, 1120 + up, 1480 + up, 0.45f, 0.02f, 80, WAVE_TRIANGLE);
+                return;
+            case 10: // Train : choc d'acier + vapeur
+                b.add(0, 310 + up * 0.6f, 95, 0.8f, 0.05f, 85, WAVE_SQUARE)
+                 .add(0, 900, 350, 0.38f, 0.02f, 55, WAVE_NOISE);
+                return;
+            case 3:  // Temple Solaire
+            case 11: // Crypte : cristal / cloche de jade
+                b.add(0, 587 + up, 587 + up, 0.82f, 0.05f, 145, WAVE_SINE)
+                 .add(0, 880 + up, 880 + up, 0.45f, 0.03f, 105, WAVE_TRIANGLE);
+                return;
+            default:
+                break;
+        }
+    } else if (id == Sfx::Ramp && decor == 10) {
+        // Double sifflet de locomotive a vapeur
+        b.add(0, 523, 554, 0.6f, 0.1f, 130, WAVE_TRIANGLE)
+         .add(0, 659, 698, 0.5f, 0.1f, 130, WAVE_SINE)
+         .add(160, 554, 554, 0.65f, 0.05f, 220, WAVE_TRIANGLE)
+         .add(160, 698, 698, 0.5f, 0.05f, 220, WAVE_SINE);
+        return;
+    }
+    classic(p, id, arg);
+}
+
 } // namespace
 
 void build_pattern(uint8_t decor, Sfx id, uint8_t arg, Pattern& out) {
     out.count = 0;
     if (decor == 2) starwars(out, id, arg);
-    else classic(out, id, arg);
+    else themed_override(decor % 12, out, id, arg);
 }
 
 } // namespace pinball

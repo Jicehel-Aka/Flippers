@@ -7,13 +7,17 @@ on:
     paths:
       - 'firmware/**'
       - 'scripts/gen-aka-tables.mjs'
+      - 'scripts/gen-aka-art.mjs'
       - 'src/data/tables.ts'
+      - 'src/data/tables.config.json'
       - '.github/workflows/build-aka.yml'
   pull_request:
     paths:
       - 'firmware/**'
       - 'scripts/gen-aka-tables.mjs'
+      - 'scripts/gen-aka-art.mjs'
       - 'src/data/tables.ts'
+      - 'src/data/tables.config.json'
       - '.github/workflows/build-aka.yml'
   workflow_dispatch:
     inputs:

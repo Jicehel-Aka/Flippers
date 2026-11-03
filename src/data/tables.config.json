@@ -1,0 +1,6608 @@
+{
+  "version": 1,
+  "format": "gamebuino-aka-pinball-tables",
+  "playfieldSize": {
+    "width": 240,
+    "height": 520
+  },
+  "tables": [
+    {
+      "id": "aka_esp32",
+      "name": "Gamebuino AKA · ESP32",
+      "subtitle": "Mezzanine JTAG · Puce ESP32 Interactive & Bus SPI",
+      "layoutBadge": "4 Flippers · Étage Carte-Fille & Socket ESP32",
+      "environmentTag": "Électronique Open-Source · Étage Supérieur",
+      "description": "Grimpez la rampe diagonale Bus SPI pour déboucher sur la mezzanine vitrée JTAG en surplomb droit (mini-flipper dédié, cibles SMD et bumpers horloge), ou percutez directement le processeur ESP32-S3 au centre du circuit.",
+      "multiballName": "MULTIBILLE OVERCLOCK",
+      "jackpotName": "SUPER FLASH 240MHz",
+      "skillShotLabel": "BOOTLOADER PARFAIT",
+      "gravity": 322,
+      "palette": {
+        "bgPrimary": "#06142E",
+        "bgSecondary": "#0C2552",
+        "cabinetFrame": "#94A3B8",
+        "cabinetHighlight": "#E2E8F0",
+        "wallMetal": "#94A3B8",
+        "wallHighlight": "#F8FAFC",
+        "accentPrimary": "#38BDF8",
+        "accentSecondary": "#FACC15",
+        "accentWarm": "#EF4444",
+        "flipperTop": "#F8FAFC",
+        "flipperSkirt": "#DC2626",
+        "slingshotMain": "#DC2626",
+        "slingshotAccent": "#FACC15",
+        "hudBg": "#050E21",
+        "hudBorder": "#38BDF8",
+        "hudDigits": "#FACC15",
+        "hudStyle": "CYBER_AKA",
+        "ballTint": "#E2E8F0"
+      },
+      "extraFlippers": [
+        {
+          "id": "aka_mid_left",
+          "side": "LEFT",
+          "zone": "MID",
+          "pivot": {
+            "x": 26,
+            "y": 292
+          },
+          "length": 26,
+          "radius": 3.8,
+          "restAngle": 0.44,
+          "activeAngle": -0.5
+        }
+      ],
+      "beveledHousings": [
+        {
+          "points": [
+            {
+              "x": 9,
+              "y": 262
+            },
+            {
+              "x": 26,
+              "y": 282
+            },
+            {
+              "x": 22,
+              "y": 294
+            },
+            {
+              "x": 9,
+              "y": 290
+            }
+          ],
+          "fillColor": "#1E3A5F"
+        },
+        {
+          "points": [
+            {
+              "x": 108,
+              "y": 168
+            },
+            {
+              "x": 122,
+              "y": 178
+            },
+            {
+              "x": 114,
+              "y": 198
+            },
+            {
+              "x": 98,
+              "y": 186
+            }
+          ],
+          "fillColor": "#1E293B"
+        },
+        {
+          "points": [
+            {
+              "x": 215,
+              "y": 244
+            },
+            {
+              "x": 198,
+              "y": 258
+            },
+            {
+              "x": 198,
+              "y": 294
+            },
+            {
+              "x": 215,
+              "y": 308
+            }
+          ],
+          "fillColor": "#1E3A5F"
+        }
+      ],
+      "bumpers": [
+        {
+          "id": "aka_b1",
+          "x": 52,
+          "y": 98,
+          "radius": 11,
+          "points": 2200,
+          "label": "GEAR ROUGE",
+          "colorStyle": "RED",
+          "iconStyle": "GEAR"
+        },
+        {
+          "id": "aka_b2",
+          "x": 88,
+          "y": 88,
+          "radius": 11,
+          "points": 2200,
+          "label": "GEAR OR",
+          "colorStyle": "GOLD",
+          "iconStyle": "GEAR"
+        },
+        {
+          "id": "aka_b3",
+          "x": 68,
+          "y": 132,
+          "radius": 11,
+          "points": 2500,
+          "label": "CLOCK BUS",
+          "colorStyle": "BLUE",
+          "iconStyle": "CHIP"
+        },
+        {
+          "id": "aka_b4",
+          "x": 46,
+          "y": 172,
+          "radius": 10.5,
+          "points": 2400,
+          "label": "DMA CORE",
+          "colorStyle": "JADE",
+          "iconStyle": "CHIP"
+        }
+      ],
+      "targets": [
+        {
+          "id": "aka_code_0",
+          "bankId": "aka_CODE",
+          "bankRole": "MULTIPLIER",
+          "kind": "DROP",
+          "x1": 61.5,
+          "y1": 228.6,
+          "x2": 70.5,
+          "y2": 223.4,
+          "letter": "C",
+          "lampColor": "#38BDF8",
+          "points": 3600
+        },
+        {
+          "id": "aka_code_1",
+          "bankId": "aka_CODE",
+          "bankRole": "MULTIPLIER",
+          "kind": "DROP",
+          "x1": 73.5,
+          "y1": 221.6,
+          "x2": 82.5,
+          "y2": 216.4,
+          "letter": "P",
+          "lampColor": "#FACC15",
+          "points": 3600
+        },
+        {
+          "id": "aka_code_2",
+          "bankId": "aka_CODE",
+          "bankRole": "MULTIPLIER",
+          "kind": "DROP",
+          "x1": 85.5,
+          "y1": 214.6,
+          "x2": 94.5,
+          "y2": 209.4,
+          "letter": "U",
+          "lampColor": "#EF4444",
+          "points": 3600
+        },
+        {
+          "id": "aka_usb_0",
+          "bankId": "aka_USB",
+          "bankRole": "KICKBACK",
+          "kind": "STANDUP",
+          "x1": 196,
+          "y1": 257,
+          "x2": 196,
+          "y2": 267,
+          "letter": "U",
+          "lampColor": "#FACC15",
+          "points": 3500
+        },
+        {
+          "id": "aka_usb_1",
+          "bankId": "aka_USB",
+          "bankRole": "KICKBACK",
+          "kind": "STANDUP",
+          "x1": 196,
+          "y1": 270,
+          "x2": 196,
+          "y2": 280,
+          "letter": "S",
+          "lampColor": "#EF4444",
+          "points": 3500
+        },
+        {
+          "id": "aka_usb_2",
+          "bankId": "aka_USB",
+          "bankRole": "KICKBACK",
+          "kind": "STANDUP",
+          "x1": 196,
+          "y1": 283,
+          "x2": 196,
+          "y2": 293,
+          "letter": "B",
+          "lampColor": "#38BDF8",
+          "points": 3500
+        }
+      ],
+      "ramps": [
+        {
+          "id": "aka_ramp_spi",
+          "name": "BUS SPI -> ÉTAGE JTAG",
+          "style": "MOLDED_ACRYLIC",
+          "entry": {
+            "x": 64,
+            "y": 348
+          },
+          "entryRadius": 16,
+          "entryDir": {
+            "x": 0.141,
+            "y": -0.99
+          },
+          "exitsToUpperDeck": true,
+          "path": [
+            {
+              "x": 64,
+              "y": 348
+            },
+            {
+              "x": 76,
+              "y": 264
+            },
+            {
+              "x": 114,
+              "y": 162
+            },
+            {
+              "x": 158,
+              "y": 104
+            }
+          ],
+          "points": 22000,
+          "chuteColor": "#38BDF8",
+          "railColor": "#E2E8F0"
+        },
+        {
+          "id": "aka_ramp_wifi",
+          "name": "BOUCLE ANTENNE WI-FI",
+          "style": "WIREFORM_RAIL",
+          "entry": {
+            "x": 162,
+            "y": 348
+          },
+          "entryRadius": 16,
+          "entryDir": {
+            "x": 0.155,
+            "y": -0.988
+          },
+          "path": [
+            {
+              "x": 162,
+              "y": 348
+            },
+            {
+              "x": 178,
+              "y": 246
+            },
+            {
+              "x": 112,
+              "y": 74
+            },
+            {
+              "x": 32,
+              "y": 142
+            },
+            {
+              "x": 34,
+              "y": 264
+            }
+          ],
+          "points": 20000,
+          "chuteColor": "#60A5FA",
+          "railColor": "#FACC15"
+        }
+      ],
+      "rollovers": [
+        {
+          "id": "aka_top_0",
+          "groupId": "TOP_LANES",
+          "x": 54,
+          "y": 52,
+          "radius": 6,
+          "letter": "A",
+          "points": 3500
+        },
+        {
+          "id": "aka_top_1",
+          "groupId": "TOP_LANES",
+          "x": 84,
+          "y": 48,
+          "radius": 6,
+          "letter": "K",
+          "points": 3500
+        },
+        {
+          "id": "aka_top_2",
+          "groupId": "TOP_LANES",
+          "x": 114,
+          "y": 48,
+          "radius": 6,
+          "letter": "A",
+          "points": 3500
+        },
+        {
+          "id": "aka_top_3",
+          "groupId": "TOP_LANES",
+          "x": 144,
+          "y": 52,
+          "radius": 6,
+          "letter": "!",
+          "points": 3500
+        },
+        {
+          "id": "aka_low_0",
+          "groupId": "INLANES",
+          "x": 36,
+          "y": 414,
+          "radius": 5.5,
+          "letter": "0",
+          "points": 2500
+        },
+        {
+          "id": "aka_low_1",
+          "groupId": "INLANES",
+          "x": 190,
+          "y": 414,
+          "radius": 5.5,
+          "letter": "1",
+          "points": 2500
+        }
+      ],
+      "spinners": [
+        {
+          "id": "aka_sp1",
+          "name": "OSCILLATEUR 240MHz",
+          "x": 38,
+          "y": 224,
+          "width": 16,
+          "angle": -0.15,
+          "pointsPerSpin": 950
+        },
+        {
+          "id": "aka_sp2",
+          "name": " PONT SPI",
+          "x": 156,
+          "y": 242,
+          "width": 15,
+          "angle": 0.25,
+          "pointsPerSpin": 950
+        }
+      ],
+      "scoops": [
+        {
+          "id": "aka_lock_boot",
+          "name": "PORT BOOTLOADER",
+          "kind": "UPPER_LOCK",
+          "x": 96,
+          "y": 142,
+          "radius": 9.5,
+          "ejectTo": {
+            "x": 96,
+            "y": 158
+          },
+          "ejectVelocity": {
+            "x": -24,
+            "y": 155
+          },
+          "points": 12000,
+          "color": "#38BDF8"
+        }
+      ],
+      "missions": [
+        {
+          "id": "aka_m1",
+          "title": "BUS SPI RAPIDE",
+          "description": "Franchir 2 rampes pour synchroniser le bus écran",
+          "targetKind": "RAMP",
+          "goal": 2,
+          "rewardPoints": 45000,
+          "accentColor": "#38BDF8"
+        },
+        {
+          "id": "aka_m2",
+          "title": "TEST OSCILLOSCOPE",
+          "description": "Activer 5 engrenages bumpers ou spinners",
+          "targetKind": "BUMPER",
+          "goal": 5,
+          "rewardPoints": 55000,
+          "accentColor": "#22C55E"
+        },
+        {
+          "id": "aka_m3",
+          "title": "FLASH FIRMWARE",
+          "description": "Toucher 4 cibles ou puits pour graver la ROM",
+          "targetKind": "TARGET",
+          "goal": 4,
+          "rewardPoints": 75000,
+          "accentColor": "#FACC15"
+        }
+      ],
+      "extraWalls": [
+        {
+          "x1": 22,
+          "y1": 198,
+          "x2": 34,
+          "y2": 248,
+          "restitution": 0.72
+        }
+      ],
+      "extraPegs": [
+        {
+          "x": 98,
+          "y": 198,
+          "radius": 3.5,
+          "restitution": 0.85
+        },
+        {
+          "x": 146,
+          "y": 312,
+          "radius": 3.5,
+          "restitution": 0.85
+        }
+      ],
+      "missionEmblemPos": {
+        "x": 113,
+        "y": 344
+      },
+      "rulesSummary": {
+        "rampsRule": "La goulotte acrylique Bus SPI hisse la bille sur la mezzanine vitrée Carte-Fille JTAG (niveau supérieur avec son propre mini-flipper), tandis que le rail Wi-Fi alimente le flipper latéral gauche.",
+        "bumpersRule": "Grappe asymétrique de 3 engrenages en haut-gauche + Cœur Wi-Fi central au-dessus de la puce ESP32.",
+        "targetsRule": "Abattez < / > ∞ pour augmenter le Bonus, E-S-P-3 pour déclencher le Multibille et P-W-M pour rallumer les 2 Kickbacks.",
+        "multiballRule": "Verrouillez 2 billes dans le Verrou Bootloader (haut-droite) ou complétez E-S-P-3 pour libérer 3 billes simultanées !",
+        "specialRule": "Percutez le processeur ESP32-S3 au centre du circuit imprimé pour surcadencer le bonus et déclencher des impulsions lumineuses."
+      },
+      "decorTheme": "aka_esp32",
+      "musicTheme": "aka_esp32",
+      "upperPlayfield": {
+        "id": "aka_jtag_deck",
+        "name": "CARTE-FILLE JTAG",
+        "style": "CYBER_GLASS",
+        "bounds": [
+          {
+            "x": 122,
+            "y": 88
+          },
+          {
+            "x": 206,
+            "y": 88
+          },
+          {
+            "x": 206,
+            "y": 214
+          },
+          {
+            "x": 138,
+            "y": 214
+          },
+          {
+            "x": 118,
+            "y": 174
+          }
+        ],
+        "openEdgeIndices": [
+          3
+        ],
+        "flippers": [
+          {
+            "id": "aka_deck_flp",
+            "side": "RIGHT",
+            "zone": "UPPER",
+            "pivot": {
+              "x": 196,
+              "y": 178
+            },
+            "length": 25,
+            "radius": 3.8,
+            "restAngle": 2.7016,
+            "activeAngle": 3.6416
+          }
+        ],
+        "bumpers": [
+          {
+            "id": "aka_ub1",
+            "x": 152,
+            "y": 118,
+            "radius": 9.5,
+            "points": 3200,
+            "label": "XTAL 40M",
+            "colorStyle": "BLUE",
+            "iconStyle": "CHIP"
+          },
+          {
+            "id": "aka_ub2",
+            "x": 184,
+            "y": 126,
+            "radius": 9.5,
+            "points": 3200,
+            "label": "PSRAM 8M",
+            "colorStyle": "GOLD",
+            "iconStyle": "GEAR"
+          }
+        ],
+        "targets": [
+          {
+            "id": "aka_ut_0",
+            "bankId": "aka_JTAG",
+            "bankRole": "JACKPOT_BOOST",
+            "kind": "STANDUP",
+            "x1": 125,
+            "y1": 111,
+            "x2": 125,
+            "y2": 121,
+            "letter": "J",
+            "lampColor": "#38BDF8",
+            "points": 4800
+          },
+          {
+            "id": "aka_ut_1",
+            "bankId": "aka_JTAG",
+            "bankRole": "JACKPOT_BOOST",
+            "kind": "STANDUP",
+            "x1": 125,
+            "y1": 127,
+            "x2": 125,
+            "y2": 137,
+            "letter": "T",
+            "lampColor": "#FACC15",
+            "points": 4800
+          },
+          {
+            "id": "aka_ut_2",
+            "bankId": "aka_JTAG",
+            "bankRole": "JACKPOT_BOOST",
+            "kind": "STANDUP",
+            "x1": 125,
+            "y1": 143,
+            "x2": 125,
+            "y2": 153,
+            "letter": "G",
+            "lampColor": "#22C55E",
+            "points": 4800
+          }
+        ],
+        "rollovers": [
+          {
+            "id": "aka_ur1",
+            "groupId": "MID_ORBITS",
+            "x": 146,
+            "y": 156,
+            "radius": 5.5,
+            "letter": "R",
+            "points": 3200
+          },
+          {
+            "id": "aka_ur2",
+            "groupId": "MID_ORBITS",
+            "x": 172,
+            "y": 156,
+            "radius": 5.5,
+            "letter": "X",
+            "points": 3200
+          }
+        ],
+        "fillColor": "#0B2548",
+        "borderColor": "#38BDF8"
+      },
+      "interactiveToys": [
+        {
+          "id": "aka_chip_core",
+          "name": "PROCESSEUR ESP32-S3",
+          "kind": "BASH_TOY",
+          "visual": "ESP32_CHIP",
+          "x": 113,
+          "y": 280,
+          "radius": 14,
+          "points": 5500,
+          "accentColor": "#38BDF8",
+          "hitsRequired": 4,
+          "rewardPoints": 25000
+        }
+      ]
+    },
+    {
+      "id": "space_odyssey",
+      "name": "Odyssée Spatiale",
+      "subtitle": "Anneau Gravitationnel de Saturne & Conduit Trou de Ver",
+      "layoutBadge": "3 Flippers · Vortex Saturne & Arche Apollo",
+      "environmentTag": "Exploration Spatiale · Gravité Orbitale",
+      "description": "Un plateau asymétrique en orbite : l’anneau de Saturne courbe réellement la trajectoire des billes au centre, un conduit pneumatique Trou de Ver propulse la bille à travers la verrière jusqu’au sas lunaire, et la fronde de Jupiter nourrit le flipper orbital gauche.",
+      "multiballName": "MULTIBILLE APOLLO",
+      "jackpotName": "HYPER-ORBITE SOLAIRE",
+      "skillShotLabel": "INSERTION ORBITALE",
+      "gravity": 318,
+      "palette": {
+        "bgPrimary": "#081642",
+        "bgSecondary": "#132B70",
+        "cabinetFrame": "#94A3B8",
+        "cabinetHighlight": "#F1F5F9",
+        "wallMetal": "#CBD5E1",
+        "wallHighlight": "#FFFFFF",
+        "accentPrimary": "#38BDF8",
+        "accentSecondary": "#FACC15",
+        "accentWarm": "#EF4444",
+        "flipperTop": "#FFFFFF",
+        "flipperSkirt": "#DC2626",
+        "slingshotMain": "#DC2626",
+        "slingshotAccent": "#FACC15",
+        "hudBg": "#091128",
+        "hudBorder": "#3B82F6",
+        "hudDigits": "#EF4444",
+        "hudStyle": "LED_7SEG",
+        "ballTint": "#F1F5F9"
+      },
+      "extraFlippers": [
+        {
+          "id": "spc_orb_left",
+          "side": "LEFT",
+          "zone": "MID",
+          "pivot": {
+            "x": 26,
+            "y": 274
+          },
+          "length": 27,
+          "radius": 3.8,
+          "restAngle": 0.44,
+          "activeAngle": -0.5
+        }
+      ],
+      "beveledHousings": [
+        {
+          "points": [
+            {
+              "x": 9,
+              "y": 244
+            },
+            {
+              "x": 26,
+              "y": 264
+            },
+            {
+              "x": 22,
+              "y": 278
+            },
+            {
+              "x": 9,
+              "y": 274
+            }
+          ],
+          "fillColor": "#1E293B"
+        },
+        {
+          "points": [
+            {
+              "x": 168,
+              "y": 166
+            },
+            {
+              "x": 186,
+              "y": 178
+            },
+            {
+              "x": 176,
+              "y": 216
+            },
+            {
+              "x": 160,
+              "y": 204
+            }
+          ],
+          "fillColor": "#172554"
+        },
+        {
+          "points": [
+            {
+              "x": 215,
+              "y": 288
+            },
+            {
+              "x": 196,
+              "y": 304
+            },
+            {
+              "x": 198,
+              "y": 338
+            },
+            {
+              "x": 215,
+              "y": 350
+            }
+          ],
+          "fillColor": "#1E293B"
+        }
+      ],
+      "bumpers": [
+        {
+          "id": "spc_b1",
+          "x": 64,
+          "y": 92,
+          "radius": 11,
+          "points": 2200,
+          "label": "MERCURE",
+          "colorStyle": "GOLD",
+          "iconStyle": "STAR"
+        },
+        {
+          "id": "spc_b2",
+          "x": 102,
+          "y": 80,
+          "radius": 11.5,
+          "points": 2400,
+          "label": "SOLEIL",
+          "colorStyle": "ORANGE",
+          "iconStyle": "PLANET"
+        },
+        {
+          "id": "spc_b3",
+          "x": 142,
+          "y": 90,
+          "radius": 11,
+          "points": 2200,
+          "label": "MARS",
+          "colorStyle": "RED",
+          "iconStyle": "PLANET"
+        },
+        {
+          "id": "spc_b4",
+          "x": 82,
+          "y": 122,
+          "radius": 10.5,
+          "points": 2300,
+          "label": "NEPTUNE",
+          "colorStyle": "ICE",
+          "iconStyle": "PLANET"
+        },
+        {
+          "id": "spc_b5",
+          "x": 126,
+          "y": 124,
+          "radius": 10.5,
+          "points": 2300,
+          "label": "COMÈTE",
+          "colorStyle": "PURPLE",
+          "iconStyle": "STAR"
+        }
+      ],
+      "targets": [
+        {
+          "id": "spc_apo_0",
+          "bankId": "spc_APOLLO",
+          "bankRole": "MULTIPLIER",
+          "kind": "DROP",
+          "x1": 68.5,
+          "y1": 162,
+          "x2": 79.5,
+          "y2": 162,
+          "letter": "N",
+          "lampColor": "#38BDF8",
+          "points": 3600
+        },
+        {
+          "id": "spc_apo_1",
+          "bankId": "spc_APOLLO",
+          "bankRole": "MULTIPLIER",
+          "kind": "DROP",
+          "x1": 92.5,
+          "y1": 162,
+          "x2": 103.5,
+          "y2": 162,
+          "letter": "A",
+          "lampColor": "#FACC15",
+          "points": 3600
+        },
+        {
+          "id": "spc_apo_2",
+          "bankId": "spc_APOLLO",
+          "bankRole": "MULTIPLIER",
+          "kind": "DROP",
+          "x1": 116.5,
+          "y1": 162,
+          "x2": 127.5,
+          "y2": 162,
+          "letter": "S",
+          "lampColor": "#F97316",
+          "points": 3600
+        },
+        {
+          "id": "spc_apo_3",
+          "bankId": "spc_APOLLO",
+          "bankRole": "MULTIPLIER",
+          "kind": "DROP",
+          "x1": 140.5,
+          "y1": 162,
+          "x2": 151.5,
+          "y2": 162,
+          "letter": "A",
+          "lampColor": "#38BDF8",
+          "points": 3600
+        },
+        {
+          "id": "spc_sol_0",
+          "bankId": "spc_SOLAR",
+          "bankRole": "JACKPOT_BOOST",
+          "kind": "STANDUP",
+          "x1": 156.5,
+          "y1": 171,
+          "x2": 159.5,
+          "y2": 181,
+          "letter": "E",
+          "lampColor": "#FACC15",
+          "points": 3800
+        },
+        {
+          "id": "spc_sol_1",
+          "bankId": "spc_SOLAR",
+          "bankRole": "JACKPOT_BOOST",
+          "kind": "STANDUP",
+          "x1": 153.5,
+          "y1": 184,
+          "x2": 156.5,
+          "y2": 194,
+          "letter": "V",
+          "lampColor": "#38BDF8",
+          "points": 3800
+        },
+        {
+          "id": "spc_sol_2",
+          "bankId": "spc_SOLAR",
+          "bankRole": "JACKPOT_BOOST",
+          "kind": "STANDUP",
+          "x1": 150.5,
+          "y1": 197,
+          "x2": 153.5,
+          "y2": 207,
+          "letter": "A",
+          "lampColor": "#A855F7",
+          "points": 3800
+        }
+      ],
+      "ramps": [
+        {
+          "id": "spc_ramp_apollo",
+          "name": "GRANDE ARCHE APOLLO",
+          "style": "MOLDED_ACRYLIC",
+          "entry": {
+            "x": 56,
+            "y": 348
+          },
+          "entryRadius": 16,
+          "entryDir": {
+            "x": -0.117,
+            "y": -0.993
+          },
+          "path": [
+            {
+              "x": 56,
+              "y": 348
+            },
+            {
+              "x": 40,
+              "y": 212
+            },
+            {
+              "x": 88,
+              "y": 62
+            },
+            {
+              "x": 184,
+              "y": 112
+            },
+            {
+              "x": 190,
+              "y": 256
+            }
+          ],
+          "points": 21000,
+          "chuteColor": "#38BDF8",
+          "railColor": "#F8FAFC"
+        },
+        {
+          "id": "spc_ramp_slingshot",
+          "name": "FRONDE DE JUPITER",
+          "style": "WIREFORM_RAIL",
+          "entry": {
+            "x": 164,
+            "y": 350
+          },
+          "entryRadius": 16,
+          "entryDir": {
+            "x": 0.185,
+            "y": -0.983
+          },
+          "path": [
+            {
+              "x": 164,
+              "y": 350
+            },
+            {
+              "x": 184,
+              "y": 244
+            },
+            {
+              "x": 148,
+              "y": 146
+            },
+            {
+              "x": 58,
+              "y": 154
+            },
+            {
+              "x": 34,
+              "y": 246
+            }
+          ],
+          "points": 20000,
+          "chuteColor": "#A855F7",
+          "railColor": "#FACC15"
+        }
+      ],
+      "rollovers": [
+        {
+          "id": "spc_top_0",
+          "groupId": "TOP_LANES",
+          "x": 62,
+          "y": 48,
+          "radius": 6,
+          "letter": "O",
+          "points": 3500
+        },
+        {
+          "id": "spc_top_1",
+          "groupId": "TOP_LANES",
+          "x": 96,
+          "y": 46,
+          "radius": 6,
+          "letter": "R",
+          "points": 3500
+        },
+        {
+          "id": "spc_top_2",
+          "groupId": "TOP_LANES",
+          "x": 130,
+          "y": 46,
+          "radius": 6,
+          "letter": "B",
+          "points": 3500
+        },
+        {
+          "id": "spc_top_3",
+          "groupId": "TOP_LANES",
+          "x": 164,
+          "y": 48,
+          "radius": 6,
+          "letter": "★",
+          "points": 3500
+        },
+        {
+          "id": "spc_low_0",
+          "groupId": "INLANES",
+          "x": 36,
+          "y": 414,
+          "radius": 5.5,
+          "letter": "◄",
+          "points": 2500
+        },
+        {
+          "id": "spc_low_1",
+          "groupId": "INLANES",
+          "x": 190,
+          "y": 414,
+          "radius": 5.5,
+          "letter": "►",
+          "points": 2500
+        }
+      ],
+      "spinners": [
+        {
+          "id": "spc_sp1",
+          "name": "SONDE VOYAGER",
+          "x": 56,
+          "y": 246,
+          "width": 16,
+          "angle": 0.12,
+          "pointsPerSpin": 950
+        },
+        {
+          "id": "spc_sp2",
+          "name": "PROPULSEUR ION",
+          "x": 168,
+          "y": 274,
+          "width": 16,
+          "angle": -0.18,
+          "pointsPerSpin": 950
+        }
+      ],
+      "scoops": [
+        {
+          "id": "spc_lock_lem",
+          "name": "SAS MODULE LUNAIRE",
+          "kind": "UPPER_LOCK",
+          "x": 182,
+          "y": 122,
+          "radius": 9.5,
+          "ejectTo": {
+            "x": 178,
+            "y": 138
+          },
+          "ejectVelocity": {
+            "x": -34,
+            "y": 155
+          },
+          "points": 12500,
+          "color": "#FACC15"
+        },
+        {
+          "id": "spc_wormhole",
+          "name": "CONDUIT TROU DE VER",
+          "kind": "MID_VUK_TELEPORT",
+          "x": 56,
+          "y": 194,
+          "radius": 9,
+          "ejectTo": {
+            "x": 174,
+            "y": 136
+          },
+          "ejectVelocity": {
+            "x": -30,
+            "y": 150
+          },
+          "points": 9500,
+          "color": "#A855F7"
+        }
+      ],
+      "missions": [
+        {
+          "id": "spc_m1",
+          "title": "MISE EN ORBITE",
+          "description": "Emprunter 2 rampes orbitales avec la fusée",
+          "targetKind": "RAMP",
+          "goal": 2,
+          "rewardPoints": 45000,
+          "accentColor": "#38BDF8"
+        },
+        {
+          "id": "spc_m2",
+          "title": "PLUIE DE MÉTÉORES",
+          "description": "Percuter 6 étoiles dans la constellation centrale",
+          "targetKind": "BUMPER",
+          "goal": 6,
+          "rewardPoints": 60000,
+          "accentColor": "#FACC15"
+        },
+        {
+          "id": "spc_m3",
+          "title": "ARRIMAGE STATION MIR",
+          "description": "Valider 4 cibles spatiales ou sas d’amarrage",
+          "targetKind": "TARGET",
+          "goal": 4,
+          "rewardPoints": 80000,
+          "accentColor": "#EF4444"
+        }
+      ],
+      "extraWalls": [],
+      "extraPegs": [
+        {
+          "x": 74,
+          "y": 282,
+          "radius": 3.5,
+          "restitution": 0.84
+        },
+        {
+          "x": 152,
+          "y": 292,
+          "radius": 3.5,
+          "restitution": 0.84
+        }
+      ],
+      "missionEmblemPos": {
+        "x": 113,
+        "y": 326
+      },
+      "rulesSummary": {
+        "rampsRule": "L’Arche Apollo parcourt toute la voûte orbitale tandis que la Fronde de Jupiter croise au-dessus de Saturne pour servir le flipper orbital gauche.",
+        "bumpersRule": "Constellation centrale de 5 Bumpers Étoiles disposés en diamant autour de la Supernova bleue.",
+        "targetsRule": "Visez M-A-R-S depuis le flipper latéral gauche pour déclencher le Multibille Apollo et N-A-S-A pour monter le Bonus.",
+        "multiballRule": "2 verrous au Sas Station Mir ou la banque M-A-R-S libèrent immédiatement 3 billes simultanées !",
+        "specialRule": "L’anneau gravitationnel de Saturne dévie physiquement les billes au centre, et le conduit transparent Trou de Ver achemine visiblement la bille jusqu’au sas lunaire."
+      },
+      "decorTheme": "space_odyssey",
+      "musicTheme": "space_odyssey",
+      "interactiveToys": [
+        {
+          "id": "spc_saturn_vortex",
+          "name": "ANNEAU DE SATURNE",
+          "kind": "GRAVITY_WELL",
+          "visual": "SATURN_RING",
+          "x": 113,
+          "y": 206,
+          "radius": 24,
+          "points": 3400,
+          "accentColor": "#38BDF8",
+          "hitsRequired": 4,
+          "rewardPoints": 25000
+        }
+      ]
+    },
+    {
+      "id": "star_galaxy",
+      "name": "Star Wars · Yavin",
+      "subtitle": "Tranchée de l’Étoile Noire · Sabres Croisés & Double Assaut Droit",
+      "layoutBadge": "4 Flippers · Double Aile Droite & Réacteur Thermal",
+      "environmentTag": "Space-Opera · Assaut de la Tranchée",
+      "description": "Deux rampes Sabre Sith et Sabre Jedi se croisent en X au-dessus de la tranchée blindée de l’Étoile Noire : visez le couloir central pour frapper le cœur du réacteur thermal, épaulé par deux flippers d’assaut étagés sur le flanc droit.",
+      "multiballName": "ESCADRON ROUGE",
+      "jackpotName": "TORPILLE À PROTONS",
+      "skillShotLabel": "SAUT HYPERESPACE",
+      "gravity": 328,
+      "palette": {
+        "bgPrimary": "#050711",
+        "bgSecondary": "#0D142B",
+        "cabinetFrame": "#64748B",
+        "cabinetHighlight": "#CBD5E1",
+        "wallMetal": "#94A3B8",
+        "wallHighlight": "#F8FAFC",
+        "accentPrimary": "#3B82F6",
+        "accentSecondary": "#EF4444",
+        "accentWarm": "#FFE81F",
+        "flipperTop": "#F8FAFC",
+        "flipperSkirt": "#DC2626",
+        "slingshotMain": "#DC2626",
+        "slingshotAccent": "#3B82F6",
+        "hudBg": "#070912",
+        "hudBorder": "#FFE81F",
+        "hudDigits": "#FFE81F",
+        "hudStyle": "LED_7SEG",
+        "ballTint": "#E2E8F0"
+      },
+      "extraFlippers": [
+        {
+          "id": "sw_wing_hi",
+          "side": "RIGHT",
+          "zone": "UPPER",
+          "pivot": {
+            "x": 198,
+            "y": 224
+          },
+          "length": 24,
+          "radius": 3.8,
+          "restAngle": 2.7016,
+          "activeAngle": 3.6416
+        },
+        {
+          "id": "sw_wing_lo",
+          "side": "RIGHT",
+          "zone": "MID",
+          "pivot": {
+            "x": 198,
+            "y": 314
+          },
+          "length": 26,
+          "radius": 3.8,
+          "restAngle": 2.7016,
+          "activeAngle": 3.6416
+        }
+      ],
+      "beveledHousings": [
+        {
+          "points": [
+            {
+              "x": 74,
+              "y": 196
+            },
+            {
+              "x": 84,
+              "y": 202
+            },
+            {
+              "x": 84,
+              "y": 254
+            },
+            {
+              "x": 74,
+              "y": 260
+            }
+          ],
+          "fillColor": "#334155"
+        },
+        {
+          "points": [
+            {
+              "x": 130,
+              "y": 196
+            },
+            {
+              "x": 140,
+              "y": 202
+            },
+            {
+              "x": 140,
+              "y": 254
+            },
+            {
+              "x": 130,
+              "y": 260
+            }
+          ],
+          "fillColor": "#334155"
+        },
+        {
+          "points": [
+            {
+              "x": 215,
+              "y": 196
+            },
+            {
+              "x": 198,
+              "y": 214
+            },
+            {
+              "x": 202,
+              "y": 226
+            },
+            {
+              "x": 215,
+              "y": 224
+            }
+          ],
+          "fillColor": "#1E293B"
+        },
+        {
+          "points": [
+            {
+              "x": 215,
+              "y": 286
+            },
+            {
+              "x": 198,
+              "y": 304
+            },
+            {
+              "x": 202,
+              "y": 316
+            },
+            {
+              "x": 215,
+              "y": 314
+            }
+          ],
+          "fillColor": "#1E293B"
+        }
+      ],
+      "bumpers": [
+        {
+          "id": "sw_b1",
+          "x": 46,
+          "y": 106,
+          "radius": 11,
+          "points": 2400,
+          "label": "TURBOLASER",
+          "colorStyle": "RED",
+          "iconStyle": "TURRET"
+        },
+        {
+          "id": "sw_b2",
+          "x": 82,
+          "y": 88,
+          "radius": 11,
+          "points": 2400,
+          "label": "TIE ALPHA",
+          "colorStyle": "ICE",
+          "iconStyle": "CREST"
+        },
+        {
+          "id": "sw_b3",
+          "x": 144,
+          "y": 88,
+          "radius": 11,
+          "points": 2400,
+          "label": "RED FIVE",
+          "colorStyle": "GOLD",
+          "iconStyle": "CREST"
+        },
+        {
+          "id": "sw_b4",
+          "x": 46,
+          "y": 156,
+          "radius": 10.5,
+          "points": 2500,
+          "label": "TOUR SUD",
+          "colorStyle": "RED",
+          "iconStyle": "TURRET"
+        }
+      ],
+      "targets": [
+        {
+          "id": "sw_shd_0",
+          "bankId": "sw_SHIELD",
+          "bankRole": "MULTIBALL",
+          "kind": "DROP",
+          "x1": 31.5,
+          "y1": 229,
+          "x2": 28.5,
+          "y2": 239,
+          "letter": "R",
+          "lampColor": "#EF4444",
+          "points": 3800
+        },
+        {
+          "id": "sw_shd_1",
+          "bankId": "sw_SHIELD",
+          "bankRole": "MULTIBALL",
+          "kind": "DROP",
+          "x1": 35.5,
+          "y1": 243,
+          "x2": 32.5,
+          "y2": 253,
+          "letter": "E",
+          "lampColor": "#FACC15",
+          "points": 3800
+        },
+        {
+          "id": "sw_shd_2",
+          "bankId": "sw_SHIELD",
+          "bankRole": "MULTIBALL",
+          "kind": "DROP",
+          "x1": 39.5,
+          "y1": 257,
+          "x2": 36.5,
+          "y2": 267,
+          "letter": "D",
+          "lampColor": "#38BDF8",
+          "points": 3800
+        },
+        {
+          "id": "sw_shd_3",
+          "bankId": "sw_SHIELD",
+          "bankRole": "MULTIBALL",
+          "kind": "DROP",
+          "x1": 43.5,
+          "y1": 271,
+          "x2": 40.5,
+          "y2": 281,
+          "letter": "5",
+          "lampColor": "#22C55E",
+          "points": 3800
+        },
+        {
+          "id": "sw_tr_l",
+          "bankId": "sw_TRENCH",
+          "bankRole": "JACKPOT_BOOST",
+          "kind": "STANDUP",
+          "x1": 72,
+          "y1": 216,
+          "x2": 72,
+          "y2": 238,
+          "letter": "X",
+          "lampColor": "#38BDF8",
+          "points": 4200
+        },
+        {
+          "id": "sw_tr_r",
+          "bankId": "sw_TRENCH",
+          "bankRole": "JACKPOT_BOOST",
+          "kind": "STANDUP",
+          "x1": 142,
+          "y1": 216,
+          "x2": 142,
+          "y2": 238,
+          "letter": "W",
+          "lampColor": "#EF4444",
+          "points": 4200
+        }
+      ],
+      "ramps": [
+        {
+          "id": "sw_saber_sith",
+          "name": "SABRE SITH CROISÉ",
+          "style": "MOLDED_ACRYLIC",
+          "entry": {
+            "x": 56,
+            "y": 350
+          },
+          "entryRadius": 16,
+          "entryDir": {
+            "x": 0.336,
+            "y": -0.942
+          },
+          "path": [
+            {
+              "x": 56,
+              "y": 350
+            },
+            {
+              "x": 86,
+              "y": 266
+            },
+            {
+              "x": 152,
+              "y": 138
+            },
+            {
+              "x": 188,
+              "y": 196
+            }
+          ],
+          "points": 22000,
+          "chuteColor": "#EF4444",
+          "railColor": "#FCA5A5"
+        },
+        {
+          "id": "sw_saber_jedi",
+          "name": "SABRE JEDI CROISÉ",
+          "style": "WIREFORM_RAIL",
+          "entry": {
+            "x": 158,
+            "y": 350
+          },
+          "entryRadius": 16,
+          "entryDir": {
+            "x": -0.302,
+            "y": -0.953
+          },
+          "path": [
+            {
+              "x": 158,
+              "y": 350
+            },
+            {
+              "x": 132,
+              "y": 268
+            },
+            {
+              "x": 68,
+              "y": 126
+            },
+            {
+              "x": 30,
+              "y": 204
+            },
+            {
+              "x": 34,
+              "y": 320
+            }
+          ],
+          "points": 22000,
+          "chuteColor": "#22C55E",
+          "railColor": "#86EFAC"
+        }
+      ],
+      "rollovers": [
+        {
+          "id": "sw_top_0",
+          "groupId": "TOP_LANES",
+          "x": 68,
+          "y": 50,
+          "radius": 6,
+          "letter": "X",
+          "points": 3500
+        },
+        {
+          "id": "sw_top_1",
+          "groupId": "TOP_LANES",
+          "x": 98,
+          "y": 47,
+          "radius": 6,
+          "letter": "W",
+          "points": 3500
+        },
+        {
+          "id": "sw_top_2",
+          "groupId": "TOP_LANES",
+          "x": 128,
+          "y": 47,
+          "radius": 6,
+          "letter": "I",
+          "points": 3500
+        },
+        {
+          "id": "sw_top_3",
+          "groupId": "TOP_LANES",
+          "x": 158,
+          "y": 50,
+          "radius": 6,
+          "letter": "N",
+          "points": 3500
+        },
+        {
+          "id": "sw_low_0",
+          "groupId": "INLANES",
+          "x": 36,
+          "y": 414,
+          "radius": 5.5,
+          "letter": "R",
+          "points": 2500
+        },
+        {
+          "id": "sw_low_1",
+          "groupId": "INLANES",
+          "x": 190,
+          "y": 414,
+          "radius": 5.5,
+          "letter": "5",
+          "points": 2500
+        }
+      ],
+      "spinners": [
+        {
+          "id": "sw_sp1",
+          "name": "COULOIR TIE",
+          "x": 106,
+          "y": 184,
+          "width": 16,
+          "angle": 0,
+          "pointsPerSpin": 1050
+        },
+        {
+          "id": "sw_sp2",
+          "name": "HYPERESPACE",
+          "x": 168,
+          "y": 266,
+          "width": 15,
+          "angle": -0.2,
+          "pointsPerSpin": 950
+        }
+      ],
+      "scoops": [
+        {
+          "id": "sw_lock_hangar",
+          "name": "HANGAR YAVIN IV",
+          "kind": "UPPER_LOCK",
+          "x": 113,
+          "y": 108,
+          "radius": 9.5,
+          "ejectTo": {
+            "x": 113,
+            "y": 126
+          },
+          "ejectVelocity": {
+            "x": -18,
+            "y": 165
+          },
+          "points": 13000,
+          "color": "#22C55E"
+        }
+      ],
+      "missions": [
+        {
+          "id": "gal_m1",
+          "title": "DUEL DE SABRES",
+          "description": "Franchir 2 fois les rampes du Sabre Sith et du Sabre Jedi",
+          "targetKind": "RAMP",
+          "goal": 2,
+          "rewardPoints": 50000,
+          "accentColor": "#EF4444"
+        },
+        {
+          "id": "gal_m2",
+          "title": "DÉFENSE DES TURBOLASERS",
+          "description": "Neutraliser 5 X-Wings, Faucon ou turbolasers (bumpers ou spinners)",
+          "targetKind": "BUMPER",
+          "goal": 5,
+          "rewardPoints": 60000,
+          "accentColor": "#3B82F6"
+        },
+        {
+          "id": "gal_m3",
+          "title": "TRANCHÉE DE L’ÉTOILE NOIRE",
+          "description": "Toucher 4 cibles ou le Conduit Thermique : « Utilise la Force ! »",
+          "targetKind": "TARGET",
+          "goal": 4,
+          "rewardPoints": 85000,
+          "accentColor": "#FACC15"
+        }
+      ],
+      "extraWalls": [],
+      "extraPegs": [
+        {
+          "x": 78,
+          "y": 268,
+          "radius": 3.5,
+          "restitution": 0.85
+        },
+        {
+          "x": 136,
+          "y": 268,
+          "radius": 3.5,
+          "restitution": 0.85
+        }
+      ],
+      "missionEmblemPos": {
+        "x": 108,
+        "y": 326
+      },
+      "rulesSummary": {
+        "rampsRule": "Les deux rampes lumineuses Sabre Sith (rouge) et Sabre Jedi (verte) se croisent en X : le Sabre Sith alimente directement les deux flippers étagés du flanc droit.",
+        "bumpersRule": "X-Wing, Faucon Millenium et Y-Wing en formation d’attaque + 2 turbolasers protégeant le Conduit Thermique.",
+        "targetsRule": "Abattez les S-I-T-H à gauche pour le multiplicateur, X-W-N-G à droite pour l’Escadron Rouge (multibille) et R-2-D pour les 2 Kickbacks. J-E-D-I en haut allume les couloirs.",
+        "multiballRule": "2 tirs dans le Conduit Thermique central ou la banque X-W-N-G lancent l’Escadron Rouge à 3 billes !",
+        "specialRule": "Enfilez la tranchée blindée centrale pour percuter le Réacteur Thermal de l’Étoile Noire et déclencher l’Escadron Rouge."
+      },
+      "decorTheme": "star_galaxy",
+      "musicTheme": "star_galaxy",
+      "interactiveToys": [
+        {
+          "id": "sw_reactor_core",
+          "name": "RÉACTEUR ÉTOILE NOIRE",
+          "kind": "BASH_TOY",
+          "visual": "DEATH_STAR_CORE",
+          "x": 106,
+          "y": 228,
+          "radius": 14,
+          "points": 6500,
+          "accentColor": "#EF4444",
+          "hitsRequired": 4,
+          "rewardPoints": 25000
+        }
+      ]
+    },
+    {
+      "id": "solaire",
+      "name": "Temple Solaire",
+      "subtitle": "Terrasse Haute de Jade · Disque Solaire Aztèque & Serpent Quetzal",
+      "layoutBadge": "4 Flippers · Sanctuaire en Étage & Roue d’Or",
+      "environmentTag": "Cité Précolombienne · Terrasse Supérieure",
+      "description": "La rampe sinueuse Serpent Quetzal grimpe jusqu’au Sanctuaire Haut de Jade bâti en surplomb à gauche (avec son flipper cérémoniel, son autel doré et ses cibles sacrées), tandis que le grand Disque Solaire tourne au cœur de la pyramide.",
+      "multiballName": "ÉCLIPSE MULTIBILLE",
+      "jackpotName": "ZÉNITH IMPÉRIAL D’OR",
+      "skillShotLabel": "ALIGNEMENT SOLAIRE",
+      "gravity": 318,
+      "palette": {
+        "bgPrimary": "#17120E",
+        "bgSecondary": "#261D16",
+        "cabinetFrame": "#B45309",
+        "cabinetHighlight": "#FDE68A",
+        "wallMetal": "#D97706",
+        "wallHighlight": "#FDE68A",
+        "accentPrimary": "#10B981",
+        "accentSecondary": "#F59E0B",
+        "accentWarm": "#EF4444",
+        "flipperTop": "#FEF3C7",
+        "flipperSkirt": "#059669",
+        "slingshotMain": "#B45309",
+        "slingshotAccent": "#10B981",
+        "hudBg": "#100C09",
+        "hudBorder": "#D97706",
+        "hudDigits": "#FBBF24",
+        "hudStyle": "CYBER_AKA",
+        "ballTint": "#FDE68A"
+      },
+      "extraFlippers": [
+        {
+          "id": "sol_terrace_right",
+          "side": "RIGHT",
+          "zone": "MID",
+          "pivot": {
+            "x": 196,
+            "y": 304
+          },
+          "length": 26,
+          "radius": 3.8,
+          "restAngle": 2.7016,
+          "activeAngle": 3.6416
+        }
+      ],
+      "beveledHousings": [
+        {
+          "points": [
+            {
+              "x": 215,
+              "y": 274
+            },
+            {
+              "x": 196,
+              "y": 294
+            },
+            {
+              "x": 200,
+              "y": 308
+            },
+            {
+              "x": 215,
+              "y": 304
+            }
+          ],
+          "fillColor": "#422006"
+        },
+        {
+          "points": [
+            {
+              "x": 24,
+              "y": 266
+            },
+            {
+              "x": 48,
+              "y": 256
+            },
+            {
+              "x": 54,
+              "y": 282
+            },
+            {
+              "x": 28,
+              "y": 294
+            }
+          ],
+          "fillColor": "#365314"
+        },
+        {
+          "points": [
+            {
+              "x": 150,
+              "y": 154
+            },
+            {
+              "x": 168,
+              "y": 164
+            },
+            {
+              "x": 162,
+              "y": 186
+            },
+            {
+              "x": 144,
+              "y": 176
+            }
+          ],
+          "fillColor": "#422006"
+        }
+      ],
+      "bumpers": [
+        {
+          "id": "sol_b1",
+          "x": 138,
+          "y": 88,
+          "radius": 11.5,
+          "points": 2300,
+          "label": "INTI OR",
+          "colorStyle": "GOLD",
+          "iconStyle": "SUN"
+        },
+        {
+          "id": "sol_b2",
+          "x": 176,
+          "y": 100,
+          "radius": 11,
+          "points": 2300,
+          "label": "TOTEM JADE",
+          "colorStyle": "JADE",
+          "iconStyle": "TOTEM"
+        },
+        {
+          "id": "sol_b3",
+          "x": 156,
+          "y": 128,
+          "radius": 10.5,
+          "points": 2400,
+          "label": "QUETZAL",
+          "colorStyle": "ORANGE",
+          "iconStyle": "TOTEM"
+        },
+        {
+          "id": "sol_b4",
+          "x": 82,
+          "y": 262,
+          "radius": 10.5,
+          "points": 2500,
+          "label": "ÉCLIPSE",
+          "colorStyle": "GOLD",
+          "iconStyle": "SUN"
+        }
+      ],
+      "targets": [
+        {
+          "id": "sol_jade_0",
+          "bankId": "sol_JADE",
+          "bankRole": "MULTIPLIER",
+          "kind": "DROP",
+          "x1": 121.5,
+          "y1": 251.5,
+          "x2": 130.5,
+          "y2": 256.5,
+          "letter": "J",
+          "lampColor": "#10B981",
+          "points": 3600
+        },
+        {
+          "id": "sol_jade_1",
+          "bankId": "sol_JADE",
+          "bankRole": "MULTIPLIER",
+          "kind": "DROP",
+          "x1": 134.5,
+          "y1": 258.5,
+          "x2": 143.5,
+          "y2": 263.5,
+          "letter": "A",
+          "lampColor": "#FACC15",
+          "points": 3600
+        },
+        {
+          "id": "sol_jade_2",
+          "bankId": "sol_JADE",
+          "bankRole": "MULTIPLIER",
+          "kind": "DROP",
+          "x1": 147.5,
+          "y1": 265.5,
+          "x2": 156.5,
+          "y2": 270.5,
+          "letter": "D",
+          "lampColor": "#10B981",
+          "points": 3600
+        },
+        {
+          "id": "sol_jade_3",
+          "bankId": "sol_JADE",
+          "bankRole": "MULTIPLIER",
+          "kind": "DROP",
+          "x1": 160.5,
+          "y1": 272.5,
+          "x2": 169.5,
+          "y2": 277.5,
+          "letter": "E",
+          "lampColor": "#F97316",
+          "points": 3600
+        },
+        {
+          "id": "sol_inca_0",
+          "bankId": "sol_INCA",
+          "bankRole": "KICKBACK",
+          "kind": "STANDUP",
+          "x1": 52.5,
+          "y1": 257.5,
+          "x2": 55.5,
+          "y2": 266.5,
+          "letter": "O",
+          "lampColor": "#FACC15",
+          "points": 3500
+        },
+        {
+          "id": "sol_inca_1",
+          "bankId": "sol_INCA",
+          "bankRole": "KICKBACK",
+          "kind": "STANDUP",
+          "x1": 55.5,
+          "y1": 269.5,
+          "x2": 58.5,
+          "y2": 278.5,
+          "letter": "R",
+          "lampColor": "#F97316",
+          "points": 3500
+        },
+        {
+          "id": "sol_inca_2",
+          "bankId": "sol_INCA",
+          "bankRole": "KICKBACK",
+          "kind": "STANDUP",
+          "x1": 58.5,
+          "y1": 281.5,
+          "x2": 61.5,
+          "y2": 290.5,
+          "letter": "!",
+          "lampColor": "#10B981",
+          "points": 3500
+        }
+      ],
+      "ramps": [
+        {
+          "id": "sol_ramp_quetzal",
+          "name": "SERPENT QUETZAL -> ÉTAGE",
+          "style": "MOLDED_ACRYLIC",
+          "entry": {
+            "x": 156,
+            "y": 350
+          },
+          "entryRadius": 16,
+          "entryDir": {
+            "x": -0.214,
+            "y": -0.977
+          },
+          "exitsToUpperDeck": true,
+          "path": [
+            {
+              "x": 156,
+              "y": 350
+            },
+            {
+              "x": 138,
+              "y": 268
+            },
+            {
+              "x": 84,
+              "y": 146
+            },
+            {
+              "x": 52,
+              "y": 102
+            }
+          ],
+          "points": 23000,
+          "chuteColor": "#10B981",
+          "railColor": "#FACC15"
+        },
+        {
+          "id": "sol_ramp_aqueduc",
+          "name": "AQUEDUC D’OR ORIENTAL",
+          "style": "WIREFORM_RAIL",
+          "entry": {
+            "x": 62,
+            "y": 350
+          },
+          "entryRadius": 16,
+          "entryDir": {
+            "x": 0.25,
+            "y": -0.968
+          },
+          "path": [
+            {
+              "x": 62,
+              "y": 350
+            },
+            {
+              "x": 78,
+              "y": 288
+            },
+            {
+              "x": 158,
+              "y": 204
+            },
+            {
+              "x": 194,
+              "y": 138
+            },
+            {
+              "x": 192,
+              "y": 274
+            }
+          ],
+          "points": 20000,
+          "chuteColor": "#F59E0B",
+          "railColor": "#FEF08A"
+        }
+      ],
+      "rollovers": [
+        {
+          "id": "sol_top_0",
+          "groupId": "TOP_LANES",
+          "x": 112,
+          "y": 50,
+          "radius": 6,
+          "letter": "S",
+          "points": 3500
+        },
+        {
+          "id": "sol_top_1",
+          "groupId": "TOP_LANES",
+          "x": 138,
+          "y": 48,
+          "radius": 6,
+          "letter": "O",
+          "points": 3500
+        },
+        {
+          "id": "sol_top_2",
+          "groupId": "TOP_LANES",
+          "x": 164,
+          "y": 48,
+          "radius": 6,
+          "letter": "L",
+          "points": 3500
+        },
+        {
+          "id": "sol_top_3",
+          "groupId": "TOP_LANES",
+          "x": 188,
+          "y": 54,
+          "radius": 6,
+          "letter": "☀",
+          "points": 3500
+        },
+        {
+          "id": "sol_low_0",
+          "groupId": "INLANES",
+          "x": 36,
+          "y": 414,
+          "radius": 5.5,
+          "letter": "◄",
+          "points": 2500
+        },
+        {
+          "id": "sol_low_1",
+          "groupId": "INLANES",
+          "x": 190,
+          "y": 414,
+          "radius": 5.5,
+          "letter": "►",
+          "points": 2500
+        }
+      ],
+      "spinners": [
+        {
+          "id": "sol_sp1",
+          "name": "PORTE DES ANDES",
+          "x": 42,
+          "y": 318,
+          "width": 16,
+          "angle": 0.15,
+          "pointsPerSpin": 950
+        },
+        {
+          "id": "sol_sp2",
+          "name": "SOUFFLE CONDOR",
+          "x": 174,
+          "y": 226,
+          "width": 16,
+          "angle": -0.2,
+          "pointsPerSpin": 950
+        }
+      ],
+      "scoops": [
+        {
+          "id": "sol_lock_cenote",
+          "name": "PUITS DU CÉNOTE SACRÉ",
+          "kind": "UPPER_LOCK",
+          "x": 116,
+          "y": 122,
+          "radius": 9.5,
+          "ejectTo": {
+            "x": 118,
+            "y": 138
+          },
+          "ejectVelocity": {
+            "x": 26,
+            "y": 155
+          },
+          "points": 13000,
+          "color": "#10B981"
+        }
+      ],
+      "missions": [
+        {
+          "id": "sol_m1",
+          "title": "VOIE DE QUETZAL",
+          "description": "Gravir 2 rampes sacrées à travers les terrasses",
+          "targetKind": "RAMP",
+          "goal": 2,
+          "rewardPoints": 45000,
+          "accentColor": "#10B981"
+        },
+        {
+          "id": "sol_m2",
+          "title": "OFFRANDE DES TOTEMS",
+          "description": "Réveiller 6 idoles bumpers de Jade et d’Or",
+          "targetKind": "BUMPER",
+          "goal": 6,
+          "rewardPoints": 60000,
+          "accentColor": "#F59E0B"
+        },
+        {
+          "id": "sol_m3",
+          "title": "RITUEL DU ZÉNITH",
+          "description": "Activer 4 autels cibles ou plonger au Cénoté",
+          "targetKind": "TARGET",
+          "goal": 4,
+          "rewardPoints": 80000,
+          "accentColor": "#FACC15"
+        }
+      ],
+      "extraWalls": [],
+      "extraPegs": [
+        {
+          "x": 88,
+          "y": 224,
+          "radius": 3.5,
+          "restitution": 0.85
+        },
+        {
+          "x": 140,
+          "y": 224,
+          "radius": 3.5,
+          "restitution": 0.85
+        }
+      ],
+      "missionEmblemPos": {
+        "x": 113,
+        "y": 330
+      },
+      "rulesSummary": {
+        "rampsRule": "Le Serpent Quetzal conduit la bille jusqu’au Sanctuaire Haut de Jade (étage supérieur gauche), tandis que l’Aqueduc d’Or déverse la bille sur le flipper oriental.",
+        "bumpersRule": "Deux sanctuaires opposés : 3 Totems d’Émeraude en haut-droite et 3 Idoles d’Or à mi-hauteur gauche.",
+        "targetsRule": "J-A-D-E alimente la terrasse gauche et monte le Bonus ; M-A-Y-A lance l’Éclipse Multibille ; S-O-L allume les 2 boucliers sacrés.",
+        "multiballRule": "Verrouillez 2 billes dans la Crypte de l’Éclipse (haut-gauche) ou complétez M-A-Y-A pour libérer 3 billes d’or !",
+        "specialRule": "Le Disque Solaire aztèque au centre pivote sous l’impact de la bille et redistribue les tirs vers les marches de jade."
+      },
+      "decorTheme": "solaire",
+      "musicTheme": "solaire",
+      "artworkKey": "solaire_temple",
+      "upperPlayfield": {
+        "id": "sol_jade_sanctuary",
+        "name": "SANCTUAIRE DE JADE",
+        "style": "STONE_TERRACE",
+        "bounds": [
+          {
+            "x": 18,
+            "y": 88
+          },
+          {
+            "x": 104,
+            "y": 88
+          },
+          {
+            "x": 108,
+            "y": 170
+          },
+          {
+            "x": 86,
+            "y": 214
+          },
+          {
+            "x": 18,
+            "y": 214
+          }
+        ],
+        "openEdgeIndices": [
+          2
+        ],
+        "flippers": [
+          {
+            "id": "sol_deck_flp",
+            "side": "LEFT",
+            "zone": "UPPER",
+            "pivot": {
+              "x": 28,
+              "y": 178
+            },
+            "length": 25,
+            "radius": 3.8,
+            "restAngle": 0.44,
+            "activeAngle": -0.5
+          }
+        ],
+        "bumpers": [
+          {
+            "id": "sol_ub1",
+            "x": 56,
+            "y": 118,
+            "radius": 10,
+            "points": 3400,
+            "label": "AUTEL D’OR",
+            "colorStyle": "GOLD",
+            "iconStyle": "SUN"
+          }
+        ],
+        "targets": [
+          {
+            "id": "sol_ut_0",
+            "bankId": "sol_ALTAR",
+            "bankRole": "JACKPOT_BOOST",
+            "kind": "STANDUP",
+            "x1": 98,
+            "y1": 107,
+            "x2": 98,
+            "y2": 117,
+            "letter": "S",
+            "lampColor": "#FACC15",
+            "points": 4600
+          },
+          {
+            "id": "sol_ut_1",
+            "bankId": "sol_ALTAR",
+            "bankRole": "JACKPOT_BOOST",
+            "kind": "STANDUP",
+            "x1": 98,
+            "y1": 123,
+            "x2": 98,
+            "y2": 133,
+            "letter": "O",
+            "lampColor": "#10B981",
+            "points": 4600
+          },
+          {
+            "id": "sol_ut_2",
+            "bankId": "sol_ALTAR",
+            "bankRole": "JACKPOT_BOOST",
+            "kind": "STANDUP",
+            "x1": 98,
+            "y1": 139,
+            "x2": 98,
+            "y2": 149,
+            "letter": "L",
+            "lampColor": "#F97316",
+            "points": 4600
+          }
+        ],
+        "rollovers": [
+          {
+            "id": "sol_ur1",
+            "groupId": "MID_ORBITS",
+            "x": 46,
+            "y": 154,
+            "radius": 5.5,
+            "letter": "☀",
+            "points": 3200
+          },
+          {
+            "id": "sol_ur2",
+            "groupId": "MID_ORBITS",
+            "x": 76,
+            "y": 154,
+            "radius": 5.5,
+            "letter": "◆",
+            "points": 3200
+          }
+        ],
+        "fillColor": "#1C2E24",
+        "borderColor": "#10B981"
+      },
+      "interactiveToys": [
+        {
+          "id": "sol_aztec_wheel",
+          "name": "DISQUE DU SOLEIL",
+          "kind": "TURNTABLE",
+          "visual": "SUN_WHEEL",
+          "x": 113,
+          "y": 194,
+          "radius": 19,
+          "points": 3600,
+          "accentColor": "#FACC15",
+          "hitsRequired": 4,
+          "rewardPoints": 25000
+        }
+      ]
+    },
+    {
+      "id": "classique",
+      "name": "Flipper Classique",
+      "subtitle": "Électromécanique 1968 · Couronne à 5 Cabochons & Roto-Cloche Centrale",
+      "layoutBadge": "2 Flippers Pur Rétro · Couronne Royale & Roto-Target",
+      "environmentTag": "Salon d’Arcade 1968 · Pur 2 Flippers",
+      "description": "Fidèle aux grands électromécaniques de 1968 : aucun flipper haut ni caisson latéral moderne, mais une arène centrale grande ouverte dominée par une couronne symétrique de 5 cabochons lumineux, une Roto-Cloche étoilée tournante et des losanges à plots caoutchouc.",
+      "multiballName": "MULTIBILLE JACKPOT",
+      "jackpotName": "SUPER JACKPOT",
+      "skillShotLabel": "TIR PARFAIT",
+      "gravity": 320,
+      "palette": {
+        "bgPrimary": "#0B5563",
+        "bgSecondary": "#1A8A8F",
+        "cabinetFrame": "#B7791F",
+        "cabinetHighlight": "#FEF3C7",
+        "wallMetal": "#CBD5E1",
+        "wallHighlight": "#FFFFFF",
+        "accentPrimary": "#F59E0B",
+        "accentSecondary": "#FDE047",
+        "accentWarm": "#DC2626",
+        "flipperTop": "#FFF7ED",
+        "flipperSkirt": "#B91C1C",
+        "slingshotMain": "#DC2626",
+        "slingshotAccent": "#FDE047",
+        "hudBg": "#1A0709",
+        "hudBorder": "#F59E0B",
+        "hudDigits": "#FDE047",
+        "hudStyle": "LED_7SEG",
+        "ballTint": "#F1F5F9"
+      },
+      "extraFlippers": [],
+      "beveledHousings": [
+        {
+          "points": [
+            {
+              "x": 64,
+              "y": 248
+            },
+            {
+              "x": 76,
+              "y": 266
+            },
+            {
+              "x": 64,
+              "y": 284
+            },
+            {
+              "x": 52,
+              "y": 266
+            }
+          ],
+          "fillColor": "#7C2D12"
+        },
+        {
+          "points": [
+            {
+              "x": 162,
+              "y": 248
+            },
+            {
+              "x": 174,
+              "y": 266
+            },
+            {
+              "x": 162,
+              "y": 284
+            },
+            {
+              "x": 150,
+              "y": 266
+            }
+          ],
+          "fillColor": "#7C2D12"
+        }
+      ],
+      "bumpers": [
+        {
+          "id": "cls_b1",
+          "x": 78,
+          "y": 122,
+          "radius": 11.5,
+          "points": 1000,
+          "label": "1000 ROUGE",
+          "colorStyle": "RED",
+          "iconStyle": "VINTAGE_CAP"
+        },
+        {
+          "id": "cls_b2",
+          "x": 148,
+          "y": 122,
+          "radius": 11.5,
+          "points": 1000,
+          "label": "1000 BLEU",
+          "colorStyle": "BLUE",
+          "iconStyle": "VINTAGE_CAP"
+        },
+        {
+          "id": "cls_b3",
+          "x": 113,
+          "y": 142,
+          "radius": 12.5,
+          "points": 2500,
+          "label": "ROYAL OR",
+          "colorStyle": "GOLD",
+          "iconStyle": "STAR"
+        },
+        {
+          "id": "cls_b4",
+          "x": 82,
+          "y": 168,
+          "radius": 11,
+          "points": 1000,
+          "label": "1000 AMBRE",
+          "colorStyle": "ORANGE",
+          "iconStyle": "VINTAGE_CAP"
+        },
+        {
+          "id": "cls_b5",
+          "x": 144,
+          "y": 168,
+          "radius": 11,
+          "points": 1000,
+          "label": "1000 CRÈME",
+          "colorStyle": "GOLD",
+          "iconStyle": "VINTAGE_CAP"
+        }
+      ],
+      "targets": [
+        {
+          "id": "cls_ace_0",
+          "bankId": "cls_ACES",
+          "bankRole": "MULTIPLIER",
+          "kind": "DROP",
+          "x1": 68.5,
+          "y1": 312,
+          "x2": 79.5,
+          "y2": 312,
+          "letter": "A",
+          "lampColor": "#EF4444",
+          "points": 3000
+        },
+        {
+          "id": "cls_ace_1",
+          "bankId": "cls_ACES",
+          "bankRole": "MULTIPLIER",
+          "kind": "DROP",
+          "x1": 94.5,
+          "y1": 312,
+          "x2": 105.5,
+          "y2": 312,
+          "letter": "K",
+          "lampColor": "#FACC15",
+          "points": 3000
+        },
+        {
+          "id": "cls_ace_2",
+          "bankId": "cls_ACES",
+          "bankRole": "MULTIPLIER",
+          "kind": "DROP",
+          "x1": 120.5,
+          "y1": 312,
+          "x2": 131.5,
+          "y2": 312,
+          "letter": "Q",
+          "lampColor": "#38BDF8",
+          "points": 3000
+        },
+        {
+          "id": "cls_ace_3",
+          "bankId": "cls_ACES",
+          "bankRole": "MULTIPLIER",
+          "kind": "DROP",
+          "x1": 146.5,
+          "y1": 312,
+          "x2": 157.5,
+          "y2": 312,
+          "letter": "J",
+          "lampColor": "#EF4444",
+          "points": 3000
+        },
+        {
+          "id": "cls_st_l",
+          "bankId": "cls_BELLS",
+          "bankRole": "JACKPOT_BOOST",
+          "kind": "STANDUP",
+          "x1": 70,
+          "y1": 254,
+          "x2": 78,
+          "y2": 268,
+          "letter": "7",
+          "lampColor": "#FACC15",
+          "points": 4000
+        },
+        {
+          "id": "cls_st_r",
+          "bankId": "cls_BELLS",
+          "bankRole": "JACKPOT_BOOST",
+          "kind": "STANDUP",
+          "x1": 156,
+          "y1": 254,
+          "x2": 148,
+          "y2": 268,
+          "letter": "7",
+          "lampColor": "#FACC15",
+          "points": 4000
+        }
+      ],
+      "ramps": [
+        {
+          "id": "cls_orbit_left",
+          "name": "COULOIR CHROMÉ GAUCHE",
+          "style": "WIREFORM_RAIL",
+          "entry": {
+            "x": 38,
+            "y": 356
+          },
+          "entryRadius": 16,
+          "entryDir": {
+            "x": -0.122,
+            "y": -0.993
+          },
+          "path": [
+            {
+              "x": 38,
+              "y": 356
+            },
+            {
+              "x": 24,
+              "y": 242
+            },
+            {
+              "x": 32,
+              "y": 124
+            },
+            {
+              "x": 66,
+              "y": 78
+            }
+          ],
+          "points": 15000,
+          "chuteColor": "#F59E0B",
+          "railColor": "#FDE68A"
+        },
+        {
+          "id": "cls_orbit_right",
+          "name": "ARCHE ROYALE AMBRÉE",
+          "style": "MOLDED_ACRYLIC",
+          "entry": {
+            "x": 188,
+            "y": 356
+          },
+          "entryRadius": 16,
+          "entryDir": {
+            "x": 0.105,
+            "y": -0.995
+          },
+          "path": [
+            {
+              "x": 188,
+              "y": 356
+            },
+            {
+              "x": 200,
+              "y": 242
+            },
+            {
+              "x": 192,
+              "y": 124
+            },
+            {
+              "x": 158,
+              "y": 78
+            }
+          ],
+          "points": 15000,
+          "chuteColor": "#EA580C",
+          "railColor": "#Fef3c7"
+        }
+      ],
+      "rollovers": [
+        {
+          "id": "cls_top_0",
+          "groupId": "TOP_LANES",
+          "x": 64,
+          "y": 52,
+          "radius": 6,
+          "letter": "1",
+          "points": 3500
+        },
+        {
+          "id": "cls_top_1",
+          "groupId": "TOP_LANES",
+          "x": 96,
+          "y": 48,
+          "radius": 6,
+          "letter": "9",
+          "points": 3500
+        },
+        {
+          "id": "cls_top_2",
+          "groupId": "TOP_LANES",
+          "x": 130,
+          "y": 48,
+          "radius": 6,
+          "letter": "6",
+          "points": 3500
+        },
+        {
+          "id": "cls_top_3",
+          "groupId": "TOP_LANES",
+          "x": 162,
+          "y": 52,
+          "radius": 6,
+          "letter": "8",
+          "points": 3500
+        },
+        {
+          "id": "cls_low_0",
+          "groupId": "INLANES",
+          "x": 36,
+          "y": 414,
+          "radius": 5.5,
+          "letter": "A",
+          "points": 2500
+        },
+        {
+          "id": "cls_low_1",
+          "groupId": "INLANES",
+          "x": 190,
+          "y": 414,
+          "radius": 5.5,
+          "letter": "B",
+          "points": 2500
+        }
+      ],
+      "spinners": [
+        {
+          "id": "cls_sp1",
+          "name": "TOURNIQUET GAUCHE",
+          "x": 38,
+          "y": 204,
+          "width": 16,
+          "angle": 0,
+          "pointsPerSpin": 1000
+        },
+        {
+          "id": "cls_sp2",
+          "name": "TOURNIQUET DROIT",
+          "x": 188,
+          "y": 204,
+          "width": 16,
+          "angle": 0,
+          "pointsPerSpin": 1000
+        }
+      ],
+      "scoops": [
+        {
+          "id": "cls_saucer_top",
+          "name": " COUPELLE MYSTÈRE HAUTE",
+          "kind": "UPPER_LOCK",
+          "x": 113,
+          "y": 88,
+          "radius": 9.5,
+          "ejectTo": {
+            "x": 113,
+            "y": 104
+          },
+          "ejectVelocity": {
+            "x": 22,
+            "y": 150
+          },
+          "points": 10000,
+          "color": "#FACC15"
+        }
+      ],
+      "missions": [
+        {
+          "id": "cla_m1",
+          "title": "RAMPES X2",
+          "description": "Franchir 2 rampes pour allumer les voyants",
+          "targetKind": "RAMP",
+          "goal": 2,
+          "rewardPoints": 45000,
+          "accentColor": "#F59E0B"
+        },
+        {
+          "id": "cla_m2",
+          "title": "TRIANGLE OR",
+          "description": "Frapper 5 fois les bumpers du triangle",
+          "targetKind": "BUMPER",
+          "goal": 5,
+          "rewardPoints": 55000,
+          "accentColor": "#DC2626"
+        },
+        {
+          "id": "cla_m3",
+          "title": "CIBLES",
+          "description": "Toucher 4 cibles ou puits pour le bonus final",
+          "targetKind": "TARGET",
+          "goal": 4,
+          "rewardPoints": 75000,
+          "accentColor": "#FDE047"
+        }
+      ],
+      "extraWalls": [],
+      "extraPegs": [
+        {
+          "x": 64,
+          "y": 242,
+          "radius": 4,
+          "restitution": 0.88
+        },
+        {
+          "x": 64,
+          "y": 290,
+          "radius": 4,
+          "restitution": 0.88
+        },
+        {
+          "x": 162,
+          "y": 242,
+          "radius": 4,
+          "restitution": 0.88
+        },
+        {
+          "x": 162,
+          "y": 290,
+          "radius": 4,
+          "restitution": 0.88
+        },
+        {
+          "x": 113,
+          "y": 182,
+          "radius": 3.8,
+          "restitution": 0.88
+        }
+      ],
+      "missionEmblemPos": {
+        "x": 113,
+        "y": 350
+      },
+      "rulesSummary": {
+        "rampsRule": "Deux couloirs extérieurs chromés façon flipper de café 1968 renvoient la bille tout en haut vers les couloirs 1-9-6-8 et la couronne royale à 5 cabochons.",
+        "bumpersRule": "Triangle de 3 bumpers rouge, bleu et or sous le verrou central : chaque coup fait grimper le bonus.",
+        "targetsRule": "B-O-N-S augmente le Bonus, J-A-C-K déclenche le Multibille et K-I-C rallume les 2 Kickbacks.",
+        "multiballRule": "Verrouillez 2 billes dans le Verrou Central (en haut) ou complétez J-A-C-K pour libérer 3 billes !",
+        "specialRule": "Faites tournoyer la Roto-Cloche étoilée centrale et abattez le carré d’As A-K-Q-J pour faire carillonner le bonus ×5."
+      },
+      "decorTheme": "classique",
+      "musicTheme": "classique",
+      "interactiveToys": [
+        {
+          "id": "cls_roto_bell",
+          "name": "ROTO-CLOCHE 1000 PTS",
+          "kind": "ROTO_TARGET",
+          "visual": "EM_ROTO_BELL",
+          "x": 113,
+          "y": 214,
+          "radius": 15,
+          "points": 4500,
+          "accentColor": "#EF4444",
+          "hitsRequired": 4,
+          "rewardPoints": 25000
+        }
+      ]
+    },
+    {
+      "id": "prehistoire",
+      "name": "Préhistoire",
+      "subtitle": "Cratère Volcanique Interactif · Nid Jurassique & Piste du Mammouth",
+      "layoutBadge": "3 Flippers · Volcan en Éruption & Nid Gauche",
+      "environmentTag": "Ère Jurassique · Cratère & Mammouths",
+      "description": "Le cratère du volcan tout en haut entre en éruption quand la bille le frappe ! À gauche, un nid encaissé d’œufs de dinosaures fait rebondir la bille à toute vitesse, tandis qu’une coulée de magma traverse le plateau jusqu’au flipper d’os perché sur la falaise droite.",
+      "multiballName": "MULTIBILLE ÉRUPTION",
+      "jackpotName": "SUPER MAMMOUTH",
+      "skillShotLabel": "TIR DE SILEX",
+      "gravity": 322,
+      "palette": {
+        "bgPrimary": "#2A1A0E",
+        "bgSecondary": "#5A3A1C",
+        "cabinetFrame": "#9A6B3A",
+        "cabinetHighlight": "#FDE68A",
+        "wallMetal": "#A8A29E",
+        "wallHighlight": "#F5F5F4",
+        "accentPrimary": "#F97316",
+        "accentSecondary": "#FACC15",
+        "accentWarm": "#DC2626",
+        "flipperTop": "#FEF3C7",
+        "flipperSkirt": "#92400E",
+        "slingshotMain": "#B45309",
+        "slingshotAccent": "#FACC15",
+        "hudBg": "#1C1209",
+        "hudBorder": "#F97316",
+        "hudDigits": "#FDBA74",
+        "hudStyle": "LED_7SEG",
+        "ballTint": "#E7E5E4"
+      },
+      "extraFlippers": [
+        {
+          "id": "pre_cliff_right",
+          "side": "RIGHT",
+          "zone": "MID",
+          "pivot": {
+            "x": 196,
+            "y": 286
+          },
+          "length": 26,
+          "radius": 3.8,
+          "restAngle": 2.7016,
+          "activeAngle": 3.6416
+        }
+      ],
+      "beveledHousings": [
+        {
+          "points": [
+            {
+              "x": 215,
+              "y": 256
+            },
+            {
+              "x": 196,
+              "y": 276
+            },
+            {
+              "x": 200,
+              "y": 290
+            },
+            {
+              "x": 215,
+              "y": 286
+            }
+          ],
+          "fillColor": "#451A03"
+        },
+        {
+          "points": [
+            {
+              "x": 18,
+              "y": 232
+            },
+            {
+              "x": 42,
+              "y": 242
+            },
+            {
+              "x": 36,
+              "y": 266
+            },
+            {
+              "x": 18,
+              "y": 258
+            }
+          ],
+          "fillColor": "#3F2E21"
+        },
+        {
+          "points": [
+            {
+              "x": 138,
+              "y": 174
+            },
+            {
+              "x": 156,
+              "y": 184
+            },
+            {
+              "x": 148,
+              "y": 208
+            },
+            {
+              "x": 132,
+              "y": 196
+            }
+          ],
+          "fillColor": "#57240A"
+        }
+      ],
+      "bumpers": [
+        {
+          "id": "pre_b1",
+          "x": 48,
+          "y": 148,
+          "radius": 11,
+          "points": 2200,
+          "label": "ŒUF REX",
+          "colorStyle": "JADE",
+          "iconStyle": "DINO_EGG"
+        },
+        {
+          "id": "pre_b2",
+          "x": 80,
+          "y": 136,
+          "radius": 11,
+          "points": 2200,
+          "label": "ŒUF AMBRE",
+          "colorStyle": "GOLD",
+          "iconStyle": "DINO_EGG"
+        },
+        {
+          "id": "pre_b3",
+          "x": 62,
+          "y": 184,
+          "radius": 11.5,
+          "points": 2500,
+          "label": "CRÂNE REX",
+          "colorStyle": "ORANGE",
+          "iconStyle": "SKULL"
+        },
+        {
+          "id": "pre_b4",
+          "x": 168,
+          "y": 118,
+          "radius": 11,
+          "points": 2400,
+          "label": "GEYSER FEU",
+          "colorStyle": "RED",
+          "iconStyle": "VOLCANO"
+        }
+      ],
+      "targets": [
+        {
+          "id": "pre_rex_0",
+          "bankId": "pre_TREX",
+          "bankRole": "MULTIPLIER",
+          "kind": "DROP",
+          "x1": 93,
+          "y1": 146,
+          "x2": 103,
+          "y2": 146,
+          "letter": "R",
+          "lampColor": "#F97316",
+          "points": 3600
+        },
+        {
+          "id": "pre_rex_1",
+          "bankId": "pre_TREX",
+          "bankRole": "MULTIPLIER",
+          "kind": "DROP",
+          "x1": 107,
+          "y1": 146,
+          "x2": 117,
+          "y2": 146,
+          "letter": "E",
+          "lampColor": "#FACC15",
+          "points": 3600
+        },
+        {
+          "id": "pre_rex_2",
+          "bankId": "pre_TREX",
+          "bankRole": "MULTIPLIER",
+          "kind": "DROP",
+          "x1": 121,
+          "y1": 146,
+          "x2": 131,
+          "y2": 146,
+          "letter": "X",
+          "lampColor": "#EF4444",
+          "points": 3600
+        },
+        {
+          "id": "pre_lava_0",
+          "bankId": "pre_LAVA",
+          "bankRole": "JACKPOT_BOOST",
+          "kind": "STANDUP",
+          "x1": 126.5,
+          "y1": 177.5,
+          "x2": 129.5,
+          "y2": 186.5,
+          "letter": "F",
+          "lampColor": "#EF4444",
+          "points": 3800
+        },
+        {
+          "id": "pre_lava_1",
+          "bankId": "pre_LAVA",
+          "bankRole": "JACKPOT_BOOST",
+          "kind": "STANDUP",
+          "x1": 123.5,
+          "y1": 189.5,
+          "x2": 126.5,
+          "y2": 198.5,
+          "letter": "E",
+          "lampColor": "#F97316",
+          "points": 3800
+        },
+        {
+          "id": "pre_lava_2",
+          "bankId": "pre_LAVA",
+          "bankRole": "JACKPOT_BOOST",
+          "kind": "STANDUP",
+          "x1": 120.5,
+          "y1": 201.5,
+          "x2": 123.5,
+          "y2": 210.5,
+          "letter": "U",
+          "lampColor": "#FACC15",
+          "points": 3800
+        }
+      ],
+      "ramps": [
+        {
+          "id": "pre_lava_chute",
+          "name": "COULÉE DE MAGMA",
+          "style": "MOLDED_ACRYLIC",
+          "entry": {
+            "x": 64,
+            "y": 348
+          },
+          "entryRadius": 16,
+          "entryDir": {
+            "x": 0.237,
+            "y": -0.972
+          },
+          "path": [
+            {
+              "x": 64,
+              "y": 348
+            },
+            {
+              "x": 84,
+              "y": 266
+            },
+            {
+              "x": 154,
+              "y": 152
+            },
+            {
+              "x": 192,
+              "y": 204
+            },
+            {
+              "x": 192,
+              "y": 260
+            }
+          ],
+          "points": 21000,
+          "chuteColor": "#EA580C",
+          "railColor": "#FDBA74"
+        },
+        {
+          "id": "pre_vine_bridge",
+          "name": "PONT DE LIANES",
+          "style": "WIREFORM_RAIL",
+          "entry": {
+            "x": 162,
+            "y": 350
+          },
+          "entryRadius": 16,
+          "entryDir": {
+            "x": -0.147,
+            "y": -0.989
+          },
+          "path": [
+            {
+              "x": 162,
+              "y": 350
+            },
+            {
+              "x": 148,
+              "y": 256
+            },
+            {
+              "x": 96,
+              "y": 208
+            },
+            {
+              "x": 34,
+              "y": 112
+            },
+            {
+              "x": 32,
+              "y": 214
+            }
+          ],
+          "points": 20000,
+          "chuteColor": "#16A34A",
+          "railColor": "#BBF7D0"
+        }
+      ],
+      "rollovers": [
+        {
+          "id": "pre_top_0",
+          "groupId": "TOP_LANES",
+          "x": 54,
+          "y": 50,
+          "radius": 6,
+          "letter": "L",
+          "points": 3500
+        },
+        {
+          "id": "pre_top_1",
+          "groupId": "TOP_LANES",
+          "x": 84,
+          "y": 46,
+          "radius": 6,
+          "letter": "A",
+          "points": 3500
+        },
+        {
+          "id": "pre_top_2",
+          "groupId": "TOP_LANES",
+          "x": 142,
+          "y": 46,
+          "radius": 6,
+          "letter": "V",
+          "points": 3500
+        },
+        {
+          "id": "pre_top_3",
+          "groupId": "TOP_LANES",
+          "x": 172,
+          "y": 50,
+          "radius": 6,
+          "letter": "E",
+          "points": 3500
+        },
+        {
+          "id": "pre_low_0",
+          "groupId": "INLANES",
+          "x": 36,
+          "y": 414,
+          "radius": 5.5,
+          "letter": "◄",
+          "points": 2500
+        },
+        {
+          "id": "pre_low_1",
+          "groupId": "INLANES",
+          "x": 190,
+          "y": 414,
+          "radius": 5.5,
+          "letter": "►",
+          "points": 2500
+        }
+      ],
+      "spinners": [
+        {
+          "id": "pre_sp1",
+          "name": "FOSSILE AMMONITE",
+          "x": 54,
+          "y": 286,
+          "width": 16,
+          "angle": 0.1,
+          "pointsPerSpin": 950
+        },
+        {
+          "id": "pre_sp2",
+          "name": "SOUFFLE GEYSER",
+          "x": 174,
+          "y": 222,
+          "width": 15,
+          "angle": -0.2,
+          "pointsPerSpin": 950
+        }
+      ],
+      "scoops": [
+        {
+          "id": "pre_tar_pit",
+          "name": "FOSSE D’AMBRE",
+          "kind": "UPPER_LOCK",
+          "x": 172,
+          "y": 168,
+          "radius": 9.5,
+          "ejectTo": {
+            "x": 166,
+            "y": 184
+          },
+          "ejectVelocity": {
+            "x": -34,
+            "y": 155
+          },
+          "points": 12000,
+          "color": "#F59E0B"
+        }
+      ],
+      "missions": [
+        {
+          "id": "pre_m1",
+          "title": "LAVE",
+          "description": "Franchir 2 rampes de lave et de lianes",
+          "targetKind": "RAMP",
+          "goal": 2,
+          "rewardPoints": 45000,
+          "accentColor": "#F97316"
+        },
+        {
+          "id": "pre_m2",
+          "title": "ÉRUPTION",
+          "description": "Frapper 5 fois les roches du volcan",
+          "targetKind": "BUMPER",
+          "goal": 5,
+          "rewardPoints": 55000,
+          "accentColor": "#DC2626"
+        },
+        {
+          "id": "pre_m3",
+          "title": "CHASSE",
+          "description": "Abattre 4 mammouths qui changent de piste",
+          "targetKind": "TARGET",
+          "goal": 4,
+          "rewardPoints": 75000,
+          "accentColor": "#FACC15"
+        }
+      ],
+      "extraWalls": [],
+      "extraPegs": [
+        {
+          "x": 90,
+          "y": 174,
+          "radius": 3.5,
+          "restitution": 0.85
+        },
+        {
+          "x": 122,
+          "y": 286,
+          "radius": 3.5,
+          "restitution": 0.85
+        }
+      ],
+      "missionEmblemPos": {
+        "x": 113,
+        "y": 352
+      },
+      "hunt": {
+        "kind": "MAMMOTH",
+        "name": "PISTE DU MAMMOUTH",
+        "slots": [
+          {
+            "x": 113,
+            "y": 256
+          },
+          {
+            "x": 58,
+            "y": 318
+          },
+          {
+            "x": 154,
+            "y": 306
+          },
+          {
+            "x": 106,
+            "y": 312
+          }
+        ],
+        "radius": 8.5,
+        "points": 4500,
+        "goal": 4,
+        "reward": 40000,
+        "sequential": false,
+        "color": "#F97316"
+      },
+      "rulesSummary": {
+        "rampsRule": "La Coulée de Magma traverse le plateau en diagonale pour déposer la bille sur le flipper d’os de la falaise droite, tandis que le Pont de Lianes plonge dans le nid d’œufs jurassique.",
+        "bumpersRule": "Quatre roches : deux de lave et d’ocre, un œuf de dinosaure et le crâne central.",
+        "targetsRule": "P-I-E-R monte le Bonus, M-A-M-O lance le Multibille, F-E-U rallume les Kickbacks.",
+        "multiballRule": "Verrouillez 2 billes dans la Grotte du Clan ou complétez M-A-M-O pour libérer 3 billes !",
+        "specialRule": "Frappez le Cratère Volcanique tout en haut pour provoquer une éruption explosive, et traquez le Mammouth sur ses 4 pistes."
+      },
+      "decorTheme": "prehistoire",
+      "musicTheme": "prehistoire",
+      "interactiveToys": [
+        {
+          "id": "pre_volcano_crater",
+          "name": "CRATÈRE EN ÉRUPTION",
+          "kind": "BASH_TOY",
+          "visual": "VOLCANO",
+          "x": 113,
+          "y": 92,
+          "radius": 15,
+          "points": 6000,
+          "accentColor": "#F97316",
+          "hitsRequired": 4,
+          "rewardPoints": 25000
+        }
+      ]
+    },
+    {
+      "id": "farwest",
+      "name": "Far West",
+      "subtitle": "Balcon du Saloon en Étage · Portes Battantes & Avis WANTED",
+      "layoutBadge": "3 Flippers · Balcon en Bois & Portes de Saloon",
+      "environmentTag": "Conquête de l’Ouest · Étage Saloon",
+      "description": "Enfoncez les vraies portes battantes du Saloon au centre du village ou empruntez le chevalement Rail de la Mine pour grimper sur le Balcon en bois du Saloon en surplomb droit (équipé d’un flipper Derringer, d’un tonneau de rye et de bouteilles à dégainer).",
+      "multiballName": "MULTIBILLE DUEL",
+      "jackpotName": "JACKPOT DU SHÉRIF",
+      "skillShotLabel": "TIR AU COLT",
+      "gravity": 320,
+      "palette": {
+        "bgPrimary": "#3B1D0A",
+        "bgSecondary": "#7C4A1E",
+        "cabinetFrame": "#B45309",
+        "cabinetHighlight": "#FDE68A",
+        "wallMetal": "#D6A35C",
+        "wallHighlight": "#FFF7ED",
+        "accentPrimary": "#F59E0B",
+        "accentSecondary": "#FDE68A",
+        "accentWarm": "#B91C1C",
+        "flipperTop": "#FFF7ED",
+        "flipperSkirt": "#7C2D12",
+        "slingshotMain": "#9A3412",
+        "slingshotAccent": "#FACC15",
+        "hudBg": "#1F1006",
+        "hudBorder": "#D97706",
+        "hudDigits": "#FCD34D",
+        "hudStyle": "LED_7SEG",
+        "ballTint": "#F5F5F4"
+      },
+      "extraFlippers": [],
+      "beveledHousings": [
+        {
+          "points": [
+            {
+              "x": 18,
+              "y": 214
+            },
+            {
+              "x": 42,
+              "y": 226
+            },
+            {
+              "x": 38,
+              "y": 264
+            },
+            {
+              "x": 18,
+              "y": 254
+            }
+          ],
+          "fillColor": "#7C2D12"
+        },
+        {
+          "points": [
+            {
+              "x": 76,
+              "y": 200
+            },
+            {
+              "x": 88,
+              "y": 206
+            },
+            {
+              "x": 88,
+              "y": 224
+            },
+            {
+              "x": 76,
+              "y": 222
+            }
+          ],
+          "fillColor": "#78350F"
+        },
+        {
+          "points": [
+            {
+              "x": 215,
+              "y": 256
+            },
+            {
+              "x": 196,
+              "y": 270
+            },
+            {
+              "x": 196,
+              "y": 308
+            },
+            {
+              "x": 215,
+              "y": 320
+            }
+          ],
+          "fillColor": "#78350F"
+        }
+      ],
+      "bumpers": [
+        {
+          "id": "fw_b1",
+          "x": 50,
+          "y": 98,
+          "radius": 11,
+          "points": 2200,
+          "label": "SHÉRIF OR",
+          "colorStyle": "GOLD",
+          "iconStyle": "SHERIFF"
+        },
+        {
+          "id": "fw_b2",
+          "x": 88,
+          "y": 90,
+          "radius": 11,
+          "points": 2200,
+          "label": "TONNEAU TNT",
+          "colorStyle": "RED",
+          "iconStyle": "BARREL"
+        },
+        {
+          "id": "fw_b3",
+          "x": 66,
+          "y": 136,
+          "radius": 11,
+          "points": 2400,
+          "label": "CHARIOT",
+          "colorStyle": "ORANGE",
+          "iconStyle": "WHEEL"
+        },
+        {
+          "id": "fw_b4",
+          "x": 46,
+          "y": 174,
+          "radius": 10.5,
+          "points": 2200,
+          "label": "MARSHAL",
+          "colorStyle": "GOLD",
+          "iconStyle": "SHERIFF"
+        }
+      ],
+      "targets": [
+        {
+          "id": "fw_gold_0",
+          "bankId": "fw_BANK",
+          "bankRole": "MULTIPLIER",
+          "kind": "DROP",
+          "x1": 44,
+          "y1": 225.8,
+          "x2": 44,
+          "y2": 234.2,
+          "letter": "G",
+          "lampColor": "#FACC15",
+          "points": 3500
+        },
+        {
+          "id": "fw_gold_1",
+          "bankId": "fw_BANK",
+          "bankRole": "MULTIPLIER",
+          "kind": "DROP",
+          "x1": 43,
+          "y1": 236.8,
+          "x2": 43,
+          "y2": 245.2,
+          "letter": "O",
+          "lampColor": "#F97316",
+          "points": 3500
+        },
+        {
+          "id": "fw_gold_2",
+          "bankId": "fw_BANK",
+          "bankRole": "MULTIPLIER",
+          "kind": "DROP",
+          "x1": 42,
+          "y1": 247.8,
+          "x2": 42,
+          "y2": 256.2,
+          "letter": "L",
+          "lampColor": "#FACC15",
+          "points": 3500
+        },
+        {
+          "id": "fw_gold_3",
+          "bankId": "fw_BANK",
+          "bankRole": "MULTIPLIER",
+          "kind": "DROP",
+          "x1": 41,
+          "y1": 258.8,
+          "x2": 41,
+          "y2": 267.2,
+          "letter": "D",
+          "lampColor": "#EF4444",
+          "points": 3500
+        },
+        {
+          "id": "fw_colt_0",
+          "bankId": "fw_COLT",
+          "bankRole": "KICKBACK",
+          "kind": "STANDUP",
+          "x1": 194,
+          "y1": 269.5,
+          "x2": 194,
+          "y2": 278.5,
+          "letter": "B",
+          "lampColor": "#FACC15",
+          "points": 3600
+        },
+        {
+          "id": "fw_colt_1",
+          "bankId": "fw_COLT",
+          "bankRole": "KICKBACK",
+          "kind": "STANDUP",
+          "x1": 194,
+          "y1": 281.5,
+          "x2": 194,
+          "y2": 290.5,
+          "letter": "A",
+          "lampColor": "#EF4444",
+          "points": 3600
+        },
+        {
+          "id": "fw_colt_2",
+          "bankId": "fw_COLT",
+          "bankRole": "KICKBACK",
+          "kind": "STANDUP",
+          "x1": 194,
+          "y1": 293.5,
+          "x2": 194,
+          "y2": 302.5,
+          "letter": "N",
+          "lampColor": "#22C55E",
+          "points": 3600
+        }
+      ],
+      "ramps": [
+        {
+          "id": "fw_mine_trestle",
+          "name": "RAIL DE LA MINE -> BALCON",
+          "style": "WIREFORM_RAIL",
+          "entry": {
+            "x": 58,
+            "y": 348
+          },
+          "entryRadius": 16,
+          "entryDir": {
+            "x": 0.196,
+            "y": -0.981
+          },
+          "exitsToUpperDeck": true,
+          "path": [
+            {
+              "x": 58,
+              "y": 348
+            },
+            {
+              "x": 74,
+              "y": 268
+            },
+            {
+              "x": 116,
+              "y": 162
+            },
+            {
+              "x": 158,
+              "y": 108
+            }
+          ],
+          "points": 22000,
+          "chuteColor": "#D97706",
+          "railColor": "#FDE68A"
+        },
+        {
+          "id": "fw_stagecoach",
+          "name": "PISTE DE LA DILIGENCE",
+          "style": "MOLDED_ACRYLIC",
+          "entry": {
+            "x": 166,
+            "y": 350
+          },
+          "entryRadius": 16,
+          "entryDir": {
+            "x": 0.188,
+            "y": -0.982
+          },
+          "path": [
+            {
+              "x": 166,
+              "y": 350
+            },
+            {
+              "x": 184,
+              "y": 256
+            },
+            {
+              "x": 116,
+              "y": 74
+            },
+            {
+              "x": 30,
+              "y": 128
+            },
+            {
+              "x": 32,
+              "y": 292
+            }
+          ],
+          "points": 20000,
+          "chuteColor": "#EA580C",
+          "railColor": "#FEF3C7"
+        }
+      ],
+      "rollovers": [
+        {
+          "id": "fw_top_0",
+          "groupId": "TOP_LANES",
+          "x": 54,
+          "y": 50,
+          "radius": 6,
+          "letter": "W",
+          "points": 3500
+        },
+        {
+          "id": "fw_top_1",
+          "groupId": "TOP_LANES",
+          "x": 86,
+          "y": 47,
+          "radius": 6,
+          "letter": "E",
+          "points": 3500
+        },
+        {
+          "id": "fw_top_2",
+          "groupId": "TOP_LANES",
+          "x": 118,
+          "y": 47,
+          "radius": 6,
+          "letter": "S",
+          "points": 3500
+        },
+        {
+          "id": "fw_top_3",
+          "groupId": "TOP_LANES",
+          "x": 150,
+          "y": 50,
+          "radius": 6,
+          "letter": "T",
+          "points": 3500
+        },
+        {
+          "id": "fw_low_0",
+          "groupId": "INLANES",
+          "x": 36,
+          "y": 414,
+          "radius": 5.5,
+          "letter": "★",
+          "points": 2500
+        },
+        {
+          "id": "fw_low_1",
+          "groupId": "INLANES",
+          "x": 190,
+          "y": 414,
+          "radius": 5.5,
+          "letter": "$",
+          "points": 2500
+        }
+      ],
+      "spinners": [
+        {
+          "id": "fw_sp1",
+          "name": "ÉOLIENNE DU RANCH",
+          "x": 52,
+          "y": 300,
+          "width": 16,
+          "angle": -0.1,
+          "pointsPerSpin": 950
+        },
+        {
+          "id": "fw_sp2",
+          "name": "COL DU CANYON",
+          "x": 162,
+          "y": 252,
+          "width": 16,
+          "angle": 0.18,
+          "pointsPerSpin": 950
+        }
+      ],
+      "scoops": [
+        {
+          "id": "fw_bank_vault",
+          "name": "COFFRE DE LA BANQUE",
+          "kind": "UPPER_LOCK",
+          "x": 98,
+          "y": 144,
+          "radius": 9.5,
+          "ejectTo": {
+            "x": 98,
+            "y": 160
+          },
+          "ejectVelocity": {
+            "x": -20,
+            "y": 155
+          },
+          "points": 12500,
+          "color": "#FACC15"
+        }
+      ],
+      "missions": [
+        {
+          "id": "far_m1",
+          "title": "MINE D’OR",
+          "description": "Franchir 2 rampes pour rejoindre la mine",
+          "targetKind": "RAMP",
+          "goal": 2,
+          "rewardPoints": 45000,
+          "accentColor": "#FACC15"
+        },
+        {
+          "id": "far_m2",
+          "title": "COUPS DE FEU",
+          "description": "Frapper 5 fois les bumpers du saloon",
+          "targetKind": "BUMPER",
+          "goal": 5,
+          "rewardPoints": 55000,
+          "accentColor": "#DC2626"
+        },
+        {
+          "id": "far_m3",
+          "title": "BRIGADE",
+          "description": "Abattre 4 bandits WANTED qui changent de place",
+          "targetKind": "TARGET",
+          "goal": 4,
+          "rewardPoints": 75000,
+          "accentColor": "#F59E0B"
+        }
+      ],
+      "extraWalls": [],
+      "extraPegs": [
+        {
+          "x": 138,
+          "y": 214,
+          "radius": 3.5,
+          "restitution": 0.85
+        }
+      ],
+      "missionEmblemPos": {
+        "x": 113,
+        "y": 348
+      },
+      "hunt": {
+        "kind": "WANTED",
+        "name": "AVIS DE RECHERCHE",
+        "slots": [
+          {
+            "x": 113,
+            "y": 274
+          },
+          {
+            "x": 84,
+            "y": 316
+          },
+          {
+            "x": 142,
+            "y": 306
+          },
+          {
+            "x": 148,
+            "y": 266
+          },
+          {
+            "x": 76,
+            "y": 276
+          }
+        ],
+        "radius": 8,
+        "points": 4500,
+        "goal": 5,
+        "reward": 50000,
+        "sequential": false,
+        "color": "#F59E0B"
+      },
+      "rulesSummary": {
+        "rampsRule": "Le chevalement Rail de la Mine hisse la bille sur le Balcon en bois du Saloon (étage supérieur droit), tandis que la Piste de la Diligence contourne tout le canyon.",
+        "bumpersRule": "Trois bumpers alignés devant le saloon : tonneau, étoile du shérif et fer à cheval, plus l’enseigne centrale.",
+        "targetsRule": "S-A-L-O monte le Bonus, D-U-E-L lance le Multibille, O-R rallume les Kickbacks.",
+        "multiballRule": "Verrouillez 2 billes dans le Coffre de la Banque ou complétez D-U-E-L pour libérer 3 billes !",
+        "specialRule": "Traversez à pleine vitesse les Portes Battantes du Saloon au centre du plateau, dégommez les bouteilles sur le balcon et capturez les 5 hors-la-loi WANTED."
+      },
+      "decorTheme": "farwest",
+      "musicTheme": "farwest",
+      "upperPlayfield": {
+        "id": "fw_saloon_balcony",
+        "name": "BALCON DU SALOON",
+        "style": "WOOD_BALCONY",
+        "bounds": [
+          {
+            "x": 124,
+            "y": 94
+          },
+          {
+            "x": 206,
+            "y": 94
+          },
+          {
+            "x": 206,
+            "y": 220
+          },
+          {
+            "x": 140,
+            "y": 220
+          },
+          {
+            "x": 120,
+            "y": 180
+          }
+        ],
+        "openEdgeIndices": [
+          3
+        ],
+        "flippers": [
+          {
+            "id": "fw_balcony_flp",
+            "side": "RIGHT",
+            "zone": "UPPER",
+            "pivot": {
+              "x": 196,
+              "y": 184
+            },
+            "length": 25,
+            "radius": 3.8,
+            "restAngle": 2.7016,
+            "activeAngle": 3.6416
+          }
+        ],
+        "bumpers": [
+          {
+            "id": "fw_ub1",
+            "x": 162,
+            "y": 124,
+            "radius": 10,
+            "points": 3200,
+            "label": "WHISKEY RYE",
+            "colorStyle": "GOLD",
+            "iconStyle": "BARREL"
+          }
+        ],
+        "targets": [
+          {
+            "id": "fw_ut_0",
+            "bankId": "fw_BOTTLES",
+            "bankRole": "JACKPOT_BOOST",
+            "kind": "DROP",
+            "x1": 128,
+            "y1": 113,
+            "x2": 128,
+            "y2": 123,
+            "letter": "R",
+            "lampColor": "#22C55E",
+            "points": 4500
+          },
+          {
+            "id": "fw_ut_1",
+            "bankId": "fw_BOTTLES",
+            "bankRole": "JACKPOT_BOOST",
+            "kind": "DROP",
+            "x1": 128,
+            "y1": 129,
+            "x2": 128,
+            "y2": 139,
+            "letter": "Y",
+            "lampColor": "#FACC15",
+            "points": 4500
+          },
+          {
+            "id": "fw_ut_2",
+            "bankId": "fw_BOTTLES",
+            "bankRole": "JACKPOT_BOOST",
+            "kind": "DROP",
+            "x1": 128,
+            "y1": 145,
+            "x2": 128,
+            "y2": 155,
+            "letter": "E",
+            "lampColor": "#F97316",
+            "points": 4500
+          }
+        ],
+        "rollovers": [
+          {
+            "id": "fw_ur1",
+            "groupId": "MID_ORBITS",
+            "x": 148,
+            "y": 160,
+            "radius": 5.5,
+            "letter": "★",
+            "points": 3000
+          },
+          {
+            "id": "fw_ur2",
+            "groupId": "MID_ORBITS",
+            "x": 176,
+            "y": 160,
+            "radius": 5.5,
+            "letter": "$",
+            "points": 3000
+          }
+        ],
+        "fillColor": "#451A03",
+        "borderColor": "#F59E0B"
+      },
+      "interactiveToys": [
+        {
+          "id": "fw_saloon_doors",
+          "name": "PORTES DU SALOON",
+          "kind": "SWING_DOORS",
+          "visual": "SALOON_DOORS",
+          "x": 113,
+          "y": 212,
+          "radius": 16,
+          "points": 4000,
+          "accentColor": "#F59E0B",
+          "hitsRequired": 4,
+          "rewardPoints": 25000
+        }
+      ]
+    },
+    {
+      "id": "halloween",
+      "name": "Halloween",
+      "subtitle": "Galerie Gothique du Manoir · Roi Citrouille & Fantômes Errants",
+      "layoutBadge": "3 Flippers · Galerie Hantée & Citrouille Géante",
+      "environmentTag": "Nuit d’Halloween · Étage du Manoir",
+      "description": "Grimpez le grand Escalier du Manoir pour accéder à la Galerie Hantée en surplomb gauche (dotée de son flipper spectral, de chauves-souris et du grimoire HEX), pendant que le Roi Citrouille garde le bas du cimetière en crachant des éclairs ambrés.",
+      "multiballName": "MULTIBILLE NUIT NOIRE",
+      "jackpotName": "SUPER CITROUILLE",
+      "skillShotLabel": "TIR SORCIÈRE",
+      "gravity": 318,
+      "palette": {
+        "bgPrimary": "#12081F",
+        "bgSecondary": "#2D1248",
+        "cabinetFrame": "#7C3AED",
+        "cabinetHighlight": "#E9D5FF",
+        "wallMetal": "#A78BFA",
+        "wallHighlight": "#F5F3FF",
+        "accentPrimary": "#F97316",
+        "accentSecondary": "#A3E635",
+        "accentWarm": "#DC2626",
+        "flipperTop": "#FFEDD5",
+        "flipperSkirt": "#6D28D9",
+        "slingshotMain": "#EA580C",
+        "slingshotAccent": "#A3E635",
+        "hudBg": "#0C0614",
+        "hudBorder": "#F97316",
+        "hudDigits": "#A3E635",
+        "hudStyle": "CYBER_AKA",
+        "ballTint": "#EDE9FE"
+      },
+      "extraFlippers": [],
+      "beveledHousings": [
+        {
+          "points": [
+            {
+              "x": 24,
+              "y": 262
+            },
+            {
+              "x": 44,
+              "y": 254
+            },
+            {
+              "x": 52,
+              "y": 286
+            },
+            {
+              "x": 30,
+              "y": 296
+            }
+          ],
+          "fillColor": "#3B0764"
+        },
+        {
+          "points": [
+            {
+              "x": 215,
+              "y": 258
+            },
+            {
+              "x": 194,
+              "y": 272
+            },
+            {
+              "x": 194,
+              "y": 308
+            },
+            {
+              "x": 215,
+              "y": 320
+            }
+          ],
+          "fillColor": "#3B0764"
+        }
+      ],
+      "bumpers": [
+        {
+          "id": "hal_b1",
+          "x": 142,
+          "y": 92,
+          "radius": 11,
+          "points": 2300,
+          "label": "JACK FEU",
+          "colorStyle": "ORANGE",
+          "iconStyle": "PUMPKIN"
+        },
+        {
+          "id": "hal_b2",
+          "x": 180,
+          "y": 106,
+          "radius": 11,
+          "points": 2300,
+          "label": "VAMPIRE",
+          "colorStyle": "PURPLE",
+          "iconStyle": "BAT"
+        },
+        {
+          "id": "hal_b3",
+          "x": 158,
+          "y": 138,
+          "radius": 11,
+          "points": 2400,
+          "label": "CRÂNE MAUDIT",
+          "colorStyle": "JADE",
+          "iconStyle": "SKULL"
+        },
+        {
+          "id": "hal_b4",
+          "x": 184,
+          "y": 170,
+          "radius": 10.5,
+          "points": 2300,
+          "label": "LANTERNE",
+          "colorStyle": "ORANGE",
+          "iconStyle": "PUMPKIN"
+        }
+      ],
+      "targets": [
+        {
+          "id": "hal_boo_0",
+          "bankId": "hal_BOO",
+          "bankRole": "MULTIPLIER",
+          "kind": "DROP",
+          "x1": 109,
+          "y1": 196.2,
+          "x2": 119,
+          "y2": 199.8,
+          "letter": "B",
+          "lampColor": "#F97316",
+          "points": 3600
+        },
+        {
+          "id": "hal_boo_1",
+          "bankId": "hal_BOO",
+          "bankRole": "MULTIPLIER",
+          "kind": "DROP",
+          "x1": 123,
+          "y1": 201.2,
+          "x2": 133,
+          "y2": 204.8,
+          "letter": "O",
+          "lampColor": "#A855F7",
+          "points": 3600
+        },
+        {
+          "id": "hal_boo_2",
+          "bankId": "hal_BOO",
+          "bankRole": "MULTIPLIER",
+          "kind": "DROP",
+          "x1": 137,
+          "y1": 206.2,
+          "x2": 147,
+          "y2": 209.8,
+          "letter": "O",
+          "lampColor": "#22C55E",
+          "points": 3600
+        },
+        {
+          "id": "hal_boo_3",
+          "bankId": "hal_BOO",
+          "bankRole": "MULTIPLIER",
+          "kind": "DROP",
+          "x1": 151,
+          "y1": 211.2,
+          "x2": 161,
+          "y2": 214.8,
+          "letter": "!",
+          "lampColor": "#F97316",
+          "points": 3600
+        },
+        {
+          "id": "hal_rip_0",
+          "bankId": "hal_CRYPT",
+          "bankRole": "KICKBACK",
+          "kind": "STANDUP",
+          "x1": 192,
+          "y1": 271.5,
+          "x2": 192,
+          "y2": 280.5,
+          "letter": "R",
+          "lampColor": "#22C55E",
+          "points": 3500
+        },
+        {
+          "id": "hal_rip_1",
+          "bankId": "hal_CRYPT",
+          "bankRole": "KICKBACK",
+          "kind": "STANDUP",
+          "x1": 192,
+          "y1": 283.5,
+          "x2": 192,
+          "y2": 292.5,
+          "letter": "I",
+          "lampColor": "#A855F7",
+          "points": 3500
+        },
+        {
+          "id": "hal_rip_2",
+          "bankId": "hal_CRYPT",
+          "bankRole": "KICKBACK",
+          "kind": "STANDUP",
+          "x1": 192,
+          "y1": 295.5,
+          "x2": 192,
+          "y2": 304.5,
+          "letter": "P",
+          "lampColor": "#F97316",
+          "points": 3500
+        }
+      ],
+      "ramps": [
+        {
+          "id": "hal_manor_stairs",
+          "name": "ESCALIER DU MANOIR -> ÉTAGE",
+          "style": "MOLDED_ACRYLIC",
+          "entry": {
+            "x": 162,
+            "y": 350
+          },
+          "entryRadius": 16,
+          "entryDir": {
+            "x": -0.164,
+            "y": -0.986
+          },
+          "exitsToUpperDeck": true,
+          "path": [
+            {
+              "x": 162,
+              "y": 350
+            },
+            {
+              "x": 148,
+              "y": 266
+            },
+            {
+              "x": 92,
+              "y": 152
+            },
+            {
+              "x": 52,
+              "y": 106
+            }
+          ],
+          "points": 23000,
+          "chuteColor": "#9333EA",
+          "railColor": "#E9D5FF"
+        },
+        {
+          "id": "hal_spectral_mist",
+          "name": "VOLUTE DE BRUME SPECTRALE",
+          "style": "WIREFORM_RAIL",
+          "entry": {
+            "x": 64,
+            "y": 350
+          },
+          "entryRadius": 16,
+          "entryDir": {
+            "x": 0.141,
+            "y": -0.99
+          },
+          "path": [
+            {
+              "x": 64,
+              "y": 350
+            },
+            {
+              "x": 76,
+              "y": 266
+            },
+            {
+              "x": 122,
+              "y": 74
+            },
+            {
+              "x": 196,
+              "y": 132
+            },
+            {
+              "x": 192,
+              "y": 244
+            }
+          ],
+          "points": 20000,
+          "chuteColor": "#F97316",
+          "railColor": "#FDE047"
+        }
+      ],
+      "rollovers": [
+        {
+          "id": "hal_top_0",
+          "groupId": "TOP_LANES",
+          "x": 108,
+          "y": 50,
+          "radius": 6,
+          "letter": "L",
+          "points": 3500
+        },
+        {
+          "id": "hal_top_1",
+          "groupId": "TOP_LANES",
+          "x": 134,
+          "y": 47,
+          "radius": 6,
+          "letter": "U",
+          "points": 3500
+        },
+        {
+          "id": "hal_top_2",
+          "groupId": "TOP_LANES",
+          "x": 160,
+          "y": 47,
+          "radius": 6,
+          "letter": "N",
+          "points": 3500
+        },
+        {
+          "id": "hal_top_3",
+          "groupId": "TOP_LANES",
+          "x": 186,
+          "y": 52,
+          "radius": 6,
+          "letter": "E",
+          "points": 3500
+        },
+        {
+          "id": "hal_low_0",
+          "groupId": "INLANES",
+          "x": 36,
+          "y": 414,
+          "radius": 5.5,
+          "letter": "◄",
+          "points": 2500
+        },
+        {
+          "id": "hal_low_1",
+          "groupId": "INLANES",
+          "x": 190,
+          "y": 414,
+          "radius": 5.5,
+          "letter": "►",
+          "points": 2500
+        }
+      ],
+      "spinners": [
+        {
+          "id": "hal_sp1",
+          "name": "GRILLE DU CIMETIÈRE",
+          "x": 42,
+          "y": 318,
+          "width": 16,
+          "angle": 0.12,
+          "pointsPerSpin": 950
+        },
+        {
+          "id": "hal_sp2",
+          "name": "PORTAIL DES OMBRES",
+          "x": 170,
+          "y": 222,
+          "width": 16,
+          "angle": -0.15,
+          "pointsPerSpin": 950
+        }
+      ],
+      "scoops": [
+        {
+          "id": "hal_cauldron",
+          "name": "CHAUDRON DE MINUIT",
+          "kind": "UPPER_LOCK",
+          "x": 118,
+          "y": 126,
+          "radius": 9.5,
+          "ejectTo": {
+            "x": 118,
+            "y": 142
+          },
+          "ejectVelocity": {
+            "x": 24,
+            "y": 155
+          },
+          "points": 13000,
+          "color": "#22C55E"
+        }
+      ],
+      "missions": [
+        {
+          "id": "hal_m1",
+          "title": "BRUME",
+          "description": "Franchir 2 rampes dans la brume",
+          "targetKind": "RAMP",
+          "goal": 2,
+          "rewardPoints": 45000,
+          "accentColor": "#8B5CF6"
+        },
+        {
+          "id": "hal_m2",
+          "title": "CITROUILLES",
+          "description": "Frapper 5 fois les citrouilles",
+          "targetKind": "BUMPER",
+          "goal": 5,
+          "rewardPoints": 55000,
+          "accentColor": "#F97316"
+        },
+        {
+          "id": "hal_m3",
+          "title": "MANOIR",
+          "description": "Chasser 4 fantômes qui hantent le manoir",
+          "targetKind": "TARGET",
+          "goal": 4,
+          "rewardPoints": 75000,
+          "accentColor": "#A3E635"
+        }
+      ],
+      "extraWalls": [],
+      "extraPegs": [
+        {
+          "x": 88,
+          "y": 332,
+          "radius": 3.5,
+          "restitution": 0.86
+        },
+        {
+          "x": 138,
+          "y": 332,
+          "radius": 3.5,
+          "restitution": 0.86
+        }
+      ],
+      "missionEmblemPos": {
+        "x": 113,
+        "y": 274
+      },
+      "hunt": {
+        "kind": "GHOST",
+        "name": "ESPRITS DU MANOIR",
+        "slots": [
+          {
+            "x": 102,
+            "y": 248
+          },
+          {
+            "x": 152,
+            "y": 248
+          },
+          {
+            "x": 84,
+            "y": 292
+          },
+          {
+            "x": 134,
+            "y": 288
+          }
+        ],
+        "radius": 8.5,
+        "points": 4500,
+        "goal": 4,
+        "reward": 45000,
+        "sequential": false,
+        "color": "#A855F7"
+      },
+      "rulesSummary": {
+        "rampsRule": "L’Escalier du Manoir mène directement à la Galerie Hantée en surplomb gauche (étage gothique à mini-flipper), tandis que la Volute Spectrale traverse la pleine lune.",
+        "bumpersRule": "Cinq bumpers en étoile : citrouille reine au sommet, deux citrouilles, un fantôme et une chauve-souris.",
+        "targetsRule": "S-O-R-T monte le Bonus, H-A-N-T lance le Multibille, B-O-O rallume les Kickbacks.",
+        "multiballRule": "Verrouillez 2 billes dans le Caveau du Manoir ou complétez H-A-N-T pour libérer 3 billes !",
+        "specialRule": "Affrontez le Roi Citrouille posté devant les flippers, lisez le grimoire HEX à l’étage et chassez les 4 Fantômes du manoir."
+      },
+      "decorTheme": "halloween",
+      "musicTheme": "halloween",
+      "upperPlayfield": {
+        "id": "hal_manor_gallery",
+        "name": "GALERIE DU MANOIR",
+        "style": "GOTHIC_GALLERY",
+        "bounds": [
+          {
+            "x": 18,
+            "y": 92
+          },
+          {
+            "x": 102,
+            "y": 92
+          },
+          {
+            "x": 106,
+            "y": 174
+          },
+          {
+            "x": 84,
+            "y": 218
+          },
+          {
+            "x": 18,
+            "y": 218
+          }
+        ],
+        "openEdgeIndices": [
+          2
+        ],
+        "flippers": [
+          {
+            "id": "hal_gallery_flp",
+            "side": "LEFT",
+            "zone": "UPPER",
+            "pivot": {
+              "x": 28,
+              "y": 182
+            },
+            "length": 25,
+            "radius": 3.8,
+            "restAngle": 0.44,
+            "activeAngle": -0.5
+          }
+        ],
+        "bumpers": [
+          {
+            "id": "hal_ub1",
+            "x": 56,
+            "y": 122,
+            "radius": 10,
+            "points": 3300,
+            "label": " NOSFERATU",
+            "colorStyle": "PURPLE",
+            "iconStyle": "BAT"
+          }
+        ],
+        "targets": [
+          {
+            "id": "hal_ut_0",
+            "bankId": "hal_GRIMOIRE",
+            "bankRole": "JACKPOT_BOOST",
+            "kind": "DROP",
+            "x1": 96,
+            "y1": 111,
+            "x2": 96,
+            "y2": 121,
+            "letter": "H",
+            "lampColor": "#A855F7",
+            "points": 4600
+          },
+          {
+            "id": "hal_ut_1",
+            "bankId": "hal_GRIMOIRE",
+            "bankRole": "JACKPOT_BOOST",
+            "kind": "DROP",
+            "x1": 96,
+            "y1": 127,
+            "x2": 96,
+            "y2": 137,
+            "letter": "E",
+            "lampColor": "#F97316",
+            "points": 4600
+          },
+          {
+            "id": "hal_ut_2",
+            "bankId": "hal_GRIMOIRE",
+            "bankRole": "JACKPOT_BOOST",
+            "kind": "DROP",
+            "x1": 96,
+            "y1": 143,
+            "x2": 96,
+            "y2": 153,
+            "letter": "X",
+            "lampColor": "#22C55E",
+            "points": 4600
+          }
+        ],
+        "rollovers": [
+          {
+            "id": "hal_ur1",
+            "groupId": "MID_ORBITS",
+            "x": 46,
+            "y": 158,
+            "radius": 5.5,
+            "letter": "B",
+            "points": 3100
+          },
+          {
+            "id": "hal_ur2",
+            "groupId": "MID_ORBITS",
+            "x": 74,
+            "y": 158,
+            "radius": 5.5,
+            "letter": "O",
+            "points": 3100
+          }
+        ],
+        "fillColor": "#241038",
+        "borderColor": "#A855F7"
+      },
+      "interactiveToys": [
+        {
+          "id": "hal_pumpkin_king",
+          "name": "ROI CITROUILLE",
+          "kind": "BASH_TOY",
+          "visual": "PUMPKIN_KING",
+          "x": 113,
+          "y": 332,
+          "radius": 14,
+          "points": 5500,
+          "accentColor": "#F97316",
+          "hitsRequired": 4,
+          "rewardPoints": 25000
+        }
+      ]
+    },
+    {
+      "id": "candy",
+      "name": "Candy Pop",
+      "subtitle": "Pâtisserie Kawaii · Bonbonnière Tournante, Donuts Glacés & Macarons",
+      "layoutBadge": "3 Flippers · Bonbonnière Géante & Rubans Fondants",
+      "environmentTag": "Confiserie Pop Harajuku · Bumper Sucré ×3",
+      "description": "Une explosion de gourmandises pastel : faites tournoyer la grande Bonbonnière vitrée pleine de billes sucrées au centre, rebondissez entre les 5 bumpers sucettes, menthes poivrées et macarons au milieu des donuts glacés, cupcakes chantilly et berlingots acidulés !",
+      "multiballName": "MULTIBILLE CŒUR",
+      "jackpotName": "SUPER ÉTOILE",
+      "skillShotLabel": "TIR RUBAN",
+      "gravity": 316,
+      "palette": {
+        "bgPrimary": "#9D3D8B",
+        "bgSecondary": "#F472B6",
+        "cabinetFrame": "#F9A8D4",
+        "cabinetHighlight": "#FFFFFF",
+        "wallMetal": "#FBCFE8",
+        "wallHighlight": "#FFFFFF",
+        "accentPrimary": "#F472B6",
+        "accentSecondary": "#FDE047",
+        "accentWarm": "#EF4444",
+        "flipperTop": "#FFFFFF",
+        "flipperSkirt": "#DB2777",
+        "slingshotMain": "#EC4899",
+        "slingshotAccent": "#FDE047",
+        "hudBg": "#3B0A2C",
+        "hudBorder": "#F9A8D4",
+        "hudDigits": "#FDE047",
+        "hudStyle": "CYBER_AKA",
+        "ballTint": "#FFF1F2"
+      },
+      "extraFlippers": [
+        {
+          "id": "cnd_wafer_left",
+          "side": "LEFT",
+          "zone": "MID",
+          "pivot": {
+            "x": 26,
+            "y": 278
+          },
+          "length": 27,
+          "radius": 3.8,
+          "restAngle": 0.44,
+          "activeAngle": -0.5
+        }
+      ],
+      "beveledHousings": [
+        {
+          "points": [
+            {
+              "x": 9,
+              "y": 248
+            },
+            {
+              "x": 26,
+              "y": 268
+            },
+            {
+              "x": 22,
+              "y": 282
+            },
+            {
+              "x": 9,
+              "y": 278
+            }
+          ],
+          "fillColor": "#F472B6"
+        },
+        {
+          "points": [
+            {
+              "x": 58,
+              "y": 214
+            },
+            {
+              "x": 78,
+              "y": 206
+            },
+            {
+              "x": 84,
+              "y": 226
+            },
+            {
+              "x": 64,
+              "y": 236
+            }
+          ],
+          "fillColor": "#2DD4BF"
+        },
+        {
+          "points": [
+            {
+              "x": 152,
+              "y": 212
+            },
+            {
+              "x": 174,
+              "y": 222
+            },
+            {
+              "x": 166,
+              "y": 244
+            },
+            {
+              "x": 146,
+              "y": 234
+            }
+          ],
+          "fillColor": "#FBBF24"
+        },
+        {
+          "points": [
+            {
+              "x": 215,
+              "y": 286
+            },
+            {
+              "x": 196,
+              "y": 300
+            },
+            {
+              "x": 198,
+              "y": 334
+            },
+            {
+              "x": 215,
+              "y": 346
+            }
+          ],
+          "fillColor": "#EC4899"
+        }
+      ],
+      "bumpers": [
+        {
+          "id": "cnd_b1",
+          "x": 74,
+          "y": 88,
+          "radius": 11.5,
+          "points": 2400,
+          "label": "SUCETTE ROSE",
+          "colorStyle": "PINK",
+          "iconStyle": "SWIRL_CANDY"
+        },
+        {
+          "id": "cnd_b2",
+          "x": 113,
+          "y": 80,
+          "radius": 12,
+          "points": 2600,
+          "label": "CŒUR GLAÇAGE",
+          "colorStyle": "GOLD",
+          "iconStyle": "HEART"
+        },
+        {
+          "id": "cnd_b3",
+          "x": 152,
+          "y": 88,
+          "radius": 11.5,
+          "points": 2400,
+          "label": "MENTHE FRAISE",
+          "colorStyle": "RED",
+          "iconStyle": "PEPPERMINT"
+        },
+        {
+          "id": "cnd_b4",
+          "x": 52,
+          "y": 126,
+          "radius": 11,
+          "points": 2300,
+          "label": "RUBAN MYRTILLE",
+          "colorStyle": "PURPLE",
+          "iconStyle": "RIBBON"
+        },
+        {
+          "id": "cnd_b5",
+          "x": 174,
+          "y": 126,
+          "radius": 11,
+          "points": 2300,
+          "label": "DRAGÉE MENTHE",
+          "colorStyle": "ICE",
+          "iconStyle": "SWIRL_CANDY"
+        }
+      ],
+      "targets": [
+        {
+          "id": "cnd_sw_0",
+          "bankId": "cnd_SWEET",
+          "bankRole": "MULTIPLIER",
+          "kind": "DROP",
+          "x1": 59.5,
+          "y1": 286,
+          "x2": 70.5,
+          "y2": 286,
+          "letter": "S",
+          "lampColor": "#EC4899",
+          "points": 3600
+        },
+        {
+          "id": "cnd_sw_1",
+          "bankId": "cnd_SWEET",
+          "bankRole": "MULTIPLIER",
+          "kind": "DROP",
+          "x1": 83.5,
+          "y1": 286,
+          "x2": 94.5,
+          "y2": 286,
+          "letter": "U",
+          "lampColor": "#FACC15",
+          "points": 3600
+        },
+        {
+          "id": "cnd_sw_2",
+          "bankId": "cnd_SWEET",
+          "bankRole": "MULTIPLIER",
+          "kind": "DROP",
+          "x1": 107.5,
+          "y1": 286,
+          "x2": 118.5,
+          "y2": 286,
+          "letter": "C",
+          "lampColor": "#2DD4BF",
+          "points": 3600
+        },
+        {
+          "id": "cnd_sw_3",
+          "bankId": "cnd_SWEET",
+          "bankRole": "MULTIPLIER",
+          "kind": "DROP",
+          "x1": 131.5,
+          "y1": 286,
+          "x2": 142.5,
+          "y2": 286,
+          "letter": "R",
+          "lampColor": "#A855F7",
+          "points": 3600
+        },
+        {
+          "id": "cnd_sw_4",
+          "bankId": "cnd_SWEET",
+          "bankRole": "MULTIPLIER",
+          "kind": "DROP",
+          "x1": 155.5,
+          "y1": 286,
+          "x2": 166.5,
+          "y2": 286,
+          "letter": "E",
+          "lampColor": "#FB7185",
+          "points": 3600
+        },
+        {
+          "id": "cnd_pop_0",
+          "bankId": "cnd_POP",
+          "bankRole": "JACKPOT_BOOST",
+          "kind": "STANDUP",
+          "x1": 194,
+          "y1": 299.5,
+          "x2": 194,
+          "y2": 308.5,
+          "letter": "P",
+          "lampColor": "#F472B6",
+          "points": 3800
+        },
+        {
+          "id": "cnd_pop_1",
+          "bankId": "cnd_POP",
+          "bankRole": "JACKPOT_BOOST",
+          "kind": "STANDUP",
+          "x1": 194,
+          "y1": 311.5,
+          "x2": 194,
+          "y2": 320.5,
+          "letter": "O",
+          "lampColor": "#38BDF8",
+          "points": 3800
+        },
+        {
+          "id": "cnd_pop_2",
+          "bankId": "cnd_POP",
+          "bankRole": "JACKPOT_BOOST",
+          "kind": "STANDUP",
+          "x1": 194,
+          "y1": 323.5,
+          "x2": 194,
+          "y2": 332.5,
+          "letter": "P",
+          "lampColor": "#FDE047",
+          "points": 3800
+        }
+      ],
+      "ramps": [
+        {
+          "id": "cnd_strawberry_ribbon",
+          "name": "RUBAN COULIS DE FRAISE",
+          "style": "MOLDED_ACRYLIC",
+          "entry": {
+            "x": 56,
+            "y": 348
+          },
+          "entryRadius": 16,
+          "entryDir": {
+            "x": 0.329,
+            "y": -0.944
+          },
+          "path": [
+            {
+              "x": 56,
+              "y": 348
+            },
+            {
+              "x": 88,
+              "y": 256
+            },
+            {
+              "x": 162,
+              "y": 158
+            },
+            {
+              "x": 192,
+              "y": 212
+            },
+            {
+              "x": 188,
+              "y": 274
+            }
+          ],
+          "points": 21000,
+          "chuteColor": "#EC4899",
+          "railColor": "#FBCFE8"
+        },
+        {
+          "id": "cnd_mint_slide",
+          "name": "TOBOGGAN MENTHE GLACÉE",
+          "style": "WIREFORM_RAIL",
+          "entry": {
+            "x": 170,
+            "y": 348
+          },
+          "entryRadius": 16,
+          "entryDir": {
+            "x": -0.31,
+            "y": -0.951
+          },
+          "path": [
+            {
+              "x": 170,
+              "y": 348
+            },
+            {
+              "x": 140,
+              "y": 256
+            },
+            {
+              "x": 64,
+              "y": 158
+            },
+            {
+              "x": 30,
+              "y": 204
+            },
+            {
+              "x": 32,
+              "y": 252
+            }
+          ],
+          "points": 21000,
+          "chuteColor": "#2DD4BF",
+          "railColor": "#FEF08A"
+        }
+      ],
+      "rollovers": [
+        {
+          "id": "cnd_top_0",
+          "groupId": "TOP_LANES",
+          "x": 62,
+          "y": 48,
+          "radius": 6,
+          "letter": "C",
+          "points": 3500
+        },
+        {
+          "id": "cnd_top_1",
+          "groupId": "TOP_LANES",
+          "x": 96,
+          "y": 45,
+          "radius": 6,
+          "letter": "H",
+          "points": 3500
+        },
+        {
+          "id": "cnd_top_2",
+          "groupId": "TOP_LANES",
+          "x": 130,
+          "y": 45,
+          "radius": 6,
+          "letter": "O",
+          "points": 3500
+        },
+        {
+          "id": "cnd_top_3",
+          "groupId": "TOP_LANES",
+          "x": 164,
+          "y": 48,
+          "radius": 6,
+          "letter": "U",
+          "points": 3500
+        },
+        {
+          "id": "cnd_low_0",
+          "groupId": "INLANES",
+          "x": 36,
+          "y": 414,
+          "radius": 5.5,
+          "letter": "♥",
+          "points": 2500
+        },
+        {
+          "id": "cnd_low_1",
+          "groupId": "INLANES",
+          "x": 190,
+          "y": 414,
+          "radius": 5.5,
+          "letter": "★",
+          "points": 2500
+        }
+      ],
+      "spinners": [
+        {
+          "id": "cnd_sp1",
+          "name": "TOURBILLON BARBE À PAPA",
+          "x": 44,
+          "y": 174,
+          "width": 16,
+          "angle": 0.15,
+          "pointsPerSpin": 1000
+        },
+        {
+          "id": "cnd_sp2",
+          "name": "MOULIN PRALINÉ",
+          "x": 182,
+          "y": 174,
+          "width": 16,
+          "angle": -0.15,
+          "pointsPerSpin": 1000
+        }
+      ],
+      "scoops": [
+        {
+          "id": "cnd_sundae_cup",
+          "name": "COUPE CHANTILLY CERISE",
+          "kind": "UPPER_LOCK",
+          "x": 113,
+          "y": 124,
+          "radius": 9.5,
+          "ejectTo": {
+            "x": 113,
+            "y": 140
+          },
+          "ejectVelocity": {
+            "x": 24,
+            "y": 150
+          },
+          "points": 12500,
+          "color": "#F472B6"
+        }
+      ],
+      "missions": [
+        {
+          "id": "can_m1",
+          "title": "RUBANS",
+          "description": "Franchir 2 rampes ornées de rubans",
+          "targetKind": "RAMP",
+          "goal": 2,
+          "rewardPoints": 45000,
+          "accentColor": "#F472B6"
+        },
+        {
+          "id": "can_m2",
+          "title": "CŒURS",
+          "description": "Frapper 5 fois le bumper doré (×3, il change à chaque touche)",
+          "targetKind": "BUMPER",
+          "goal": 5,
+          "rewardPoints": 55000,
+          "accentColor": "#EF4444"
+        },
+        {
+          "id": "can_m3",
+          "title": "ÉTOILES",
+          "description": "Toucher 4 cibles ou puits pour le bonus final",
+          "targetKind": "TARGET",
+          "goal": 4,
+          "rewardPoints": 75000,
+          "accentColor": "#FDE047"
+        }
+      ],
+      "extraWalls": [],
+      "extraPegs": [
+        {
+          "x": 92,
+          "y": 224,
+          "radius": 4,
+          "restitution": 0.88
+        },
+        {
+          "x": 134,
+          "y": 224,
+          "radius": 4,
+          "restitution": 0.88
+        },
+        {
+          "x": 113,
+          "y": 332,
+          "radius": 3.8,
+          "restitution": 0.86
+        }
+      ],
+      "missionEmblemPos": {
+        "x": 113,
+        "y": 360
+      },
+      "litBumperRotate": true,
+      "rulesSummary": {
+        "rampsRule": "Le Ruban Coulis de Fraise et le Toboggan Menthe Glacée s’entrelacent autour de la Bonbonnière Kawaii : le toboggan menthe dépose la bille sur le flipper gaufrette gauche.",
+        "bumpersRule": "Quatre bumpers en losange : deux cœurs, une étoile et le grand cœur central.",
+        "targetsRule": "C-A-N-D monte le Bonus, S-T-A-R lance le Multibille, P-O-P rallume les Kickbacks.",
+        "multiballRule": "Verrouillez 2 billes dans la Boîte à Bijoux ou complétez S-T-A-R pour libérer 3 billes !",
+        "specialRule": "Faites tourner la Bonbonnière vitrée pleine de dragées au centre, complétez S-U-C-R-E devant le cupcake chantilly et visez le Bumper Doré ×3 qui saute d’une sucrerie à l’autre !"
+      },
+      "decorTheme": "candy",
+      "musicTheme": "candy",
+      "interactiveToys": [
+        {
+          "id": "cnd_gumball_dome",
+          "name": "BONBONNIÈRE KAWAII",
+          "kind": "TURNTABLE",
+          "visual": "RIBBON_VORTEX",
+          "x": 113,
+          "y": 178,
+          "radius": 17,
+          "points": 4200,
+          "accentColor": "#EC4899",
+          "hitsRequired": 4,
+          "rewardPoints": 25000
+        }
+      ]
+    },
+    {
+      "id": "bonbons",
+      "name": "Bonbons",
+      "subtitle": "Confiserie d’Antan · Grande Roue Sucette, Slalom 6 Billes & Tube Sucre",
+      "layoutBadge": "3 Flippers · Serpentin Zig-Zag & 6 Bumpers Acidulés",
+      "environmentTag": "Boutique de Confiseur · Roue Sucette",
+      "description": "Comme une machine de confiseur parisien : un serpentin en zig-zag traverse deux fois la boutique pour nourrir la spatule haute à droite, 6 bumpers bicolores forment un slalom serré sous l’auvent rayé, et la Grande Sucette spirale tourne au milieu des bocaux.",
+      "multiballName": "MULTIBILLE BOCAL",
+      "jackpotName": "SUPER CARAMEL",
+      "skillShotLabel": "TIR SUCETTE",
+      "gravity": 318,
+      "palette": {
+        "bgPrimary": "#134E4A",
+        "bgSecondary": "#2DD4BF",
+        "cabinetFrame": "#FB7185",
+        "cabinetHighlight": "#FFF1F2",
+        "wallMetal": "#FDA4AF",
+        "wallHighlight": "#FFFFFF",
+        "accentPrimary": "#FB7185",
+        "accentSecondary": "#FACC15",
+        "accentWarm": "#E11D48",
+        "flipperTop": "#FFF1F2",
+        "flipperSkirt": "#BE123C",
+        "slingshotMain": "#E11D48",
+        "slingshotAccent": "#FACC15",
+        "hudBg": "#052E2B",
+        "hudBorder": "#FB7185",
+        "hudDigits": "#FEF08A",
+        "hudStyle": "CYBER_AKA",
+        "ballTint": "#FFF7ED"
+      },
+      "extraFlippers": [
+        {
+          "id": "bon_spatula_hi",
+          "side": "RIGHT",
+          "zone": "UPPER",
+          "pivot": {
+            "x": 196,
+            "y": 232
+          },
+          "length": 25,
+          "radius": 3.8,
+          "restAngle": 2.7016,
+          "activeAngle": 3.6416
+        }
+      ],
+      "beveledHousings": [
+        {
+          "points": [
+            {
+              "x": 215,
+              "y": 204
+            },
+            {
+              "x": 196,
+              "y": 222
+            },
+            {
+              "x": 200,
+              "y": 234
+            },
+            {
+              "x": 215,
+              "y": 232
+            }
+          ],
+          "fillColor": "#9D174D"
+        },
+        {
+          "points": [
+            {
+              "x": 18,
+              "y": 226
+            },
+            {
+              "x": 38,
+              "y": 238
+            },
+            {
+              "x": 34,
+              "y": 274
+            },
+            {
+              "x": 18,
+              "y": 264
+            }
+          ],
+          "fillColor": "#BE185D"
+        }
+      ],
+      "bumpers": [
+        {
+          "id": "bon_b1",
+          "x": 56,
+          "y": 92,
+          "radius": 10.5,
+          "points": 2000,
+          "label": "FRAISE",
+          "colorStyle": "RED",
+          "iconStyle": "PEPPERMINT"
+        },
+        {
+          "id": "bon_b2",
+          "x": 96,
+          "y": 84,
+          "radius": 10.5,
+          "points": 2000,
+          "label": "CITRON",
+          "colorStyle": "GOLD",
+          "iconStyle": "SWIRL_CANDY"
+        },
+        {
+          "id": "bon_b3",
+          "x": 136,
+          "y": 84,
+          "radius": 10.5,
+          "points": 2000,
+          "label": "PISTACHE",
+          "colorStyle": "JADE",
+          "iconStyle": "PEPPERMINT"
+        },
+        {
+          "id": "bon_b4",
+          "x": 174,
+          "y": 94,
+          "radius": 10.5,
+          "points": 2000,
+          "label": "FRAMBOISE",
+          "colorStyle": "PINK",
+          "iconStyle": "SWIRL_CANDY"
+        },
+        {
+          "id": "bon_b5",
+          "x": 76,
+          "y": 124,
+          "radius": 10.5,
+          "points": 2200,
+          "label": "VIOLETTE",
+          "colorStyle": "PURPLE",
+          "iconStyle": "SWIRL_CANDY"
+        },
+        {
+          "id": "bon_b6",
+          "x": 154,
+          "y": 124,
+          "radius": 10.5,
+          "points": 2200,
+          "label": "CARAMEL",
+          "colorStyle": "ORANGE",
+          "iconStyle": "PEPPERMINT"
+        }
+      ],
+      "targets": [
+        {
+          "id": "bon_cnt_0",
+          "bankId": "bon_COUNTER",
+          "bankRole": "MULTIPLIER",
+          "kind": "DROP",
+          "x1": 71.5,
+          "y1": 332,
+          "x2": 82.5,
+          "y2": 332,
+          "letter": "M",
+          "lampColor": "#FB7185",
+          "points": 3500
+        },
+        {
+          "id": "bon_cnt_1",
+          "bankId": "bon_COUNTER",
+          "bankRole": "MULTIPLIER",
+          "kind": "DROP",
+          "x1": 95.5,
+          "y1": 332,
+          "x2": 106.5,
+          "y2": 332,
+          "letter": "I",
+          "lampColor": "#FACC15",
+          "points": 3500
+        },
+        {
+          "id": "bon_cnt_2",
+          "bankId": "bon_COUNTER",
+          "bankRole": "MULTIPLIER",
+          "kind": "DROP",
+          "x1": 119.5,
+          "y1": 332,
+          "x2": 130.5,
+          "y2": 332,
+          "letter": "A",
+          "lampColor": "#34D399",
+          "points": 3500
+        },
+        {
+          "id": "bon_cnt_3",
+          "bankId": "bon_COUNTER",
+          "bankRole": "MULTIPLIER",
+          "kind": "DROP",
+          "x1": 143.5,
+          "y1": 332,
+          "x2": 154.5,
+          "y2": 332,
+          "letter": "M",
+          "lampColor": "#C084FC",
+          "points": 3500
+        },
+        {
+          "id": "bon_jar_0",
+          "bankId": "bon_JARS",
+          "bankRole": "JACKPOT_BOOST",
+          "kind": "STANDUP",
+          "x1": 40,
+          "y1": 237.5,
+          "x2": 40,
+          "y2": 246.5,
+          "letter": "B",
+          "lampColor": "#FACC15",
+          "points": 3600
+        },
+        {
+          "id": "bon_jar_1",
+          "bankId": "bon_JARS",
+          "bankRole": "JACKPOT_BOOST",
+          "kind": "STANDUP",
+          "x1": 39,
+          "y1": 248.5,
+          "x2": 39,
+          "y2": 257.5,
+          "letter": "O",
+          "lampColor": "#FB7185",
+          "points": 3600
+        },
+        {
+          "id": "bon_jar_2",
+          "bankId": "bon_JARS",
+          "bankRole": "JACKPOT_BOOST",
+          "kind": "STANDUP",
+          "x1": 38,
+          "y1": 259.5,
+          "x2": 38,
+          "y2": 268.5,
+          "letter": "N",
+          "lampColor": "#38BDF8",
+          "points": 3600
+        }
+      ],
+      "ramps": [
+        {
+          "id": "bon_zigzag_cane",
+          "name": "SERPENTIN SUCRE D’ORGE",
+          "style": "MOLDED_ACRYLIC",
+          "entry": {
+            "x": 50,
+            "y": 352
+          },
+          "entryRadius": 16,
+          "entryDir": {
+            "x": 0.186,
+            "y": -0.983
+          },
+          "path": [
+            {
+              "x": 50,
+              "y": 352
+            },
+            {
+              "x": 64,
+              "y": 278
+            },
+            {
+              "x": 154,
+              "y": 184
+            },
+            {
+              "x": 190,
+              "y": 146
+            },
+            {
+              "x": 192,
+              "y": 204
+            }
+          ],
+          "points": 22000,
+          "chuteColor": "#FB7185",
+          "railColor": "#FFF1F2"
+        },
+        {
+          "id": "bon_caramel_chute",
+          "name": "GOUTTIÈRE CARAMEL BEURRE",
+          "style": "WIREFORM_RAIL",
+          "entry": {
+            "x": 176,
+            "y": 352
+          },
+          "entryRadius": 16,
+          "entryDir": {
+            "x": -0.177,
+            "y": -0.984
+          },
+          "path": [
+            {
+              "x": 176,
+              "y": 352
+            },
+            {
+              "x": 162,
+              "y": 274
+            },
+            {
+              "x": 74,
+              "y": 180
+            },
+            {
+              "x": 32,
+              "y": 138
+            },
+            {
+              "x": 32,
+              "y": 208
+            }
+          ],
+          "points": 20000,
+          "chuteColor": "#F59E0B",
+          "railColor": "#FEF3C7"
+        }
+      ],
+      "rollovers": [
+        {
+          "id": "bon_top_0",
+          "groupId": "TOP_LANES",
+          "x": 60,
+          "y": 48,
+          "radius": 6,
+          "letter": "D",
+          "points": 3500
+        },
+        {
+          "id": "bon_top_1",
+          "groupId": "TOP_LANES",
+          "x": 95,
+          "y": 45,
+          "radius": 6,
+          "letter": "O",
+          "points": 3500
+        },
+        {
+          "id": "bon_top_2",
+          "groupId": "TOP_LANES",
+          "x": 130,
+          "y": 45,
+          "radius": 6,
+          "letter": "U",
+          "points": 3500
+        },
+        {
+          "id": "bon_top_3",
+          "groupId": "TOP_LANES",
+          "x": 165,
+          "y": 48,
+          "radius": 6,
+          "letter": "X",
+          "points": 3500
+        },
+        {
+          "id": "bon_low_0",
+          "groupId": "INLANES",
+          "x": 36,
+          "y": 414,
+          "radius": 5.5,
+          "letter": "◄",
+          "points": 2500
+        },
+        {
+          "id": "bon_low_1",
+          "groupId": "INLANES",
+          "x": 190,
+          "y": 414,
+          "radius": 5.5,
+          "letter": "►",
+          "points": 2500
+        }
+      ],
+      "spinners": [
+        {
+          "id": "bon_sp1",
+          "name": "PAPILLOTE GAUCHE",
+          "x": 52,
+          "y": 184,
+          "width": 15,
+          "angle": 0.2,
+          "pointsPerSpin": 950
+        },
+        {
+          "id": "bon_sp2",
+          "name": "MOULIN À SUCRE",
+          "x": 174,
+          "y": 272,
+          "width": 16,
+          "angle": -0.15,
+          "pointsPerSpin": 950
+        }
+      ],
+      "scoops": [
+        {
+          "id": "bon_jar_lock",
+          "name": "BOCAL À DRAGÉES",
+          "kind": "UPPER_LOCK",
+          "x": 113,
+          "y": 148,
+          "radius": 9.5,
+          "ejectTo": {
+            "x": 113,
+            "y": 164
+          },
+          "ejectVelocity": {
+            "x": -24,
+            "y": 150
+          },
+          "points": 12000,
+          "color": "#FB7185"
+        },
+        {
+          "id": "bon_sugar_tube",
+          "name": "TUBE PNEUMATIQUE À SUCRE",
+          "kind": "MID_VUK_TELEPORT",
+          "x": 52,
+          "y": 298,
+          "radius": 9,
+          "ejectTo": {
+            "x": 184,
+            "y": 196
+          },
+          "ejectVelocity": {
+            "x": -16,
+            "y": 135
+          },
+          "points": 9500,
+          "color": "#34D399"
+        }
+      ],
+      "missions": [
+        {
+          "id": "bon_m1",
+          "title": "SUCRES",
+          "description": "Franchir 2 rampes de sucre",
+          "targetKind": "RAMP",
+          "goal": 2,
+          "rewardPoints": 45000,
+          "accentColor": "#FB7185"
+        },
+        {
+          "id": "bon_m2",
+          "title": "GOURMAND",
+          "description": "Frapper 5 fois les bumpers gourmands",
+          "targetKind": "BUMPER",
+          "goal": 5,
+          "rewardPoints": 55000,
+          "accentColor": "#FACC15"
+        },
+        {
+          "id": "bon_m3",
+          "title": "BOCAL",
+          "description": "Croquer 4 sucettes qui sautent de place",
+          "targetKind": "TARGET",
+          "goal": 4,
+          "rewardPoints": 75000,
+          "accentColor": "#2DD4BF"
+        }
+      ],
+      "extraWalls": [],
+      "extraPegs": [
+        {
+          "x": 113,
+          "y": 112,
+          "radius": 3.5,
+          "restitution": 0.86
+        }
+      ],
+      "missionEmblemPos": {
+        "x": 113,
+        "y": 292
+      },
+      "hunt": {
+        "kind": "LOLLIPOP",
+        "name": "CHASSE AUX SUCETTES",
+        "slots": [
+          {
+            "x": 80,
+            "y": 278
+          },
+          {
+            "x": 146,
+            "y": 278
+          },
+          {
+            "x": 74,
+            "y": 196
+          },
+          {
+            "x": 152,
+            "y": 196
+          }
+        ],
+        "radius": 8,
+        "points": 4200,
+        "goal": 4,
+        "reward": 40000,
+        "sequential": false,
+        "color": "#FB7185"
+      },
+      "rulesSummary": {
+        "rampsRule": "Le Serpentin Sucre d’Orge traverse la boutique pour servir la spatule haute droite, et le Tube Pneumatique à Sucre propulse visiblement la bille dans son conduit en verre courbé.",
+        "bumpersRule": "Six bumpers gourmands : deux rangées de trois autour de la guimauve, plus la réglisse centrale.",
+        "targetsRule": "S-U-C-R monte le Bonus, B-O-C-A lance le Multibille, M-I-L rallume les Kickbacks.",
+        "multiballRule": "Verrouillez 2 billes dans le Grand Bocal ou complétez B-O-C-A pour libérer 3 billes !",
+        "specialRule": "Faites tourner la Grande Roue Sucette centrale, dévalez le slalom des 6 bumpers confiseurs et croquez 4 Sucettes mobiles."
+      },
+      "decorTheme": "bonbons",
+      "musicTheme": "bonbons",
+      "interactiveToys": [
+        {
+          "id": "bon_lollipop_wheel",
+          "name": "GRANDE ROUE SUCETTE",
+          "kind": "TURNTABLE",
+          "visual": "LOLLIPOP_WHEEL",
+          "x": 113,
+          "y": 234,
+          "radius": 18,
+          "points": 3800,
+          "accentColor": "#FB7185",
+          "hitsRequired": 4,
+          "rewardPoints": 25000
+        }
+      ]
+    },
+    {
+      "id": "train",
+      "name": "Train",
+      "subtitle": "Plaque Tournante Motorisée · Double Viaduc & Gare de Triage à 4 Flippers",
+      "layoutBadge": "4 Flippers · Plaque Tournante & Double Viaduc",
+      "environmentTag": "Ère de la Vapeur · Triage Ferroviaire",
+      "description": "Une vraie gare de triage mécanique : deux viaducs métalliques s’entrecroisent au-dessus de la Plaque Tournante motorisée centrale pour desservir deux flippers d’aiguillage symétriques à mi-hauteur, pendant que la locomotive progresse de gare en gare.",
+      "multiballName": "MULTIBILLE EXPRESS",
+      "jackpotName": "SUPER LOCOMOTIVE",
+      "skillShotLabel": "DÉPART DE QUAI",
+      "gravity": 322,
+      "palette": {
+        "bgPrimary": "#0F172A",
+        "bgSecondary": "#1E3A5F",
+        "cabinetFrame": "#A16207",
+        "cabinetHighlight": "#FEF3C7",
+        "wallMetal": "#94A3B8",
+        "wallHighlight": "#F1F5F9",
+        "accentPrimary": "#F59E0B",
+        "accentSecondary": "#E2E8F0",
+        "accentWarm": "#DC2626",
+        "flipperTop": "#F1F5F9",
+        "flipperSkirt": "#334155",
+        "slingshotMain": "#B91C1C",
+        "slingshotAccent": "#E2E8F0",
+        "hudBg": "#0B1220",
+        "hudBorder": "#F59E0B",
+        "hudDigits": "#FDE68A",
+        "hudStyle": "LED_7SEG",
+        "ballTint": "#E2E8F0"
+      },
+      "extraFlippers": [
+        {
+          "id": "trn_switch_left",
+          "side": "LEFT",
+          "zone": "MID",
+          "pivot": {
+            "x": 26,
+            "y": 276
+          },
+          "length": 26,
+          "radius": 3.8,
+          "restAngle": 0.44,
+          "activeAngle": -0.5
+        },
+        {
+          "id": "trn_switch_right",
+          "side": "RIGHT",
+          "zone": "MID",
+          "pivot": {
+            "x": 200,
+            "y": 276
+          },
+          "length": 26,
+          "radius": 3.8,
+          "restAngle": 2.7016,
+          "activeAngle": 3.6416
+        }
+      ],
+      "beveledHousings": [
+        {
+          "points": [
+            {
+              "x": 9,
+              "y": 248
+            },
+            {
+              "x": 26,
+              "y": 266
+            },
+            {
+              "x": 22,
+              "y": 280
+            },
+            {
+              "x": 9,
+              "y": 276
+            }
+          ],
+          "fillColor": "#334155"
+        },
+        {
+          "points": [
+            {
+              "x": 215,
+              "y": 248
+            },
+            {
+              "x": 200,
+              "y": 266
+            },
+            {
+              "x": 204,
+              "y": 280
+            },
+            {
+              "x": 215,
+              "y": 276
+            }
+          ],
+          "fillColor": "#334155"
+        },
+        {
+          "points": [
+            {
+              "x": 102,
+              "y": 252
+            },
+            {
+              "x": 124,
+              "y": 252
+            },
+            {
+              "x": 120,
+              "y": 268
+            },
+            {
+              "x": 106,
+              "y": 268
+            }
+          ],
+          "fillColor": "#475569"
+        }
+      ],
+      "bumpers": [
+        {
+          "id": "trn_b1",
+          "x": 74,
+          "y": 92,
+          "radius": 11,
+          "points": 2300,
+          "label": "BOGIE OUEST",
+          "colorStyle": "RED",
+          "iconStyle": "WHEEL"
+        },
+        {
+          "id": "trn_b2",
+          "x": 152,
+          "y": 92,
+          "radius": 11,
+          "points": 2300,
+          "label": "BOGIE EST",
+          "colorStyle": "RED",
+          "iconStyle": "WHEEL"
+        },
+        {
+          "id": "trn_b3",
+          "x": 113,
+          "y": 116,
+          "radius": 12,
+          "points": 2600,
+          "label": "PHARE 231",
+          "colorStyle": "GOLD",
+          "iconStyle": "LANTERN"
+        },
+        {
+          "id": "trn_b4",
+          "x": 113,
+          "y": 78,
+          "radius": 10.5,
+          "points": 2200,
+          "label": "CHAUDIÈRE",
+          "colorStyle": "ORANGE",
+          "iconStyle": "GEAR"
+        }
+      ],
+      "targets": [
+        {
+          "id": "trn_sem_l_0",
+          "bankId": "trn_SIGNAL",
+          "bankRole": "MULTIPLIER",
+          "kind": "STANDUP",
+          "x1": 58,
+          "y1": 179,
+          "x2": 58,
+          "y2": 189,
+          "letter": "V",
+          "lampColor": "#EF4444",
+          "points": 3600
+        },
+        {
+          "id": "trn_sem_l_1",
+          "bankId": "trn_SIGNAL",
+          "bankRole": "MULTIPLIER",
+          "kind": "STANDUP",
+          "x1": 58,
+          "y1": 194,
+          "x2": 58,
+          "y2": 204,
+          "letter": "O",
+          "lampColor": "#FACC15",
+          "points": 3600
+        },
+        {
+          "id": "trn_sem_l_2",
+          "bankId": "trn_SIGNAL",
+          "bankRole": "MULTIPLIER",
+          "kind": "STANDUP",
+          "x1": 58,
+          "y1": 209,
+          "x2": 58,
+          "y2": 219,
+          "letter": "I",
+          "lampColor": "#22C55E",
+          "points": 3600
+        },
+        {
+          "id": "trn_sem_r_0",
+          "bankId": "trn_EXPRESS",
+          "bankRole": "JACKPOT_BOOST",
+          "kind": "DROP",
+          "x1": 168,
+          "y1": 179,
+          "x2": 168,
+          "y2": 189,
+          "letter": "2",
+          "lampColor": "#FACC15",
+          "points": 3800
+        },
+        {
+          "id": "trn_sem_r_1",
+          "bankId": "trn_EXPRESS",
+          "bankRole": "JACKPOT_BOOST",
+          "kind": "DROP",
+          "x1": 168,
+          "y1": 194,
+          "x2": 168,
+          "y2": 204,
+          "letter": "3",
+          "lampColor": "#EF4444",
+          "points": 3800
+        },
+        {
+          "id": "trn_sem_r_2",
+          "bankId": "trn_EXPRESS",
+          "bankRole": "JACKPOT_BOOST",
+          "kind": "DROP",
+          "x1": 168,
+          "y1": 209,
+          "x2": 168,
+          "y2": 219,
+          "letter": "1",
+          "lampColor": "#38BDF8",
+          "points": 3800
+        }
+      ],
+      "ramps": [
+        {
+          "id": "trn_viaduct_west",
+          "name": "VIADUC ACIER VOIE 1",
+          "style": "WIREFORM_RAIL",
+          "entry": {
+            "x": 56,
+            "y": 350
+          },
+          "entryRadius": 16,
+          "entryDir": {
+            "x": 0.316,
+            "y": -0.949
+          },
+          "path": [
+            {
+              "x": 56,
+              "y": 350
+            },
+            {
+              "x": 84,
+              "y": 266
+            },
+            {
+              "x": 166,
+              "y": 136
+            },
+            {
+              "x": 196,
+              "y": 196
+            },
+            {
+              "x": 196,
+              "y": 248
+            }
+          ],
+          "points": 22000,
+          "chuteColor": "#64748B",
+          "railColor": "#FACC15"
+        },
+        {
+          "id": "trn_viaduct_east",
+          "name": "VIADUC ACIER VOIE 2",
+          "style": "WIREFORM_RAIL",
+          "entry": {
+            "x": 170,
+            "y": 350
+          },
+          "entryRadius": 16,
+          "entryDir": {
+            "x": -0.316,
+            "y": -0.949
+          },
+          "path": [
+            {
+              "x": 170,
+              "y": 350
+            },
+            {
+              "x": 142,
+              "y": 266
+            },
+            {
+              "x": 60,
+              "y": 136
+            },
+            {
+              "x": 30,
+              "y": 196
+            },
+            {
+              "x": 30,
+              "y": 248
+            }
+          ],
+          "points": 22000,
+          "chuteColor": "#94A3B8",
+          "railColor": "#FDE047"
+        }
+      ],
+      "rollovers": [
+        {
+          "id": "trn_top_0",
+          "groupId": "TOP_LANES",
+          "x": 58,
+          "y": 48,
+          "radius": 6,
+          "letter": "G",
+          "points": 3500
+        },
+        {
+          "id": "trn_top_1",
+          "groupId": "TOP_LANES",
+          "x": 94,
+          "y": 46,
+          "radius": 6,
+          "letter": "A",
+          "points": 3500
+        },
+        {
+          "id": "trn_top_2",
+          "groupId": "TOP_LANES",
+          "x": 132,
+          "y": 46,
+          "radius": 6,
+          "letter": "R",
+          "points": 3500
+        },
+        {
+          "id": "trn_top_3",
+          "groupId": "TOP_LANES",
+          "x": 168,
+          "y": 48,
+          "radius": 6,
+          "letter": "E",
+          "points": 3500
+        },
+        {
+          "id": "trn_low_0",
+          "groupId": "INLANES",
+          "x": 36,
+          "y": 414,
+          "radius": 5.5,
+          "letter": "1",
+          "points": 2500
+        },
+        {
+          "id": "trn_low_1",
+          "groupId": "INLANES",
+          "x": 190,
+          "y": 414,
+          "radius": 5.5,
+          "letter": "2",
+          "points": 2500
+        }
+      ],
+      "spinners": [
+        {
+          "id": "trn_sp1",
+          "name": "SOUPAPE VAPEUR O.",
+          "x": 42,
+          "y": 146,
+          "width": 16,
+          "angle": 0.15,
+          "pointsPerSpin": 1000
+        },
+        {
+          "id": "trn_sp2",
+          "name": "SOUPAPE VAPEUR E.",
+          "x": 184,
+          "y": 146,
+          "width": 16,
+          "angle": -0.15,
+          "pointsPerSpin": 1000
+        }
+      ],
+      "scoops": [
+        {
+          "id": "trn_roundhouse",
+          "name": "ROTONDE DES LOCOS",
+          "kind": "UPPER_LOCK",
+          "x": 113,
+          "y": 152,
+          "radius": 9.5,
+          "ejectTo": {
+            "x": 113,
+            "y": 168
+          },
+          "ejectVelocity": {
+            "x": 26,
+            "y": 150
+          },
+          "points": 13000,
+          "color": "#FACC15"
+        }
+      ],
+      "missions": [
+        {
+          "id": "tra_m1",
+          "title": "VOIES",
+          "description": "Franchir 2 voies pour monter en gare",
+          "targetKind": "RAMP",
+          "goal": 2,
+          "rewardPoints": 45000,
+          "accentColor": "#94A3B8"
+        },
+        {
+          "id": "tra_m2",
+          "title": "VAPEUR",
+          "description": "Frapper 5 fois les bumpers de la locomotive",
+          "targetKind": "BUMPER",
+          "goal": 5,
+          "rewardPoints": 55000,
+          "accentColor": "#E2E8F0"
+        },
+        {
+          "id": "tra_m3",
+          "title": "EXPRESS",
+          "description": "Arrêter 4 fois la locomotive : elle avance d’un cran à chaque arrêt",
+          "targetKind": "TARGET",
+          "goal": 4,
+          "rewardPoints": 75000,
+          "accentColor": "#F59E0B"
+        }
+      ],
+      "extraWalls": [],
+      "extraPegs": [
+        {
+          "x": 84,
+          "y": 244,
+          "radius": 3.5,
+          "restitution": 0.85
+        },
+        {
+          "x": 142,
+          "y": 244,
+          "radius": 3.5,
+          "restitution": 0.85
+        }
+      ],
+      "missionEmblemPos": {
+        "x": 113,
+        "y": 352
+      },
+      "hunt": {
+        "kind": "LOCOMOTIVE",
+        "name": "LIGNE EXPRESS 5 GARES",
+        "slots": [
+          {
+            "x": 74,
+            "y": 306
+          },
+          {
+            "x": 96,
+            "y": 292
+          },
+          {
+            "x": 113,
+            "y": 312
+          },
+          {
+            "x": 130,
+            "y": 292
+          },
+          {
+            "x": 152,
+            "y": 306
+          }
+        ],
+        "radius": 8,
+        "points": 4500,
+        "goal": 4,
+        "reward": 45000,
+        "sequential": true,
+        "color": "#EF4444"
+      },
+      "rulesSummary": {
+        "rampsRule": "Les deux Viaducs d’Acier Voie 1 & Voie 2 se croisent au-dessus de la Plaque Tournante pour alimenter chacun le flipper d’aiguillage opposé.",
+        "bumpersRule": "Quatre bumpers : lanterne, piston et signal sur la diagonale de la locomotive, plus la chaudière.",
+        "targetsRule": "R-A-I-L monte le Bonus, T-R-A-I lance le Multibille, V-A-P rallume les Kickbacks.",
+        "multiballRule": "Verrouillez 2 billes dans le Dépôt des Locos ou complétez T-R-A-I pour libérer 3 billes !",
+        "specialRule": "Utilisez la Plaque Tournante motorisée centrale pour dévier vos tirs vers les sémaphores et faites avancer la Locomotive de gare en gare dans l’ordre."
+      },
+      "decorTheme": "train",
+      "musicTheme": "train",
+      "interactiveToys": [
+        {
+          "id": "trn_turntable_pit",
+          "name": "PLAQUE TOURNANTE VAPEUR",
+          "kind": "TURNTABLE",
+          "visual": "RAIL_TURNTABLE",
+          "x": 113,
+          "y": 206,
+          "radius": 19,
+          "points": 4000,
+          "accentColor": "#F59E0B",
+          "hitsRequired": 4,
+          "rewardPoints": 25000
+        }
+      ]
+    },
+    {
+      "id": "crypte",
+      "name": "Crypte",
+      "subtitle": "Sarcophage de Pierre Coulissant · Croix de Givre & Beffroi Gothique",
+      "layoutBadge": "3 Flippers · Sarcophage Mobile & Beffroi Gauche",
+      "environmentTag": "Cathédrale Engloutie · Crypte de Givre",
+      "description": "Sous la grande rosace gothique, 5 bumpers runiques forment une croix de glace autour du chœur ; en bas de la nef, le couvercle de pierre du Sarcophage coulisse latéralement sous vos tirs pour révéler la crypte, tandis que l’Arc-Boutant nourrit le flipper du beffroi gauche.",
+      "multiballName": "MULTIBILLE LÉGION",
+      "jackpotName": "SUPER NÉCROPOLE",
+      "skillShotLabel": "TIR FUNÈBRE",
+      "gravity": 316,
+      "palette": {
+        "bgPrimary": "#06121F",
+        "bgSecondary": "#0F2A44",
+        "cabinetFrame": "#334155",
+        "cabinetHighlight": "#E0F2FE",
+        "wallMetal": "#7DD3FC",
+        "wallHighlight": "#F0F9FF",
+        "accentPrimary": "#38BDF8",
+        "accentSecondary": "#A5F3FC",
+        "accentWarm": "#6D28D9",
+        "flipperTop": "#E0F2FE",
+        "flipperSkirt": "#1E3A5F",
+        "slingshotMain": "#0EA5E9",
+        "slingshotAccent": "#E0F2FE",
+        "hudBg": "#050B14",
+        "hudBorder": "#38BDF8",
+        "hudDigits": "#A5F3FC",
+        "hudStyle": "CYBER_AKA",
+        "ballTint": "#E0F2FE"
+      },
+      "extraFlippers": [
+        {
+          "id": "cry_belfry_hi",
+          "side": "LEFT",
+          "zone": "UPPER",
+          "pivot": {
+            "x": 26,
+            "y": 228
+          },
+          "length": 26,
+          "radius": 3.8,
+          "restAngle": 0.44,
+          "activeAngle": -0.5
+        }
+      ],
+      "beveledHousings": [
+        {
+          "points": [
+            {
+              "x": 9,
+              "y": 198
+            },
+            {
+              "x": 26,
+              "y": 218
+            },
+            {
+              "x": 22,
+              "y": 230
+            },
+            {
+              "x": 9,
+              "y": 228
+            }
+          ],
+          "fillColor": "#1E293B"
+        },
+        {
+          "points": [
+            {
+              "x": 64,
+              "y": 274
+            },
+            {
+              "x": 78,
+              "y": 282
+            },
+            {
+              "x": 76,
+              "y": 312
+            },
+            {
+              "x": 62,
+              "y": 306
+            }
+          ],
+          "fillColor": "#1E3A5F"
+        },
+        {
+          "points": [
+            {
+              "x": 162,
+              "y": 274
+            },
+            {
+              "x": 148,
+              "y": 282
+            },
+            {
+              "x": 150,
+              "y": 312
+            },
+            {
+              "x": 164,
+              "y": 306
+            }
+          ],
+          "fillColor": "#1E3A5F"
+        }
+      ],
+      "bumpers": [
+        {
+          "id": "cry_b1",
+          "x": 113,
+          "y": 84,
+          "radius": 11,
+          "points": 2300,
+          "label": "RUNE NORD",
+          "colorStyle": "ICE",
+          "iconStyle": "RUNE"
+        },
+        {
+          "id": "cry_b2",
+          "x": 76,
+          "y": 118,
+          "radius": 11,
+          "points": 2300,
+          "label": "STÈLE OUEST",
+          "colorStyle": "PURPLE",
+          "iconStyle": "TOMBSTONE"
+        },
+        {
+          "id": "cry_b3",
+          "x": 113,
+          "y": 118,
+          "radius": 12,
+          "points": 2700,
+          "label": "CŒUR ROSACE",
+          "colorStyle": "ICE",
+          "iconStyle": "RUNE"
+        },
+        {
+          "id": "cry_b4",
+          "x": 150,
+          "y": 118,
+          "radius": 11,
+          "points": 2300,
+          "label": "STÈLE EST",
+          "colorStyle": "PURPLE",
+          "iconStyle": "TOMBSTONE"
+        },
+        {
+          "id": "cry_b5",
+          "x": 113,
+          "y": 154,
+          "radius": 11,
+          "points": 2400,
+          "label": "AUTEL GIVRÉ",
+          "colorStyle": "BLUE",
+          "iconStyle": "TOMBSTONE"
+        }
+      ],
+      "targets": [
+        {
+          "id": "cry_rune_0",
+          "bankId": "cry_RUNES",
+          "bankRole": "MULTIPLIER",
+          "kind": "DROP",
+          "x1": 68.5,
+          "y1": 196,
+          "x2": 79.5,
+          "y2": 196,
+          "letter": "A",
+          "lampColor": "#38BDF8",
+          "points": 3700
+        },
+        {
+          "id": "cry_rune_1",
+          "bankId": "cry_RUNES",
+          "bankRole": "MULTIPLIER",
+          "kind": "DROP",
+          "x1": 94.5,
+          "y1": 196,
+          "x2": 105.5,
+          "y2": 196,
+          "letter": "M",
+          "lampColor": "#A855F7",
+          "points": 3700
+        },
+        {
+          "id": "cry_rune_2",
+          "bankId": "cry_RUNES",
+          "bankRole": "MULTIPLIER",
+          "kind": "DROP",
+          "x1": 120.5,
+          "y1": 196,
+          "x2": 131.5,
+          "y2": 196,
+          "letter": "E",
+          "lampColor": "#38BDF8",
+          "points": 3700
+        },
+        {
+          "id": "cry_rune_3",
+          "bankId": "cry_RUNES",
+          "bankRole": "MULTIPLIER",
+          "kind": "DROP",
+          "x1": 146.5,
+          "y1": 196,
+          "x2": 157.5,
+          "y2": 196,
+          "letter": "N",
+          "lampColor": "#E2E8F0",
+          "points": 3700
+        },
+        {
+          "id": "cry_pil_l",
+          "bankId": "cry_TOMB",
+          "bankRole": "JACKPOT_BOOST",
+          "kind": "STANDUP",
+          "x1": 80,
+          "y1": 286,
+          "x2": 80,
+          "y2": 308,
+          "letter": "R",
+          "lampColor": "#38BDF8",
+          "points": 4200
+        },
+        {
+          "id": "cry_pil_r",
+          "bankId": "cry_TOMB",
+          "bankRole": "JACKPOT_BOOST",
+          "kind": "STANDUP",
+          "x1": 146,
+          "y1": 286,
+          "x2": 146,
+          "y2": 308,
+          "letter": "P",
+          "lampColor": "#A855F7",
+          "points": 4200
+        }
+      ],
+      "ramps": [
+        {
+          "id": "cry_flying_buttress",
+          "name": "ARC-BOUTANT DE GIVRE",
+          "style": "MOLDED_ACRYLIC",
+          "entry": {
+            "x": 168,
+            "y": 350
+          },
+          "entryRadius": 16,
+          "entryDir": {
+            "x": 0.185,
+            "y": -0.983
+          },
+          "path": [
+            {
+              "x": 168,
+              "y": 350
+            },
+            {
+              "x": 188,
+              "y": 244
+            },
+            {
+              "x": 168,
+              "y": 88
+            },
+            {
+              "x": 46,
+              "y": 108
+            },
+            {
+              "x": 32,
+              "y": 200
+            }
+          ],
+          "points": 22500,
+          "chuteColor": "#38BDF8",
+          "railColor": "#E0F2FE"
+        },
+        {
+          "id": "cry_gargoyle_walk",
+          "name": "GALERIE DES GARGOUILLES",
+          "style": "WIREFORM_RAIL",
+          "entry": {
+            "x": 44,
+            "y": 350
+          },
+          "entryRadius": 16,
+          "entryDir": {
+            "x": -0.073,
+            "y": -0.997
+          },
+          "path": [
+            {
+              "x": 44,
+              "y": 350
+            },
+            {
+              "x": 38,
+              "y": 268
+            },
+            {
+              "x": 76,
+              "y": 168
+            },
+            {
+              "x": 176,
+              "y": 178
+            },
+            {
+              "x": 190,
+              "y": 294
+            }
+          ],
+          "points": 20500,
+          "chuteColor": "#818CF8",
+          "railColor": "#C7D2FE"
+        }
+      ],
+      "rollovers": [
+        {
+          "id": "cry_top_0",
+          "groupId": "TOP_LANES",
+          "x": 58,
+          "y": 48,
+          "radius": 6,
+          "letter": "N",
+          "points": 3500
+        },
+        {
+          "id": "cry_top_1",
+          "groupId": "TOP_LANES",
+          "x": 94,
+          "y": 45,
+          "radius": 6,
+          "letter": "E",
+          "points": 3500
+        },
+        {
+          "id": "cry_top_2",
+          "groupId": "TOP_LANES",
+          "x": 132,
+          "y": 45,
+          "radius": 6,
+          "letter": "F",
+          "points": 3500
+        },
+        {
+          "id": "cry_top_3",
+          "groupId": "TOP_LANES",
+          "x": 168,
+          "y": 48,
+          "radius": 6,
+          "letter": "◆",
+          "points": 3500
+        },
+        {
+          "id": "cry_low_0",
+          "groupId": "INLANES",
+          "x": 36,
+          "y": 414,
+          "radius": 5.5,
+          "letter": "◄",
+          "points": 2500
+        },
+        {
+          "id": "cry_low_1",
+          "groupId": "INLANES",
+          "x": 190,
+          "y": 414,
+          "radius": 5.5,
+          "letter": "►",
+          "points": 2500
+        }
+      ],
+      "spinners": [
+        {
+          "id": "cry_sp1",
+          "name": "HERSE DU CHŒUR",
+          "x": 52,
+          "y": 148,
+          "width": 16,
+          "angle": 0.15,
+          "pointsPerSpin": 950
+        },
+        {
+          "id": "cry_sp2",
+          "name": "NEF ORIENTALE",
+          "x": 182,
+          "y": 228,
+          "width": 16,
+          "angle": -0.15,
+          "pointsPerSpin": 950
+        }
+      ],
+      "scoops": [
+        {
+          "id": "cry_reliquary",
+          "name": "RELIQUAIRE SCELLÉ",
+          "kind": "UPPER_LOCK",
+          "x": 178,
+          "y": 146,
+          "radius": 9.5,
+          "ejectTo": {
+            "x": 174,
+            "y": 162
+          },
+          "ejectVelocity": {
+            "x": -30,
+            "y": 155
+          },
+          "points": 13000,
+          "color": "#38BDF8"
+        }
+      ],
+      "missions": [
+        {
+          "id": "cry_m1",
+          "title": "ALLÉES",
+          "description": "Franchir 2 allées entre les tombes",
+          "targetKind": "RAMP",
+          "goal": 2,
+          "rewardPoints": 45000,
+          "accentColor": "#7DD3FC"
+        },
+        {
+          "id": "cry_m2",
+          "title": "TOMBES",
+          "description": "Frapper 5 fois les tombes du cimetière",
+          "targetKind": "BUMPER",
+          "goal": 5,
+          "rewardPoints": 55000,
+          "accentColor": "#A78BFA"
+        },
+        {
+          "id": "cry_m3",
+          "title": "ZOMBIES",
+          "description": "Renvoyer 4 zombies sous terre : ils ressortent ailleurs",
+          "targetKind": "TARGET",
+          "goal": 4,
+          "rewardPoints": 75000,
+          "accentColor": "#86EFAC"
+        }
+      ],
+      "extraWalls": [],
+      "extraPegs": [
+        {
+          "x": 94,
+          "y": 154,
+          "radius": 3.5,
+          "restitution": 0.86
+        },
+        {
+          "x": 132,
+          "y": 154,
+          "radius": 3.5,
+          "restitution": 0.86
+        }
+      ],
+      "missionEmblemPos": {
+        "x": 113,
+        "y": 218
+      },
+      "hunt": {
+        "kind": "ZOMBIE",
+        "name": "RÉVEIL DES ZOMBIES",
+        "slots": [
+          {
+            "x": 84,
+            "y": 242
+          },
+          {
+            "x": 142,
+            "y": 242
+          },
+          {
+            "x": 113,
+            "y": 246
+          },
+          {
+            "x": 113,
+            "y": 342
+          }
+        ],
+        "radius": 8.5,
+        "points": 4600,
+        "goal": 4,
+        "reward": 50000,
+        "sequential": false,
+        "color": "#38BDF8"
+      },
+      "rulesSummary": {
+        "rampsRule": "L’Arc-Boutant de Givre contourne toute la voûte de la cathédrale pour servir le flipper haut du Beffroi à gauche, tandis que la Galerie des Gargouilles croise sous la rosace.",
+        "bumpersRule": "Cinq bumpers : une croix de quatre tombes et un crâne gelé au-dessus des flippers.",
+        "targetsRule": "G-L-A-C monte le Bonus, M-O-R-T lance le Multibille, R-I-P rallume les Kickbacks.",
+        "multiballRule": "Verrouillez 2 billes dans le Sarcophage Gelé ou complétez M-O-R-T pour libérer 3 billes !",
+        "specialRule": "Frappez le Sarcophage de pierre entre les deux piliers de la nef pour faire coulisser sa dalle runique, et renvoyez les 4 Zombies dans leurs caveaux."
+      },
+      "decorTheme": "crypte",
+      "musicTheme": "crypte",
+      "interactiveToys": [
+        {
+          "id": "cry_sliding_sarcophagus",
+          "name": "SARCOPHAGE RUNIQUE",
+          "kind": "SLIDING_CRYPT",
+          "visual": "SARCOPHAGUS",
+          "x": 113,
+          "y": 294,
+          "radius": 14,
+          "points": 5800,
+          "accentColor": "#38BDF8",
+          "hitsRequired": 3,
+          "rewardPoints": 25000
+        }
+      ]
+    }
+  ]
+}

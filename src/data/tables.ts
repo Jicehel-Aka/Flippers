@@ -1,39 +1,166 @@
 import solaireArt from '../assets/images/pinball_solaire_art_1793554422501.jpg';
-import { PinballTableDef, TableThemeId, TargetDef } from '../types/pinball';
+import {
+  BUILTIN_THEME_IDS,
+  BuiltinThemeId,
+  InteractiveToyDef,
+  InteractiveToyKind,
+  InteractiveToyVisual,
+  MissionDef,
+  PinballTableDef,
+  UpperPlayfieldDef,
+  UpperPlayfieldStyle,
+  resolveDecorTheme,
+  resolveMusicTheme,
+} from '../types/pinball';
+import rawTablesConfig from './tables.config.json';
 
 const HIGH_SCORE_STORAGE_KEY = 'gamebuino_aka_pinball_highscores_v4';
+const CUSTOM_TABLES_STORAGE_KEY = 'gamebuino_aka_pinball_custom_tables_v1';
 
-const DEFAULT_HIGH_SCORES: Record<TableThemeId, number> = {
+const INTERNAL_ARTWORKS: Record<string, string> = {
+  solaire_temple: solaireArt,
+};
+
+const DEFAULT_HIGH_SCORES: Record<BuiltinThemeId, number> = {
   aka_esp32: 480000,
   space_odyssey: 420000,
   star_galaxy: 510000,
   solaire: 450000,
+  classique: 390000,
+  prehistoire: 400000,
+  farwest: 410000,
+  halloween: 430000,
+  candy: 380000,
+  bonbons: 390000,
+  train: 420000,
+  crypte: 440000,
 };
 
-export function loadHighScores(): Record<TableThemeId, number> {
+export function cloneTableDef(table: PinballTableDef): PinballTableDef {
+  return JSON.parse(JSON.stringify(table)) as PinballTableDef;
+}
+
+function hydrateArtwork(table: PinballTableDef): PinballTableDef {
+  const copy = cloneTableDef(table);
+  if (copy.artworkKey && INTERNAL_ARTWORKS[copy.artworkKey] && !copy.artworkUrl) {
+    copy.artworkUrl = INTERNAL_ARTWORKS[copy.artworkKey];
+  }
+  copy.decorTheme = resolveDecorTheme(copy);
+  copy.musicTheme = resolveMusicTheme(copy);
+  return copy;
+}
+
+function stripRuntimeArtwork(table: PinballTableDef): PinballTableDef {
+  const copy = cloneTableDef(table);
+  if (copy.artworkKey && INTERNAL_ARTWORKS[copy.artworkKey]) {
+    delete copy.artworkUrl;
+  }
+  return copy;
+}
+
+/** Catalogue de référence issu de `src/data/tables.config.json` (12 tables d'origine). */
+export const BUILTIN_TABLES: readonly PinballTableDef[] = (
+  rawTablesConfig.tables as unknown as PinballTableDef[]
+).map(hydrateArtwork);
+
+const BUILTIN_BY_ID = new Map<string, PinballTableDef>(
+  BUILTIN_TABLES.map((t) => [t.id, t])
+);
+
+interface StoredCustomCatalog {
+  overrides: Record<string, PinballTableDef>;
+  customTables: PinballTableDef[];
+}
+
+function loadStoredCustomCatalog(): StoredCustomCatalog {
   try {
-    const raw = localStorage.getItem(HIGH_SCORE_STORAGE_KEY);
-    if (!raw) return { ...DEFAULT_HIGH_SCORES };
+    const raw = localStorage.getItem(CUSTOM_TABLES_STORAGE_KEY);
+    if (!raw) return { overrides: {}, customTables: [] };
     const parsed = JSON.parse(raw);
-    return {
-      aka_esp32:
-        typeof parsed.aka_esp32 === 'number' ? parsed.aka_esp32 : DEFAULT_HIGH_SCORES.aka_esp32,
-      space_odyssey:
-        typeof parsed.space_odyssey === 'number'
-          ? parsed.space_odyssey
-          : DEFAULT_HIGH_SCORES.space_odyssey,
-      star_galaxy:
-        typeof parsed.star_galaxy === 'number'
-          ? parsed.star_galaxy
-          : DEFAULT_HIGH_SCORES.star_galaxy,
-      solaire: typeof parsed.solaire === 'number' ? parsed.solaire : DEFAULT_HIGH_SCORES.solaire,
-    };
+    const overrides: Record<string, PinballTableDef> = {};
+    if (parsed && typeof parsed.overrides === 'object' && parsed.overrides !== null) {
+      for (const [id, def] of Object.entries(parsed.overrides)) {
+        if (BUILTIN_BY_ID.has(id)) {
+          overrides[id] = validateAndNormalizeTable(def, id);
+        }
+      }
+    }
+    const customTables: PinballTableDef[] = [];
+    if (Array.isArray(parsed?.customTables)) {
+      for (const item of parsed.customTables) {
+        const norm = validateAndNormalizeTable(item);
+        if (!BUILTIN_BY_ID.has(norm.id)) {
+          customTables.push(norm);
+        }
+      }
+    }
+    return { overrides, customTables };
   } catch {
-    return { ...DEFAULT_HIGH_SCORES };
+    return { overrides: {}, customTables: [] };
   }
 }
 
-export function saveHighScores(scores: Record<TableThemeId, number>) {
+function persistStoredCustomCatalog(store: StoredCustomCatalog) {
+  try {
+    const serializable: StoredCustomCatalog = {
+      overrides: Object.fromEntries(
+        Object.entries(store.overrides).map(([k, v]) => [k, stripRuntimeArtwork(v)])
+      ),
+      customTables: store.customTables.map(stripRuntimeArtwork),
+    };
+    localStorage.setItem(CUSTOM_TABLES_STORAGE_KEY, JSON.stringify(serializable));
+  } catch {
+    // Ignore storage quota errors
+  }
+}
+
+let catalogStore: StoredCustomCatalog = loadStoredCustomCatalog();
+
+/**
+ * Tableau vivant des plateaux actifs (référence stable partagée par le moteur physique,
+ * le rendu, l'éditeur de tables et les scripts de génération du firmware AKA).
+ */
+export const PINBALL_TABLES: PinballTableDef[] = [];
+
+function rebuildActiveTablesInPlace() {
+  const next: PinballTableDef[] = [
+    ...BUILTIN_TABLES.map((base) =>
+      catalogStore.overrides[base.id]
+        ? hydrateArtwork(catalogStore.overrides[base.id])
+        : cloneTableDef(base)
+    ),
+    ...catalogStore.customTables.map(hydrateArtwork),
+  ];
+  PINBALL_TABLES.splice(0, PINBALL_TABLES.length, ...next);
+}
+
+rebuildActiveTablesInPlace();
+
+export function loadHighScores(): Record<string, number> {
+  const defaults: Record<string, number> = { ...DEFAULT_HIGH_SCORES };
+  for (const t of PINBALL_TABLES) {
+    if (typeof defaults[t.id] !== 'number') {
+      defaults[t.id] = 250000;
+    }
+  }
+  try {
+    const raw = localStorage.getItem(HIGH_SCORE_STORAGE_KEY);
+    if (!raw) return defaults;
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== 'object') return defaults;
+    const merged: Record<string, number> = { ...defaults };
+    for (const [k, v] of Object.entries(parsed)) {
+      if (typeof v === 'number' && Number.isFinite(v)) {
+        merged[k] = v;
+      }
+    }
+    return merged;
+  } catch {
+    return defaults;
+  }
+}
+
+export function saveHighScores(scores: Record<string, number>) {
   try {
     localStorage.setItem(HIGH_SCORE_STORAGE_KEY, JSON.stringify(scores));
   } catch {
@@ -41,937 +168,397 @@ export function saveHighScores(scores: Record<TableThemeId, number>) {
   }
 }
 
-function makeVerticalBank(
-  prefix: string,
-  bankId: string,
-  bankRole: TargetDef['bankRole'],
-  kind: TargetDef['kind'],
-  x: number,
-  startY: number,
-  stepY: number,
-  letters: string[],
-  colors: string[],
-  points: number
-): TargetDef[] {
-  return letters.map((letter, idx) => ({
-    id: `${prefix}_${bankId}_${idx}`,
-    bankId: `${prefix}_${bankId}`,
-    bankRole,
-    kind,
-    x1: x,
-    y1: startY + idx * stepY,
-    x2: x,
-    y2: startY + idx * stepY + 10.5,
-    letter,
-    lampColor: colors[idx % colors.length],
-    points,
-  }));
+// ============================================================================
+// VALIDATION, NORMALISATION & CRUD POUR L'ÉDITEUR DE TABLES MAISON
+// ============================================================================
+
+export function getTableById(id: string): PinballTableDef | undefined {
+  return PINBALL_TABLES.find((t) => t.id === id);
 }
 
-export const PINBALL_TABLES: PinballTableDef[] = [
-  // ==========================================================================
-  // 1. GAMEBUINO AKA · ESP32
-  // Layout unique : Double Mini-Flippers Hauts symétriques (y=174),
-  // Grappe d'engrenages asymétrique en haut-gauche + Cœur Wi-Fi central,
-  // Rampe Bus SPI moulée + Viaduc métallique croisé Wi-Fi.
-  // ==========================================================================
-  {
-    id: 'aka_esp32',
-    name: 'Gamebuino AKA · ESP32',
-    subtitle: 'Double-Pont Cybernétique & Puce Wi-Fi',
-    layoutBadge: '4 Flippers · Double Arène Haute',
-    environmentTag: 'Électronique Open-Source · 4 Flippers',
-    description:
-      'Architecture double-pont : deux mini-flippers symétriques en haut encadrent l’oscilloscope, une grappe d’engrenages asymétrique à gauche et un viaduc métallique croisant au-dessus du processeur ESP32.',
-    multiballName: 'MULTIBILLE OVERCLOCK',
-    jackpotName: 'SUPER FLASH 240MHz',
-    skillShotLabel: 'BOOTLOADER PARFAIT',
-    gravity: 322,
-    palette: {
-      bgPrimary: '#06142E',
-      bgSecondary: '#0C2552',
-      cabinetFrame: '#94A3B8',
-      cabinetHighlight: '#E2E8F0',
-      wallMetal: '#94A3B8',
-      wallHighlight: '#F8FAFC',
-      accentPrimary: '#38BDF8',
-      accentSecondary: '#FACC15',
-      accentWarm: '#EF4444',
-      flipperTop: '#F8FAFC',
-      flipperSkirt: '#DC2626',
-      slingshotMain: '#DC2626',
-      slingshotAccent: '#FACC15',
-      hudBg: '#050E21',
-      hudBorder: '#38BDF8',
-      hudDigits: '#FACC15',
-      hudStyle: 'CYBER_AKA',
-      ballTint: '#E2E8F0',
-    },
-    extraFlippers: [
-      {
-        id: 'aka_upper_left',
-        side: 'LEFT',
-        zone: 'UPPER',
-        pivot: { x: 56, y: 174 },
-        length: 23,
-        radius: 3.7,
-        restAngle: 0.44,
-        activeAngle: -0.5,
-      },
-      {
-        id: 'aka_upper_right',
-        side: 'RIGHT',
-        zone: 'UPPER',
-        pivot: { x: 170, y: 174 },
-        length: 23,
-        radius: 3.7,
-        restAngle: Math.PI - 0.44,
-        activeAngle: Math.PI + 0.5,
-      },
-    ],
-    beveledHousings: [
-      { points: [{ x: 9, y: 144 }, { x: 56, y: 174 }, { x: 9, y: 162 }], fillColor: '#334155' },
-      { points: [{ x: 217, y: 144 }, { x: 170, y: 174 }, { x: 217, y: 162 }], fillColor: '#334155' },
-      { points: [{ x: 9, y: 210 }, { x: 19, y: 220 }, { x: 19, y: 280 }, { x: 9, y: 290 }] },
-      { points: [{ x: 217, y: 210 }, { x: 207, y: 220 }, { x: 207, y: 280 }, { x: 217, y: 290 }] },
-      { points: [{ x: 9, y: 314 }, { x: 18.5, y: 323.5 }, { x: 18.5, y: 360.5 }, { x: 9, y: 370 }] },
-      { points: [{ x: 217, y: 314 }, { x: 207.5, y: 323.5 }, { x: 207.5, y: 360.5 }, { x: 217, y: 370 }] },
-    ],
-    bumpers: [
-      { id: 'aka_b1', x: 66, y: 94, radius: 10.5, points: 2000, label: 'GEAR ROUGE', colorStyle: 'RED', iconStyle: 'GEAR' },
-      { id: 'aka_b2', x: 108, y: 90, radius: 10.5, points: 2000, label: 'GEAR OR', colorStyle: 'GOLD', iconStyle: 'GEAR' },
-      { id: 'aka_b3', x: 85, y: 124, radius: 10.5, points: 2200, label: 'CLOCK BUS', colorStyle: 'BLUE', iconStyle: 'GEAR' },
-      { id: 'aka_b4', x: 113, y: 238, radius: 11, points: 2600, label: 'CŒUR WIFI', colorStyle: 'GOLD', iconStyle: 'GEAR' },
-    ],
-    targets: [
-      ...makeVerticalBank('aka', 'CODE', 'MULTIPLIER', 'DROP', 19.5, 222, 14, ['<', '/', '>', '∞'], ['#EF4444', '#22C55E', '#38BDF8', '#FACC15'], 3500),
-      ...makeVerticalBank('aka', 'ESP', 'MULTIBALL', 'STANDUP', 206.5, 222, 14, ['E', 'S', 'P', '3'], ['#38BDF8', '#FACC15', '#EF4444', '#22C55E'], 4500),
-      ...makeVerticalBank('aka', 'PWM', 'KICKBACK', 'DROP', 19, 325, 12.5, ['P', 'W', 'M'], ['#22C55E', '#38BDF8', '#FACC15'], 3200),
-      ...makeVerticalBank('aka', 'USB', 'JACKPOT_BOOST', 'STANDUP', 207, 325, 12.5, ['U', 'S', 'B'], ['#FACC15', '#EF4444', '#38BDF8'], 3500),
-    ],
-    ramps: [
-      {
-        id: 'aka_ramp_spi',
-        name: 'BUS SPI GAUCHE',
-        style: 'MOLDED_ACRYLIC',
-        entry: { x: 48, y: 334 },
-        entryRadius: 15,
-        entryDir: { x: -0.32, y: -0.95 },
-        path: [
-          { x: 48, y: 334 },
-          { x: 28, y: 278 },
-          { x: 26, y: 202 },
-          { x: 34, y: 134 },
-        ],
-        points: 18000,
-        chuteColor: '#38BDF8',
-        railColor: '#E2E8F0',
-      },
-      {
-        id: 'aka_ramp_wifi',
-        name: 'VIADUC WI-FI 2.4G',
-        style: 'WIREFORM_RAIL',
-        entry: { x: 174, y: 334 },
-        entryRadius: 15,
-        entryDir: { x: 0.32, y: -0.95 },
-        path: [
-          { x: 174, y: 334 },
-          { x: 194, y: 274 },
-          { x: 166, y: 210 },
-          { x: 82, y: 248 },
-          { x: 36, y: 338 },
-          { x: 36, y: 404 },
-        ],
-        points: 21000,
-        chuteColor: '#60A5FA',
-        railColor: '#FACC15',
-      },
-      {
-        id: 'aka_ramp_overclock',
-        name: 'ARCHE OVERCLOCK',
-        style: 'MOLDED_ACRYLIC',
-        entry: { x: 150, y: 132 },
-        entryRadius: 14,
-        entryDir: { x: 0.55, y: -0.83 },
-        allowSideEntry: true,
-        path: [
-          { x: 150, y: 132 },
-          { x: 188, y: 88 },
-          { x: 142, y: 36 },
-          { x: 74, y: 40 },
-          { x: 188, y: 132 },
-        ],
-        points: 28000,
-        chuteColor: '#22C55E',
-        railColor: '#FFFFFF',
-      },
-    ],
-    rollovers: [
-      { id: 'aka_r1', groupId: 'TOP_LANES', x: 68, y: 52, radius: 6, letter: 'A', points: 3500 },
-      { id: 'aka_r2', groupId: 'TOP_LANES', x: 98, y: 49, radius: 6, letter: 'K', points: 3500 },
-      { id: 'aka_r3', groupId: 'TOP_LANES', x: 128, y: 49, radius: 6, letter: 'A', points: 3500 },
-      { id: 'aka_r4', groupId: 'TOP_LANES', x: 158, y: 52, radius: 6, letter: '!', points: 3500 },
-      { id: 'aka_in_l', groupId: 'INLANES', x: 36, y: 414, radius: 5.5, letter: '0', points: 2500 },
-      { id: 'aka_in_r', groupId: 'INLANES', x: 190, y: 414, radius: 5.5, letter: '1', points: 2500 },
-    ],
-    spinners: [
-      { id: 'aka_sp1', name: 'CLOCK 240MHz', x: 46, y: 204, width: 15, angle: -0.2, pointsPerSpin: 900 },
-      { id: 'aka_sp2', name: 'BUS I2C', x: 180, y: 198, width: 15, angle: 0.2, pointsPerSpin: 900 },
-    ],
-    scoops: [
-      {
-        id: 'aka_lock_boot',
-        name: 'VERROU BOOTLOADER',
-        kind: 'UPPER_LOCK',
-        x: 156,
-        y: 96,
-        radius: 9,
-        ejectTo: { x: 156, y: 112 },
-        ejectVelocity: { x: 35, y: 165 },
-        points: 22000,
-        color: '#FACC15',
-      },
-      {
-        id: 'aka_vuk_uart',
-        name: 'CANON UART',
-        kind: 'MID_VUK_TELEPORT',
-        x: 113,
-        y: 316,
-        radius: 9,
-        ejectTo: { x: 36, y: 134 },
-        ejectVelocity: { x: 48, y: 135 },
-        points: 16000,
-        color: '#38BDF8',
-      },
-    ],
-    missions: [
-      {
-        id: 'aka_m1',
-        title: 'BUS SPI RAPIDE',
-        description: 'Franchir 2 rampes pour synchroniser le bus écran',
-        targetKind: 'RAMP',
-        goal: 2,
-        rewardPoints: 45000,
-        accentColor: '#38BDF8',
-      },
-      {
-        id: 'aka_m2',
-        title: 'TEST OSCILLOSCOPE',
-        description: 'Activer 5 engrenages bumpers ou spinners',
-        targetKind: 'BUMPER',
-        goal: 5,
-        rewardPoints: 55000,
-        accentColor: '#22C55E',
-      },
-      {
-        id: 'aka_m3',
-        title: 'FLASH FIRMWARE',
-        description: 'Toucher 4 cibles ou puits pour graver la ROM',
-        targetKind: 'TARGET',
-        goal: 4,
-        rewardPoints: 75000,
-        accentColor: '#FACC15',
-      },
-    ],
-    extraWalls: [],
-    extraPegs: [],
-    missionEmblemPos: { x: 113, y: 364 },
-    rulesSummary: {
-      rampsRule:
-        'Le Bus SPI moulé translucide monte directement au mini-flipper gauche, tandis que le Viaduc Wi-Fi en rails chromés traverse la carte mère.',
-      bumpersRule:
-        'Grappe asymétrique de 3 engrenages en haut-gauche + Cœur Wi-Fi central au-dessus de la puce ESP32.',
-      targetsRule:
-        'Abattez < / > ∞ pour augmenter le Bonus, E-S-P-3 pour déclencher le Multibille et P-W-M pour rallumer les 2 Kickbacks.',
-      multiballRule:
-        'Verrouillez 2 billes dans le Verrou Bootloader (haut-droite) ou complétez E-S-P-3 pour libérer 3 billes simultanées !',
-    },
-  },
+export function isBuiltinTableId(id: string): boolean {
+  return BUILTIN_BY_ID.has(id);
+}
 
-  // ==========================================================================
-  // 2. ODYSSÉE SPATIALE
-  // Layout unique : 3 Flippers avec Fronde Orbitale à mi-hauteur GAUCHE (y=256),
-  // Constellation centrale de 5 Bumpers Étoiles en diamant,
-  // Grande Arche Apollo faisant tout le tour droit -> gauche vers le 3e flipper !
-  // ==========================================================================
-  {
-    id: 'space_odyssey',
-    name: 'Odyssée Spatiale',
-    subtitle: 'Fronde Orbitale Gauche & Constellation 5 Étoiles',
-    layoutBadge: '3 Flippers · Fronde Latérale Gauche',
-    environmentTag: 'Conquête Spatiale · Constellation 5 Bumpers',
-    description:
-      'Disposition orbitale : une constellation centrale en diamant de 5 étoiles bumpers, une grande arche vitrée Apollo qui livre la bille sur un 3e flipper latéral gauche pour viser l’Anneau de Saturne.',
-    multiballName: 'MULTIBILLE APOLLO',
-    jackpotName: 'HYPER-ORBITE SOLAIRE',
-    skillShotLabel: 'INSERTION ORBITALE',
-    gravity: 318,
-    palette: {
-      bgPrimary: '#081642',
-      bgSecondary: '#132B70',
-      cabinetFrame: '#94A3B8',
-      cabinetHighlight: '#F1F5F9',
-      wallMetal: '#CBD5E1',
-      wallHighlight: '#FFFFFF',
-      accentPrimary: '#38BDF8',
-      accentSecondary: '#FACC15',
-      accentWarm: '#EF4444',
-      flipperTop: '#FFFFFF',
-      flipperSkirt: '#DC2626',
-      slingshotMain: '#DC2626',
-      slingshotAccent: '#FACC15',
-      hudBg: '#091128',
-      hudBorder: '#3B82F6',
-      hudDigits: '#EF4444',
-      hudStyle: 'LED_7SEG',
-      ballTint: '#F1F5F9',
-    },
-    extraFlippers: [
-      {
-        id: 'spc_mid_left',
-        side: 'LEFT',
-        zone: 'MID',
-        pivot: { x: 48, y: 256 },
-        length: 25,
-        radius: 3.8,
-        restAngle: 0.42,
-        activeAngle: -0.52,
-      },
-    ],
-    beveledHousings: [
-      // Seamless NASA target guide rail feeding straight onto the Mid-Left Orbital Flipper!
-      {
-        points: [
-          { x: 9, y: 136 },
-          { x: 19, y: 146 },
-          { x: 19, y: 222 },
-          { x: 48, y: 256 },
-          { x: 9, y: 240 },
-        ],
-        fillColor: '#1E293B',
-      },
-      // Opposite MARS target bank sniped by the Mid-Left Flipper
-      { points: [{ x: 217, y: 196 }, { x: 206.5, y: 206.5 }, { x: 206.5, y: 268.5 }, { x: 217, y: 279 }] },
-      { points: [{ x: 9, y: 294 }, { x: 18.5, y: 303.5 }, { x: 18.5, y: 345.5 }, { x: 9, y: 355 }] },
-      { points: [{ x: 217, y: 306 }, { x: 207.5, y: 315.5 }, { x: 207.5, y: 357.5 }, { x: 217, y: 367 }] },
-    ],
-    bumpers: [
-      { id: 'spc_b1', x: 78, y: 98, radius: 10, points: 2000, label: 'STAR ALPHA', colorStyle: 'RED', iconStyle: 'STAR' },
-      { id: 'spc_b2', x: 148, y: 98, radius: 10, points: 2000, label: 'STAR BETA', colorStyle: 'GOLD', iconStyle: 'STAR' },
-      { id: 'spc_b3', x: 113, y: 128, radius: 11.5, points: 2800, label: 'SUPERNOVA', colorStyle: 'BLUE', iconStyle: 'STAR' },
-      { id: 'spc_b4', x: 82, y: 158, radius: 10, points: 2000, label: 'PULSAR G', colorStyle: 'GOLD', iconStyle: 'STAR' },
-      { id: 'spc_b5', x: 144, y: 158, radius: 10, points: 2000, label: 'PULSAR D', colorStyle: 'RED', iconStyle: 'STAR' },
-    ],
-    targets: [
-      ...makeVerticalBank('spc', 'NASA', 'MULTIPLIER', 'DROP', 19.5, 150, 14, ['N', 'A', 'S', 'A'], ['#EF4444', '#FACC15', '#38BDF8', '#22C55E'], 3500),
-      ...makeVerticalBank('spc', 'MARS', 'MULTIBALL', 'STANDUP', 206, 209, 14, ['M', 'A', 'R', 'S'], ['#FACC15', '#EF4444', '#38BDF8', '#22C55E'], 4500),
-      ...makeVerticalBank('spc', 'ORB', 'KICKBACK', 'DROP', 19, 306, 13, ['O', 'R', 'B'], ['#38BDF8', '#FACC15', '#EF4444'], 3200),
-      ...makeVerticalBank('spc', 'EVA', 'JACKPOT_BOOST', 'STANDUP', 207, 318, 13, ['E', 'V', 'A'], ['#22C55E', '#38BDF8', '#FACC15'], 3500),
-    ],
-    ramps: [
-      {
-        id: 'spc_ramp_apollo',
-        name: 'GRANDE ARCHE APOLLO',
-        style: 'MOLDED_ACRYLIC',
-        entry: { x: 170, y: 342 },
-        entryRadius: 15.5,
-        entryDir: { x: 0.34, y: -0.94 },
-        path: [
-          { x: 170, y: 342 },
-          { x: 194, y: 284 },
-          { x: 192, y: 172 },
-          { x: 154, y: 68 },
-          { x: 64, y: 74 },
-          { x: 32, y: 168 },
-          { x: 32, y: 222 },
-        ],
-        points: 22000,
-        chuteColor: '#38BDF8',
-        railColor: '#FFFFFF',
-      },
-      {
-        id: 'spc_ramp_saturn',
-        name: 'ANNEAU DE SATURNE',
-        style: 'WIREFORM_RAIL',
-        entry: { x: 162, y: 184 },
-        entryRadius: 15,
-        entryDir: { x: 0.72, y: -0.69 },
-        allowSideEntry: true,
-        path: [
-          { x: 162, y: 184 },
-          { x: 196, y: 152 },
-          { x: 196, y: 282 },
-          { x: 190, y: 404 },
-        ],
-        points: 26000,
-        chuteColor: '#FACC15',
-        railColor: '#FDE047',
-      },
-      {
-        id: 'spc_ramp_booster',
-        name: 'BOOSTER ROUGE',
-        style: 'MOLDED_ACRYLIC',
-        entry: { x: 66, y: 328 },
-        entryRadius: 14.5,
-        entryDir: { x: -0.25, y: -0.97 },
-        path: [
-          { x: 66, y: 328 },
-          { x: 48, y: 262 },
-          { x: 68, y: 196 },
-          { x: 36, y: 402 },
-        ],
-        points: 18500,
-        chuteColor: '#EF4444',
-        railColor: '#FDE047',
-      },
-    ],
-    rollovers: [
-      { id: 'spc_r1', groupId: 'TOP_LANES', x: 68, y: 50, radius: 6, letter: '1', points: 3500 },
-      { id: 'spc_r2', groupId: 'TOP_LANES', x: 98, y: 47, radius: 6, letter: 'U', points: 3500 },
-      { id: 'spc_r3', groupId: 'TOP_LANES', x: 128, y: 47, radius: 6, letter: 'P', points: 3500 },
-      { id: 'spc_r4', groupId: 'TOP_LANES', x: 158, y: 50, radius: 6, letter: '★', points: 3500 },
-      { id: 'spc_in_l', groupId: 'INLANES', x: 36, y: 414, radius: 5.5, letter: '★', points: 2500 },
-      { id: 'spc_in_r', groupId: 'INLANES', x: 190, y: 414, radius: 5.5, letter: '★', points: 2500 },
-    ],
-    spinners: [
-      { id: 'spc_sp1', name: 'SONDE VOYAGER', x: 44, y: 112, width: 15, angle: -0.25, pointsPerSpin: 950 },
-      { id: 'spc_sp2', name: 'TURBINE LOX', x: 184, y: 294, width: 15, angle: 0.2, pointsPerSpin: 950 },
-    ],
-    scoops: [
-      {
-        id: 'spc_lock_mir',
-        name: 'SAS STATION MIR',
-        kind: 'UPPER_LOCK',
-        x: 182,
-        y: 126,
-        radius: 9,
-        ejectTo: { x: 168, y: 138 },
-        ejectVelocity: { x: -85, y: 155 },
-        points: 24000,
-        color: '#FACC15',
-      },
-      {
-        id: 'spc_vuk_lunar',
-        name: 'MODULE LUNAIRE',
-        kind: 'MID_VUK_TELEPORT',
-        x: 154,
-        y: 298,
-        radius: 9,
-        ejectTo: { x: 32, y: 222 },
-        ejectVelocity: { x: 38, y: 120 },
-        points: 17000,
-        color: '#EF4444',
-      },
-    ],
-    missions: [
-      {
-        id: 'spc_m1',
-        title: 'MISE EN ORBITE',
-        description: 'Emprunter 2 rampes orbitales avec la fusée',
-        targetKind: 'RAMP',
-        goal: 2,
-        rewardPoints: 45000,
-        accentColor: '#38BDF8',
-      },
-      {
-        id: 'spc_m2',
-        title: 'PLUIE DE MÉTÉORES',
-        description: 'Percuter 6 étoiles dans la constellation centrale',
-        targetKind: 'BUMPER',
-        goal: 6,
-        rewardPoints: 60000,
-        accentColor: '#FACC15',
-      },
-      {
-        id: 'spc_m3',
-        title: 'ARRIMAGE STATION MIR',
-        description: 'Valider 4 cibles spatiales ou sas d’amarrage',
-        targetKind: 'TARGET',
-        goal: 4,
-        rewardPoints: 80000,
-        accentColor: '#EF4444',
-      },
-    ],
-    extraWalls: [],
-    extraPegs: [],
-    missionEmblemPos: { x: 113, y: 364 },
-    rulesSummary: {
-      rampsRule:
-        'La Grande Arche Apollo fait tout le tour du dôme pour livrer la bille sur le 3e flipper gauche, idéal pour tirer l’Anneau de Saturne en travers !',
-      bumpersRule:
-        'Constellation centrale de 5 Bumpers Étoiles disposés en diamant autour de la Supernova bleue.',
-      targetsRule:
-        'Visez M-A-R-S depuis le flipper latéral gauche pour déclencher le Multibille Apollo et N-A-S-A pour monter le Bonus.',
-      multiballRule:
-        '2 verrous au Sas Station Mir ou la banque M-A-R-S libèrent immédiatement 3 billes simultanées !',
-    },
-  },
+export function isTableModified(id: string): boolean {
+  return Boolean(catalogStore.overrides[id]);
+}
 
-  // ==========================================================================
-  // 3. STAR WARS · YAVIN (id technique : star_galaxy)
-  // Layout unique : Double Flipper Droit d'Assaut (y=154 et y=282),
-  // Rampes Sabre Sith (rouge) & Sabre Jedi (bleu) croisées en X au centre du plateau,
-  // Conduit Thermique de l'Étoile Noire gardé par les turbolasers !
-  // ==========================================================================
-  {
-    id: 'star_galaxy',
-    name: 'Star Wars · Yavin',
-    subtitle: 'Bataille de Yavin · Sabres en X & Assaut Droit',
-    layoutBadge: '4 Flippers · Sabres Jedi & Sith',
-    environmentTag: 'Il y a bien longtemps · Une galaxie très lointaine',
-    description:
-      'Bataille de Yavin : un sabre Sith rouge et un sabre Jedi bleu se croisent en X au-dessus de l’Étoile Noire. Vos X-Wings attaquent par le flanc droit, il faut placer la torpille à protons dans le conduit thermique !',
-    multiballName: 'ESCADRON ROUGE',
-    jackpotName: 'TORPILLE À PROTONS',
-    skillShotLabel: 'SAUT HYPERESPACE',
-    gravity: 328,
-    palette: {
-      bgPrimary: '#050711',
-      bgSecondary: '#0D142B',
-      cabinetFrame: '#64748B',
-      cabinetHighlight: '#CBD5E1',
-      wallMetal: '#94A3B8',
-      wallHighlight: '#F8FAFC',
-      accentPrimary: '#3B82F6',
-      accentSecondary: '#EF4444',
-      accentWarm: '#FFE81F',
-      flipperTop: '#F8FAFC',
-      flipperSkirt: '#DC2626',
-      slingshotMain: '#DC2626',
-      slingshotAccent: '#3B82F6',
-      hudBg: '#070912',
-      hudBorder: '#FFE81F',
-      hudDigits: '#FFE81F',
-      hudStyle: 'LED_7SEG',
-      ballTint: '#E2E8F0',
-    },
-    extraFlippers: [
-      {
-        id: 'gal_upper_right',
-        side: 'RIGHT',
-        zone: 'UPPER',
-        pivot: { x: 172, y: 154 },
-        length: 22,
-        radius: 3.6,
-        restAngle: Math.PI - 0.44,
-        activeAngle: Math.PI + 0.5,
-      },
-      {
-        id: 'gal_mid_right',
-        side: 'RIGHT',
-        zone: 'MID',
-        pivot: { x: 176, y: 282 },
-        length: 24,
-        radius: 3.8,
-        restAngle: Math.PI - 0.44,
-        activeAngle: Math.PI + 0.5,
-      },
-    ],
-    beveledHousings: [
-      { points: [{ x: 217, y: 126 }, { x: 172, y: 154 }, { x: 217, y: 142 }], fillColor: '#334155' },
-      // Seamless XWNG wall feeding directly onto Mid-Right Assault Flipper
-      {
-        points: [
-          { x: 217, y: 172 },
-          { x: 207, y: 182 },
-          { x: 207, y: 250 },
-          { x: 176, y: 282 },
-          { x: 217, y: 268 },
-        ],
-        fillColor: '#1E293B',
-      },
-      { points: [{ x: 9, y: 142 }, { x: 19, y: 152 }, { x: 19, y: 214 }, { x: 9, y: 224 }] },
-      { points: [{ x: 9, y: 282 }, { x: 18.5, y: 291.5 }, { x: 18.5, y: 335.5 }, { x: 9, y: 345 }] },
-      { points: [{ x: 217, y: 304 }, { x: 207.5, y: 313.5 }, { x: 207.5, y: 355.5 }, { x: 217, y: 365 }] },
-    ],
-    bumpers: [
-      { id: 'gal_b1', x: 62, y: 100, radius: 10, points: 2100, label: 'X-WING ROUGE 2', colorStyle: 'RED', iconStyle: 'CREST' },
-      { id: 'gal_b2', x: 113, y: 86, radius: 10.5, points: 2400, label: 'FAUCON MILLENIUM', colorStyle: 'GOLD', iconStyle: 'CREST' },
-      { id: 'gal_b3', x: 150, y: 102, radius: 10, points: 2100, label: 'Y-WING OR', colorStyle: 'BLUE', iconStyle: 'CREST' },
-      { id: 'gal_b4', x: 70, y: 214, radius: 10.5, points: 2300, label: 'TURBOLASER G', colorStyle: 'RED', iconStyle: 'CREST' },
-      { id: 'gal_b5', x: 156, y: 214, radius: 10.5, points: 2300, label: 'TURBOLASER D', colorStyle: 'BLUE', iconStyle: 'CREST' },
-    ],
-    targets: [
-      ...makeVerticalBank('gal', 'SITH', 'MULTIPLIER', 'DROP', 19.5, 154, 14, ['S', 'I', 'T', 'H'], ['#EF4444', '#B91C1C', '#EF4444', '#B91C1C'], 3500),
-      ...makeVerticalBank('gal', 'XWNG', 'MULTIBALL', 'STANDUP', 206.5, 185, 14.5, ['X', 'W', 'N', 'G'], ['#3B82F6', '#EF4444', '#FACC15', '#22C55E'], 4500),
-      ...makeVerticalBank('gal', 'R2D', 'KICKBACK', 'DROP', 19, 294, 13, ['R', '2', 'D'], ['#38BDF8', '#FFFFFF', '#FACC15'], 3200),
-      ...makeVerticalBank('gal', 'ION', 'JACKPOT_BOOST', 'STANDUP', 207, 316, 13, ['I', 'O', 'N'], ['#EF4444', '#3B82F6', '#FACC15'], 3500),
-    ],
-    ramps: [
-      {
-        id: 'gal_ramp_red_saber',
-        name: 'SABRE SITH',
-        style: 'MOLDED_ACRYLIC',
-        entry: { x: 52, y: 344 },
-        entryRadius: 15.5,
-        entryDir: { x: 0.42, y: -0.91 },
-        path: [
-          { x: 52, y: 344 },
-          { x: 92, y: 280 },
-          { x: 146, y: 222 },
-          { x: 192, y: 182 },
-          { x: 194, y: 244 },
-        ],
-        points: 22000,
-        chuteColor: '#EF4444',
-        railColor: '#FCA5A5',
-      },
-      {
-        id: 'gal_ramp_blue_saber',
-        name: 'SABRE JEDI',
-        style: 'MOLDED_ACRYLIC',
-        entry: { x: 166, y: 344 },
-        entryRadius: 15.5,
-        entryDir: { x: -0.42, y: -0.91 },
-        path: [
-          { x: 166, y: 344 },
-          { x: 126, y: 280 },
-          { x: 72, y: 222 },
-          { x: 34, y: 182 },
-          { x: 36, y: 404 },
-        ],
-        points: 22000,
-        chuteColor: '#3B82F6',
-        railColor: '#93C5FD',
-      },
-      {
-        id: 'gal_ramp_hyper',
-        name: 'SAUT HYPERESPACE',
-        style: 'WIREFORM_RAIL',
-        entry: { x: 54, y: 242 },
-        entryRadius: 15,
-        entryDir: { x: -0.68, y: -0.73 },
-        allowSideEntry: true,
-        path: [
-          { x: 54, y: 242 },
-          { x: 30, y: 186 },
-          { x: 48, y: 118 },
-          { x: 190, y: 118 },
-        ],
-        points: 28000,
-        chuteColor: '#FACC15',
-        railColor: '#FDE047',
-      },
-    ],
-    rollovers: [
-      { id: 'gal_r1', groupId: 'TOP_LANES', x: 68, y: 50, radius: 6, letter: 'J', points: 3500 },
-      { id: 'gal_r2', groupId: 'TOP_LANES', x: 98, y: 47, radius: 6, letter: 'E', points: 3500 },
-      { id: 'gal_r3', groupId: 'TOP_LANES', x: 128, y: 47, radius: 6, letter: 'D', points: 3500 },
-      { id: 'gal_r4', groupId: 'TOP_LANES', x: 158, y: 50, radius: 6, letter: 'I', points: 3500 },
-      { id: 'gal_in_l', groupId: 'INLANES', x: 36, y: 414, radius: 5.5, letter: '◄', points: 2500 },
-      { id: 'gal_in_r', groupId: 'INLANES', x: 190, y: 414, radius: 5.5, letter: '►', points: 2500 },
-    ],
-    spinners: [
-      { id: 'gal_sp1', name: 'CHASSEURS TIE', x: 38, y: 254, width: 15, angle: -0.2, pointsPerSpin: 950 },
-      { id: 'gal_sp2', name: 'HYPERPROPULSEUR', x: 190, y: 110, width: 15, angle: 0.25, pointsPerSpin: 950 },
-    ],
-    scoops: [
-      {
-        id: 'gal_lock_reactor',
-        name: 'CONDUIT THERMIQUE',
-        kind: 'UPPER_LOCK',
-        x: 113,
-        y: 174,
-        radius: 9,
-        ejectTo: { x: 113, y: 190 },
-        ejectVelocity: { x: -75, y: 155 },
-        points: 25000,
-        color: '#EF4444',
-      },
-      {
-        id: 'gal_vuk_hyper',
-        name: 'TUNNEL DE KESSEL',
-        kind: 'MID_VUK_TELEPORT',
-        x: 113,
-        y: 298,
-        radius: 9,
-        ejectTo: { x: 192, y: 120 },
-        ejectVelocity: { x: -35, y: 120 },
-        points: 18000,
-        color: '#3B82F6',
-      },
-    ],
-    missions: [
-      {
-        id: 'gal_m1',
-        title: 'DUEL DE SABRES',
-        description: 'Franchir 2 fois les rampes du Sabre Sith et du Sabre Jedi',
-        targetKind: 'RAMP',
-        goal: 2,
-        rewardPoints: 50000,
-        accentColor: '#EF4444',
-      },
-      {
-        id: 'gal_m2',
-        title: 'DÉFENSE DES TURBOLASERS',
-        description: 'Neutraliser 5 X-Wings, Faucon ou turbolasers (bumpers ou spinners)',
-        targetKind: 'BUMPER',
-        goal: 5,
-        rewardPoints: 60000,
-        accentColor: '#3B82F6',
-      },
-      {
-        id: 'gal_m3',
-        title: 'TRANCHÉE DE L’ÉTOILE NOIRE',
-        description: 'Toucher 4 cibles ou le Conduit Thermique : « Utilise la Force ! »',
-        targetKind: 'TARGET',
-        goal: 4,
-        rewardPoints: 85000,
-        accentColor: '#FACC15',
-      },
-    ],
-    extraWalls: [],
-    extraPegs: [],
-    missionEmblemPos: { x: 113, y: 364 },
-    rulesSummary: {
-      rampsRule:
-        'Le Sabre Sith (rouge) et le Sabre Jedi (bleu) forment un X lumineux : le Sabre Sith livre la bille sur le flipper d’assaut médian droit pour enchaîner le Saut Hyperespace.',
-      bumpersRule:
-        'X-Wing, Faucon Millenium et Y-Wing en formation d’attaque + 2 turbolasers protégeant le Conduit Thermique.',
-      targetsRule:
-        'Abattez les S-I-T-H à gauche pour le multiplicateur, X-W-N-G à droite pour l’Escadron Rouge (multibille) et R-2-D pour les 2 Kickbacks. J-E-D-I en haut allume les couloirs.',
-      multiballRule:
-        '2 tirs dans le Conduit Thermique central ou la banque X-W-N-G lancent l’Escadron Rouge à 3 billes !',
-    },
-  },
+export function validateAndNormalizeTable(
+  raw: unknown,
+  forcedId?: string
+): PinballTableDef {
+  if (!raw || typeof raw !== 'object') {
+    throw new Error('Définition de table JSON invalide.');
+  }
+  const obj = raw as Partial<PinballTableDef>;
+  const fallbackBase =
+    (obj.decorTheme && BUILTIN_BY_ID.get(obj.decorTheme)) ||
+    (obj.id && BUILTIN_BY_ID.get(String(obj.id))) ||
+    BUILTIN_TABLES[4]; // Flipper Classique par défaut
 
-  // ==========================================================================
-  // 4. TEMPLE SOLAIRE
-  // Layout unique : Terrasses Maya décalées en diagonale (Flipper Jade Haut-Gauche
-  // y=204 + Flipper Or Bas-Droit y=298), deux sanctuaires de bumpers opposés,
-  // et Rampe Serpent Quetzal sinueuse au cœur du temple !
-  // ==========================================================================
-  {
-    id: 'solaire',
-    name: 'Temple Solaire',
-    subtitle: 'Terrasses Décalées & Serpent Quetzal',
-    layoutBadge: '4 Flippers · Terrasses en Diagonale',
-    environmentTag: 'Cité d’Or & Jade · Sanctuaires Croisés',
-    description:
-      'Géométrie en terrasses asymétriques : un flipper de Jade haut perché à gauche, un flipper d’Or plus bas à droite, deux sanctuaires de totems opposés et une rampe Serpent sinueuse au centre.',
-    artworkUrl: solaireArt,
-    multiballName: 'ÉCLIPSE MULTIBILLE',
-    jackpotName: 'ZÉNITH IMPÉRIAL D’OR',
-    skillShotLabel: 'ALIGNEMENT SOLAIRE',
-    gravity: 318,
-    palette: {
-      bgPrimary: '#17120E',
-      bgSecondary: '#261D16',
-      cabinetFrame: '#B45309',
-      cabinetHighlight: '#FDE68A',
-      wallMetal: '#D97706',
-      wallHighlight: '#FDE68A',
-      accentPrimary: '#10B981',
-      accentSecondary: '#F59E0B',
-      accentWarm: '#EF4444',
-      flipperTop: '#FEF3C7',
-      flipperSkirt: '#059669',
-      slingshotMain: '#B45309',
-      slingshotAccent: '#10B981',
-      hudBg: '#100C09',
-      hudBorder: '#D97706',
-      hudDigits: '#FBBF24',
-      hudStyle: 'CYBER_AKA',
-      ballTint: '#FDE68A',
-    },
-    extraFlippers: [
-      {
-        id: 'sol_high_left',
-        side: 'LEFT',
-        zone: 'UPPER',
-        pivot: { x: 52, y: 204 },
-        length: 24,
-        radius: 3.7,
-        restAngle: 0.44,
-        activeAngle: -0.5,
-      },
-      {
-        id: 'sol_low_right',
-        side: 'RIGHT',
-        zone: 'MID',
-        pivot: { x: 176, y: 298 },
-        length: 24,
-        radius: 3.7,
-        restAngle: Math.PI - 0.44,
-        activeAngle: Math.PI + 0.5,
-      },
-    ],
-    beveledHousings: [
-      // Seamless JADE wall feeding High-Left Terrace Flipper
-      {
-        points: [
-          { x: 9, y: 102 },
-          { x: 19, y: 112 },
-          { x: 19, y: 170 },
-          { x: 52, y: 204 },
-          { x: 9, y: 190 },
-        ],
-        fillColor: '#292018',
-      },
-      // Seamless MAYA wall feeding Low-Right Terrace Flipper
-      {
-        points: [
-          { x: 217, y: 188 },
-          { x: 207, y: 198 },
-          { x: 207, y: 264 },
-          { x: 176, y: 298 },
-          { x: 217, y: 284 },
-        ],
-        fillColor: '#292018',
-      },
-      { points: [{ x: 9, y: 298 }, { x: 18.5, y: 307.5 }, { x: 18.5, y: 349.5 }, { x: 9, y: 359 }] },
-      { points: [{ x: 217, y: 316 }, { x: 207.5, y: 325.5 }, { x: 207.5, y: 363.5 }, { x: 217, y: 373 }] },
-    ],
-    bumpers: [
-      // Sanctuary 1: Upper-Right Emerald Totems
-      { id: 'sol_b1', x: 132, y: 92, radius: 10, points: 2000, label: 'TOTEM JADE 1', colorStyle: 'JADE', iconStyle: 'SUN' },
-      { id: 'sol_b2', x: 174, y: 102, radius: 10, points: 2000, label: 'TOTEM JADE 2', colorStyle: 'JADE', iconStyle: 'SUN' },
-      { id: 'sol_b3', x: 152, y: 132, radius: 10.5, points: 2400, label: 'ORACLE ÉMERAUDE', colorStyle: 'GOLD', iconStyle: 'SUN' },
-      // Sanctuary 2: Mid-Left Golden Sun Idols
-      { id: 'sol_b4', x: 60, y: 260, radius: 10, points: 2000, label: 'IDOLE JAGUAR', colorStyle: 'GOLD', iconStyle: 'SUN' },
-      { id: 'sol_b5', x: 98, y: 252, radius: 10, points: 2000, label: 'IDOLE AIGLE', colorStyle: 'RED', iconStyle: 'SUN' },
-      { id: 'sol_b6', x: 78, y: 288, radius: 10.5, points: 2500, label: 'ASTRE D’OR', colorStyle: 'GOLD', iconStyle: 'SUN' },
-    ],
-    targets: [
-      ...makeVerticalBank('sol', 'JADE', 'MULTIPLIER', 'DROP', 19.5, 114, 13.5, ['J', 'A', 'D', 'E'], ['#10B981', '#F59E0B', '#FDE047', '#10B981'], 3500),
-      ...makeVerticalBank('sol', 'MAYA', 'MULTIBALL', 'STANDUP', 206.5, 202, 14.5, ['M', 'A', 'Y', 'A'], ['#F59E0B', '#10B981', '#EF4444', '#FDE047'], 4500),
-      ...makeVerticalBank('sol', 'SOL', 'KICKBACK', 'DROP', 19, 309, 13, ['S', 'O', 'L'], ['#FACC15', '#10B981', '#F59E0B'], 3200),
-      ...makeVerticalBank('sol', 'ORB', 'JACKPOT_BOOST', 'STANDUP', 207, 327, 12, ['O', 'R', 'B'], ['#F59E0B', '#EF4444', '#10B981'], 3500),
-    ],
-    ramps: [
-      {
-        id: 'sol_ramp_quetzal',
-        name: 'SERPENT QUETZAL',
-        style: 'MOLDED_ACRYLIC',
-        entry: { x: 124, y: 342 },
-        entryRadius: 15.5,
-        entryDir: { x: 0.1, y: -0.99 },
-        path: [
-          { x: 124, y: 342 },
-          { x: 138, y: 278 },
-          { x: 92, y: 214 },
-          { x: 48, y: 148 },
-          { x: 34, y: 168 },
-        ],
-        points: 21000,
-        chuteColor: '#10B981',
-        railColor: '#FDE68A',
-      },
-      {
-        id: 'sol_ramp_aqueduct',
-        name: 'AQUEDUC D’OR',
-        style: 'WIREFORM_RAIL',
-        entry: { x: 156, y: 162 },
-        entryRadius: 15,
-        entryDir: { x: 0.72, y: -0.69 },
-        allowSideEntry: true,
-        path: [
-          { x: 156, y: 162 },
-          { x: 194, y: 122 },
-          { x: 196, y: 216 },
-          { x: 194, y: 262 },
-        ],
-        points: 25000,
-        chuteColor: '#F59E0B',
-        railColor: '#FDE68A',
-      },
-      {
-        id: 'sol_ramp_eclipse',
-        name: 'PONT DE L’ÉCLIPSE',
-        style: 'MOLDED_ACRYLIC',
-        entry: { x: 48, y: 238 },
-        entryRadius: 14.5,
-        entryDir: { x: -0.58, y: -0.81 },
-        allowSideEntry: true,
-        path: [
-          { x: 48, y: 238 },
-          { x: 28, y: 198 },
-          { x: 36, y: 404 },
-        ],
-        points: 20000,
-        chuteColor: '#FACC15',
-        railColor: '#10B981',
-      },
-    ],
-    rollovers: [
-      { id: 'sol_r1', groupId: 'TOP_LANES', x: 68, y: 50, radius: 6, letter: 'S', points: 3500 },
-      { id: 'sol_r2', groupId: 'TOP_LANES', x: 98, y: 47, radius: 6, letter: 'O', points: 3500 },
-      { id: 'sol_r3', groupId: 'TOP_LANES', x: 128, y: 47, radius: 6, letter: 'L', points: 3500 },
-      { id: 'sol_r4', groupId: 'TOP_LANES', x: 158, y: 50, radius: 6, letter: '☀', points: 3500 },
-      { id: 'sol_in_l', groupId: 'INLANES', x: 36, y: 414, radius: 5.5, letter: '◆', points: 2500 },
-      { id: 'sol_in_r', groupId: 'INLANES', x: 190, y: 414, radius: 5.5, letter: '◆', points: 2500 },
-    ],
-    spinners: [
-      { id: 'sol_sp1', name: 'ROUE DU TEMPS', x: 112, y: 148, width: 15, angle: 0.0, pointsPerSpin: 900 },
-      { id: 'sol_sp2', name: 'SOUFFLE D’OR', x: 168, y: 344, width: 15, angle: 0.2, pointsPerSpin: 900 },
-    ],
-    scoops: [
-      {
-        id: 'sol_lock_crypt',
-        name: 'CRYPTE DE L’ÉCLIPSE',
-        kind: 'UPPER_LOCK',
-        x: 78,
-        y: 106,
-        radius: 9,
-        ejectTo: { x: 86, y: 124 },
-        ejectVelocity: { x: 75, y: 145 },
-        points: 23000,
-        color: '#10B981',
-      },
-      {
-        id: 'sol_vuk_cenote',
-        name: 'CÉNOTÉ SACRÉ',
-        kind: 'MID_VUK_TELEPORT',
-        x: 148,
-        y: 226,
-        radius: 9,
-        ejectTo: { x: 34, y: 166 },
-        ejectVelocity: { x: 42, y: 125 },
-        points: 17000,
-        color: '#F59E0B',
-      },
-    ],
-    missions: [
-      {
-        id: 'sol_m1',
-        title: 'VOIE DE QUETZAL',
-        description: 'Gravir 2 rampes sacrées à travers les terrasses',
-        targetKind: 'RAMP',
-        goal: 2,
-        rewardPoints: 45000,
-        accentColor: '#10B981',
-      },
-      {
-        id: 'sol_m2',
-        title: 'OFFRANDE DES TOTEMS',
-        description: 'Réveiller 6 idoles bumpers de Jade et d’Or',
-        targetKind: 'BUMPER',
-        goal: 6,
-        rewardPoints: 60000,
-        accentColor: '#F59E0B',
-      },
-      {
-        id: 'sol_m3',
-        title: 'RITUEL DU ZÉNITH',
-        description: 'Activer 4 autels cibles ou plonger au Cénoté',
-        targetKind: 'TARGET',
-        goal: 4,
-        rewardPoints: 80000,
-        accentColor: '#FACC15',
-      },
-    ],
-    extraWalls: [],
-    extraPegs: [],
-    missionEmblemPos: { x: 113, y: 374 },
+  const id = (forcedId ?? String(obj.id || `custom_${Date.now()}`))
+    .trim()
+    .replace(/[^a-zA-Z0-9_-]/g, '_');
+
+  const clamp = (n: unknown, fb: number, min: number, max: number) =>
+    typeof n === 'number' && Number.isFinite(n) ? Math.max(min, Math.min(max, n)) : fb;
+
+  const rawMissions = Array.isArray(obj.missions) ? obj.missions : fallbackBase.missions;
+  const normalizedMissions: [MissionDef, MissionDef, MissionDef] = [0, 1, 2].map((i) => {
+    const m = rawMissions[i] ?? fallbackBase.missions[i];
+    return {
+      id: String(m?.id || `${id}_m${i + 1}`),
+      title: String(m?.title || `MISSION ${i + 1}`).slice(0, 24),
+      description: String(m?.description || fallbackBase.missions[i].description),
+      targetKind:
+        m?.targetKind === 'RAMP' ||
+        m?.targetKind === 'BUMPER' ||
+        m?.targetKind === 'TARGET' ||
+        m?.targetKind === 'SCOOP'
+          ? m.targetKind
+          : fallbackBase.missions[i].targetKind,
+      goal: Math.round(clamp(m?.goal, 3, 1, 25)),
+      rewardPoints: Math.round(clamp(m?.rewardPoints, 50000, 1000, 500000)),
+      accentColor: String(m?.accentColor || fallbackBase.missions[i].accentColor),
+    };
+  }) as [MissionDef, MissionDef, MissionDef];
+
+  const palette = {
+    ...fallbackBase.palette,
+    ...(obj.palette && typeof obj.palette === 'object' ? obj.palette : {}),
+  };
+
+  const decorTheme: BuiltinThemeId =
+    obj.decorTheme && (BUILTIN_THEME_IDS as readonly string[]).includes(obj.decorTheme)
+      ? obj.decorTheme
+      : (BUILTIN_THEME_IDS as readonly string[]).includes(id)
+        ? (id as BuiltinThemeId)
+        : fallbackBase.decorTheme ?? 'classique';
+
+  const musicTheme: BuiltinThemeId =
+    obj.musicTheme && (BUILTIN_THEME_IDS as readonly string[]).includes(obj.musicTheme)
+      ? obj.musicTheme
+      : decorTheme;
+
+  const normalized: PinballTableDef = {
+    id,
+    name: String(obj.name || 'Nouveau Flipper').slice(0, 36),
+    subtitle: String(obj.subtitle || fallbackBase.subtitle).slice(0, 64),
+    layoutBadge: String(obj.layoutBadge || fallbackBase.layoutBadge).slice(0, 44),
+    environmentTag: String(obj.environmentTag || fallbackBase.environmentTag).slice(0, 54),
+    description: String(obj.description || fallbackBase.description),
+    decorTheme,
+    musicTheme,
+    artworkKey: obj.artworkKey,
+    artworkUrl: obj.artworkUrl,
+    multiballName: String(obj.multiballName || fallbackBase.multiballName),
+    jackpotName: String(obj.jackpotName || fallbackBase.jackpotName),
+    skillShotLabel: String(obj.skillShotLabel || fallbackBase.skillShotLabel),
+    gravity: clamp(obj.gravity, fallbackBase.gravity, 260, 390),
+    palette,
+    extraFlippers: Array.isArray(obj.extraFlippers)
+      ? cloneTableDef({ ...fallbackBase, extraFlippers: obj.extraFlippers }).extraFlippers
+      : [],
+    beveledHousings: Array.isArray(obj.beveledHousings)
+      ? cloneTableDef({ ...fallbackBase, beveledHousings: obj.beveledHousings }).beveledHousings
+      : cloneTableDef(fallbackBase).beveledHousings,
+    bumpers: Array.isArray(obj.bumpers)
+      ? cloneTableDef({ ...fallbackBase, bumpers: obj.bumpers }).bumpers
+      : cloneTableDef(fallbackBase).bumpers,
+    targets: Array.isArray(obj.targets)
+      ? cloneTableDef({ ...fallbackBase, targets: obj.targets }).targets
+      : cloneTableDef(fallbackBase).targets,
+    ramps:
+      Array.isArray(obj.ramps) && obj.ramps.length > 0
+        ? cloneTableDef({ ...fallbackBase, ramps: obj.ramps }).ramps
+        : cloneTableDef(fallbackBase).ramps,
+    rollovers:
+      Array.isArray(obj.rollovers) && obj.rollovers.length > 0
+        ? cloneTableDef({ ...fallbackBase, rollovers: obj.rollovers }).rollovers
+        : cloneTableDef(fallbackBase).rollovers,
+    spinners: Array.isArray(obj.spinners)
+      ? cloneTableDef({ ...fallbackBase, spinners: obj.spinners }).spinners
+      : cloneTableDef(fallbackBase).spinners,
+    scoops:
+      Array.isArray(obj.scoops) && obj.scoops.length > 0
+        ? cloneTableDef({ ...fallbackBase, scoops: obj.scoops }).scoops
+        : cloneTableDef(fallbackBase).scoops,
+    upperPlayfield: (() => {
+      const srcUp =
+        'upperPlayfield' in obj
+          ? obj.upperPlayfield
+          : fallbackBase.upperPlayfield;
+      if (!srcUp || typeof srcUp !== 'object') return undefined;
+      const u = JSON.parse(JSON.stringify(srcUp)) as Partial<UpperPlayfieldDef> & {
+        surfaceColor?: string;
+        accentColor?: string;
+      };
+      const validStyles: UpperPlayfieldStyle[] = [
+        'CYBER_GLASS',
+        'WOOD_BALCONY',
+        'STONE_TERRACE',
+        'GOTHIC_GALLERY',
+        'STEEL_CATWALK',
+        'SWEET_LOFT',
+      ];
+      const bounds =
+        Array.isArray(u.bounds) && u.bounds.length >= 3
+          ? u.bounds.map((pt) => ({
+              x: clamp(pt?.x, 120, 12, 214),
+              y: clamp(pt?.y, 140, 24, 340),
+            }))
+          : [
+              { x: 122, y: 90 },
+              { x: 206, y: 90 },
+              { x: 206, y: 214 },
+              { x: 138, y: 214 },
+              { x: 118, y: 174 },
+            ];
+      return {
+        id: String(u.id || `${id}_upper`),
+        name: String(u.name || 'ÉTAGE SUPÉRIEUR').slice(0, 24),
+        bounds,
+        openEdgeIndices: Array.isArray(u.openEdgeIndices)
+          ? u.openEdgeIndices.filter((idx) => typeof idx === 'number' && idx >= 0 && idx < bounds.length)
+          : [0],
+        style: validStyles.includes(u.style as UpperPlayfieldStyle)
+          ? (u.style as UpperPlayfieldStyle)
+          : 'CYBER_GLASS',
+        fillColor: String(u.fillColor || u.surfaceColor || palette.bgSecondary || '#0F172A').slice(0, 9),
+        borderColor: String(u.borderColor || u.accentColor || palette.accentPrimary || '#38BDF8').slice(0, 9),
+        flippers: Array.isArray(u.flippers) ? u.flippers : [],
+        bumpers: Array.isArray(u.bumpers) ? u.bumpers : [],
+        targets: Array.isArray(u.targets) ? u.targets : [],
+        rollovers: Array.isArray(u.rollovers) ? u.rollovers : [],
+      };
+    })(),
+    interactiveToys: (() => {
+      const rawToys = Array.isArray(obj.interactiveToys)
+        ? obj.interactiveToys
+        : 'interactiveToys' in obj
+          ? []
+          : fallbackBase.interactiveToys ?? [];
+      const validKinds: InteractiveToyKind[] = [
+        'BASH_TOY',
+        'SWING_DOORS',
+        'TURNTABLE',
+        'GRAVITY_WELL',
+        'SLIDING_CRYPT',
+        'ROTO_TARGET',
+      ];
+      const validVisuals: InteractiveToyVisual[] = [
+        'ESP32_CHIP',
+        'SATURN_RING',
+        'DEATH_STAR_CORE',
+        'SUN_WHEEL',
+        'EM_ROTO_BELL',
+        'VOLCANO',
+        'SALOON_DOORS',
+        'PUMPKIN_KING',
+        'RIBBON_VORTEX',
+        'LOLLIPOP_WHEEL',
+        'RAIL_TURNTABLE',
+        'SARCOPHAGUS',
+      ];
+      return rawToys
+        .filter((item): item is InteractiveToyDef => Boolean(item && typeof item === 'object'))
+        .map((t, idx) => ({
+          id: String(t.id || `${id}_toy_${idx + 1}`),
+          name: String(t.name || 'MÉCANISME CENTRAL').slice(0, 24),
+          kind: validKinds.includes(t.kind) ? t.kind : 'BASH_TOY',
+          visual: validVisuals.includes(t.visual) ? t.visual : 'ESP32_CHIP',
+          x: clamp(t.x, 113, 24, 202),
+          y: clamp(t.y, 210, 48, 435),
+          radius: clamp(t.radius, 16, 10, 32),
+          points: Math.round(clamp(t.points, 4000, 250, 50000)),
+          hitsRequired: Math.round(clamp(t.hitsRequired, 4, 1, 16)),
+          rewardPoints: Math.round(clamp(t.rewardPoints, 25000, 1000, 250000)),
+          accentColor: String(t.accentColor || palette.accentPrimary || '#38BDF8').slice(0, 7),
+        }));
+    })(),
+    missions: normalizedMissions,
+    extraWalls: Array.isArray(obj.extraWalls) ? obj.extraWalls : [],
+    extraPegs: Array.isArray(obj.extraPegs) ? obj.extraPegs : [],
+    missionEmblemPos:
+      obj.missionEmblemPos && typeof obj.missionEmblemPos.x === 'number'
+        ? {
+            x: clamp(obj.missionEmblemPos.x, 113, 30, 196),
+            y: clamp(obj.missionEmblemPos.y, 364, 80, 440),
+          }
+        : { ...fallbackBase.missionEmblemPos },
+    hunt: obj.hunt ? JSON.parse(JSON.stringify(obj.hunt)) : undefined,
+    litBumperRotate: Boolean(obj.litBumperRotate),
     rulesSummary: {
-      rampsRule:
-        'Le Serpent Quetzal ondule au centre jusqu’à la terrasse haute gauche, d’où l’Aqueduc d’Or en rails métalliques rejoint la terrasse droite.',
-      bumpersRule:
-        'Deux sanctuaires opposés : 3 Totems d’Émeraude en haut-droite et 3 Idoles d’Or à mi-hauteur gauche.',
-      targetsRule:
-        'J-A-D-E alimente la terrasse gauche et monte le Bonus ; M-A-Y-A lance l’Éclipse Multibille ; S-O-L allume les 2 boucliers sacrés.',
-      multiballRule:
-        'Verrouillez 2 billes dans la Crypte de l’Éclipse (haut-gauche) ou complétez M-A-Y-A pour libérer 3 billes d’or !',
+      rampsRule: String(obj.rulesSummary?.rampsRule || fallbackBase.rulesSummary.rampsRule),
+      bumpersRule: String(obj.rulesSummary?.bumpersRule || fallbackBase.rulesSummary.bumpersRule),
+      targetsRule: String(obj.rulesSummary?.targetsRule || fallbackBase.rulesSummary.targetsRule),
+      multiballRule: String(
+        obj.rulesSummary?.multiballRule || fallbackBase.rulesSummary.multiballRule
+      ),
+      ...(obj.rulesSummary?.specialRule || fallbackBase.rulesSummary.specialRule
+        ? {
+            specialRule: String(
+              obj.rulesSummary?.specialRule || fallbackBase.rulesSummary.specialRule
+            ),
+          }
+        : {}),
     },
-  },
-];
+  };
+
+  return hydrateArtwork(normalized);
+}
+
+export function saveTableDefinition(table: PinballTableDef): PinballTableDef {
+  const normalized = validateAndNormalizeTable(table, table.id);
+  if (BUILTIN_BY_ID.has(normalized.id)) {
+    catalogStore.overrides[normalized.id] = normalized;
+  } else {
+    const idx = catalogStore.customTables.findIndex((t) => t.id === normalized.id);
+    if (idx >= 0) catalogStore.customTables[idx] = normalized;
+    else catalogStore.customTables.push(normalized);
+  }
+  persistStoredCustomCatalog(catalogStore);
+  rebuildActiveTablesInPlace();
+  return normalized;
+}
+
+export function duplicateTableDefinition(
+  sourceId: string,
+  customName?: string
+): PinballTableDef {
+  const src = PINBALL_TABLES.find((t) => t.id === sourceId) ?? BUILTIN_TABLES[4];
+  const copy = cloneTableDef(src);
+  const slug = `custom_${src.id}_${Math.floor(1000 + Math.random() * 9000)}`;
+  copy.id = slug;
+  copy.name = customName ? customName.slice(0, 36) : `${src.name} (Édition)`;
+  copy.decorTheme = resolveDecorTheme(src);
+  copy.musicTheme = resolveMusicTheme(src);
+  return saveTableDefinition(copy);
+}
+
+export function createNewCustomTable(
+  theme: BuiltinThemeId = 'classique',
+  name: string = 'Mon Flipper Maison'
+): PinballTableDef {
+  const template = BUILTIN_BY_ID.get(theme) ?? BUILTIN_TABLES[4];
+  const copy = cloneTableDef(template);
+  const slug = `table_${theme}_${Math.floor(1000 + Math.random() * 9000)}`;
+  copy.id = slug;
+  copy.name = name.slice(0, 36);
+  copy.subtitle = 'Plateau personnalisé créé dans l’éditeur maison';
+  copy.layoutBadge = 'Création Originale · 240×520';
+  copy.decorTheme = theme;
+  copy.musicTheme = theme;
+  return saveTableDefinition(copy);
+}
+
+export function resetTableDefinition(id: string): PinballTableDef | null {
+  if (!BUILTIN_BY_ID.has(id)) return null;
+  delete catalogStore.overrides[id];
+  persistStoredCustomCatalog(catalogStore);
+  rebuildActiveTablesInPlace();
+  return PINBALL_TABLES.find((t) => t.id === id) ?? null;
+}
+
+export function resetAllTableDefinitions() {
+  catalogStore = { overrides: {}, customTables: [] };
+  persistStoredCustomCatalog(catalogStore);
+  rebuildActiveTablesInPlace();
+}
+
+export function deleteCustomTableDefinition(id: string): boolean {
+  if (BUILTIN_BY_ID.has(id)) return false;
+  const before = catalogStore.customTables.length;
+  catalogStore.customTables = catalogStore.customTables.filter((t) => t.id !== id);
+  if (catalogStore.customTables.length !== before) {
+    persistStoredCustomCatalog(catalogStore);
+    rebuildActiveTablesInPlace();
+    return true;
+  }
+  return false;
+}
+
+export function serializeTableToJson(id: string): string {
+  const table = PINBALL_TABLES.find((t) => t.id === id) ?? PINBALL_TABLES[0];
+  return JSON.stringify(stripRuntimeArtwork(table), null, 2) + '\n';
+}
+
+export function serializeCatalogToJson(): string {
+  const payload = {
+    version: 1,
+    format: 'gamebuino-aka-pinball-tables',
+    playfieldSize: { width: 240, height: 520 },
+    tables: PINBALL_TABLES.map(stripRuntimeArtwork),
+  };
+  return JSON.stringify(payload, null, 2) + '\n';
+}
+
+export function importTablesJson(rawJson: string): { count: number; firstId: string } {
+  const parsed = JSON.parse(rawJson);
+  const list: unknown[] = Array.isArray(parsed)
+    ? parsed
+    : Array.isArray(parsed?.tables)
+      ? parsed.tables
+      : [parsed];
+
+  if (list.length === 0) {
+    throw new Error('Aucune table trouvée dans le fichier JSON.');
+  }
+
+  let firstId = '';
+  let count = 0;
+  for (const item of list) {
+    const saved = saveTableDefinition(validateAndNormalizeTable(item));
+    if (!firstId) firstId = saved.id;
+    count++;
+  }
+  return { count, firstId };
+}
+
+/**
+ * Vérifie les contraintes matérielles du générateur C++ embarqué (`scripts/gen-aka-tables.mjs`)
+ * pour qu'une table soit également compilable sur ESP32-S3 / Gamebuino AKA.
+ */
+export function checkAkaFirmwareCompatibility(table: PinballTableDef): string[] {
+  const issues: string[] = [];
+  if (table.bumpers.length < 3 || table.bumpers.length > 6) {
+    issues.push(`Bumpers : ${table.bumpers.length} (le firmware AKA attend entre 3 et 6 bumpers)`);
+  }
+  const totalExtraFlippers =
+    table.extraFlippers.length + (table.upperPlayfield?.flippers.length ?? 0);
+  if (totalExtraFlippers > 2) {
+    issues.push(`Flippers sup. : ${totalExtraFlippers} (max 2 sur firmware AKA)`);
+  }
+  if (table.ramps.length < 2) {
+    issues.push(`Rampes : ${table.ramps.length} (au moins 2 rampes attendues sur AKA)`);
+  }
+  if (!table.scoops.some((s) => s.kind === 'UPPER_LOCK')) {
+    issues.push('Aucun puits UPPER_LOCK (requis pour le verrou Multibille AKA)');
+  }
+  if (table.rollovers.length !== 6) {
+    issues.push(`Rollovers : ${table.rollovers.length} (exactement 6 attendus sur AKA : 4 haut + 2 retours)`);
+  }
+  if (table.beveledHousings.length > 6) {
+    issues.push(`Boîtiers biseautés : ${table.beveledHousings.length} (max 6 sur AKA)`);
+  }
+  if (table.beveledHousings.some((h) => h.points.length > 5)) {
+    issues.push('Un boîtier dépasse 5 sommets (max 5 par polygone sur AKA)');
+  }
+  if (table.targets.length > 12) {
+    issues.push(`Cibles : ${table.targets.length} (max 12 sur AKA)`);
+  }
+  if (table.spinners.length > 3) {
+    issues.push(`Spinners : ${table.spinners.length} (max 3 sur AKA)`);
+  }
+  if ((table.interactiveToys?.length ?? 0) > 2) {
+    issues.push(`Décors interactifs : ${table.interactiveToys?.length} (max 2 sur AKA)`);
+  }
+  if (table.upperPlayfield && table.upperPlayfield.bounds.length > 6) {
+    issues.push(`Sommets étage sup. : ${table.upperPlayfield.bounds.length} (max 6 sur AKA)`);
+  }
+  if (table.hunt && table.hunt.slots.length > 6) {
+    issues.push(`Emplacements cible mobile : ${table.hunt.slots.length} (max 6 sur AKA)`);
+  }
+  return issues;
+}

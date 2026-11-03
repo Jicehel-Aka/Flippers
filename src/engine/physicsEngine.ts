@@ -6,6 +6,7 @@ import {
   FloatingPopup,
   GameState,
   InputControlsState,
+  InteractiveToyDef,
   LiveGameSnapshot,
   MAX_CAMERA_Y,
   MissionEventKind,
@@ -13,14 +14,35 @@ import {
   PinballTableDef,
   PlayerSession,
   PostPeg,
+  RampDef,
   SCREEN_WIDTH,
+  ScoopVukDef,
   SparkParticle,
   TableThemeId,
+  UpperPlayfieldDef,
   VIEWPORT_HEIGHT,
   Vec2,
   WORLD_HEIGHT,
   WallSegment,
+  resolveDecorTheme,
 } from '../types/pinball';
+import {
+  RampSplineData,
+  buildRampSpline,
+  buildVukTubeSpline,
+  isPointInPolygon,
+  sampleSplineAtDistance,
+} from './rampSpline';
+
+export interface ToyRuntimeState {
+  hits: number;
+  flash: number;
+  angle: number;
+  spinVel: number;
+  openRatio: number;
+  activeTimer: number;
+  cooldown: number;
+}
 
 const BALL_RADIUS = 4.8;
 // Fixed-timestep physics: the simulation always advances in 1/720 s slices, whatever the display
@@ -47,6 +69,9 @@ export class PinballSimulation {
   public basePegs: PostPeg[] = [];
   public tableHousingWalls: WallSegment[] = [];
   public tableHousingPegs: PostPeg[] = [];
+  public upperDeckWalls: WallSegment[] = [];
+  public upperDeckPegs: PostPeg[] = [];
+  public toyStates: Record<string, ToyRuntimeState> = {};
 
   // Camera State: Overview Zoom Arrival + Lowest-Ball Smart Scrolling
   public cameraY: number = MAX_CAMERA_Y;
@@ -82,6 +107,12 @@ export class PinballSimulation {
   public lastCallout: string = 'PRÊT AU LANCEMENT';
   public calloutTimer: number = 0;
   public ballSaveTimer: number = 0;
+  /** Cible mobile de la table (si elle en a une) : emplacement courant, touches cumulées, éclat. */
+  public huntSlot: number = 0;
+  public huntHits: number = 0;
+  public huntFlash: number = 0;
+  /** Bumper « doré » (points x3) quand la table a le mécanisme de rotation. */
+  public litBumperIdx: number = 0;
   public kickbackLeftLit: boolean = true;
   public kickbackRightLit: boolean = false;
   public kickbackFlash: { LEFT: number; RIGHT: number } = { LEFT: 0, RIGHT: 0 };
@@ -94,7 +125,7 @@ export class PinballSimulation {
   // Visual FX (in 240x520 World Coordinates)
   public popups: FloatingPopup[] = [];
   public sparks: SparkParticle[] = [];
-  public highScores: Record<TableThemeId, number> = loadHighScores();
+  public highScores: Record<string, number> = loadHighScores();
   public clock: number = 0;
 
   private prevControls: InputControlsState = {
@@ -117,7 +148,8 @@ export class PinballSimulation {
   private highScoresDirty: boolean = false;
   private lastHighScoreSave: number = 0;
   private rolloverOffTimers: Record<string, number> = {};
-  private rampLengthCache: Map<string, { segLens: number[]; totalLen: number }> = new Map();
+  private rampSplineCache: Map<string, RampSplineData> = new Map();
+  private tubeSplineCache: Map<string, RampSplineData> = new Map();
 
   // Two-step confirmation for destructive pause-menu actions
   public pendingConfirm: 'RESTART' | 'MENU' | null = null;
@@ -195,18 +227,51 @@ export class PinballSimulation {
     }
   }
 
+  private draftOverride: PinballTableDef | null = null;
+
+  public setDraftTable(draft: PinballTableDef | null) {
+    this.draftOverride = draft;
+    this.syncTableGeometry();
+  }
+
   public get currentTable(): PinballTableDef {
-    return PINBALL_TABLES[this.selectedTableIndex];
+    if (this.draftOverride) return this.draftOverride;
+    const safeIdx = Math.max(0, Math.min(this.selectedTableIndex, PINBALL_TABLES.length - 1));
+    return PINBALL_TABLES[safeIdx];
+  }
+
+  /**
+   * Recharge à chaud la géométrie et les caches de la table active (utilisé par l'Éditeur de tables).
+   */
+  public reloadActiveTable(selectId?: string) {
+    if (selectId) {
+      const idx = PINBALL_TABLES.findIndex((t) => t.id === selectId);
+      if (idx !== -1) {
+        this.selectedTableIndex = idx;
+      }
+    }
+    this.selectedTableIndex = Math.max(
+      0,
+      Math.min(this.selectedTableIndex, Math.max(0, PINBALL_TABLES.length - 1))
+    );
+    this.highScores = { ...loadHighScores(), ...this.highScores };
+    this.syncTableGeometry();
   }
 
   /**
    * Rebuilds flippers and beveled target/island housings specific to the selected table!
    */
   public syncTableGeometry() {
+    this.selectedTableIndex = Math.max(
+      0,
+      Math.min(this.selectedTableIndex, Math.max(0, PINBALL_TABLES.length - 1))
+    );
+    this.rampSplineCache.clear();
+    this.tubeSplineCache.clear();
     const table = this.currentTable;
-    soundEngine.setTheme(table.id === 'star_galaxy' ? 'starwars' : 'default');
+    soundEngine.setTheme(resolveDecorTheme(table));
 
-    // 2 Main Lower Arena Flippers (y = 468) + Table-Specific Extra Flippers
+    // 2 Main Lower Arena Flippers (y = 468) + Table-Specific Extra Flippers + Upper Deck Flippers
     const mainFlippers: FlipperState[] = [
       {
         id: 'main_left',
@@ -220,6 +285,7 @@ export class PinballSimulation {
         angle: 0.44,
         angularVelocity: 0,
         pressed: false,
+        deckLayer: 0,
       },
       {
         id: 'main_right',
@@ -233,6 +299,7 @@ export class PinballSimulation {
         angle: Math.PI - 0.44,
         angularVelocity: 0,
         pressed: false,
+        deckLayer: 0,
       },
     ];
 
@@ -241,9 +308,18 @@ export class PinballSimulation {
       angle: ef.restAngle,
       angularVelocity: 0,
       pressed: false,
+      deckLayer: 0,
     }));
 
-    this.flippers = [...mainFlippers, ...extras];
+    const upperFlippers: FlipperState[] = (table.upperPlayfield?.flippers ?? []).map((uf) => ({
+      ...uf,
+      angle: uf.restAngle,
+      angularVelocity: 0,
+      pressed: false,
+      deckLayer: 2,
+    }));
+
+    this.flippers = [...mainFlippers, ...extras, ...upperFlippers];
 
     // Convert table beveledHousings polygons into solid collision walls & smooth corner pegs
     const hWalls: WallSegment[] = [];
@@ -269,6 +345,58 @@ export class PinballSimulation {
 
     this.tableHousingWalls = hWalls;
     this.tableHousingPegs = hPegs;
+
+    // Build Upper Playfield (Layer 2) closed curb walls & corner posts
+    const uWalls: WallSegment[] = [];
+    const uPegs: PostPeg[] = [];
+    if (table.upperPlayfield && table.upperPlayfield.bounds.length >= 3) {
+      const bounds = table.upperPlayfield.bounds;
+      const openSet = new Set(table.upperPlayfield.openEdgeIndices);
+      const n = bounds.length;
+      for (let i = 0; i < n; i++) {
+        const a = bounds[i];
+        const b = bounds[(i + 1) % n];
+        if (!openSet.has(i)) {
+          uWalls.push({ x1: a.x, y1: a.y, x2: b.x, y2: b.y, restitution: 0.46 });
+        }
+        uPegs.push({ x: a.x, y: a.y, radius: 2.2, restitution: 0.52 });
+      }
+    }
+    this.upperDeckWalls = uWalls;
+    this.upperDeckPegs = uPegs;
+
+    // Ensure every interactive decor toy has an initialized runtime state
+    const nextToys: Record<string, ToyRuntimeState> = {};
+    for (const toy of table.interactiveToys ?? []) {
+      nextToys[toy.id] = this.toyStates[toy.id] ?? {
+        hits: 0,
+        flash: 0,
+        angle: 0,
+        spinVel: 0,
+        openRatio: 0,
+        activeTimer: 0,
+        cooldown: 0,
+      };
+    }
+    this.toyStates = nextToys;
+  }
+
+  public getRampSpline(ramp: RampDef): RampSplineData {
+    let cached = this.rampSplineCache.get(ramp.id);
+    if (!cached) {
+      cached = buildRampSpline(ramp.path, 9, Boolean(ramp.exitsToUpperDeck));
+      this.rampSplineCache.set(ramp.id, cached);
+    }
+    return cached;
+  }
+
+  public getTubeSpline(scoop: ScoopVukDef): RampSplineData {
+    let cached = this.tubeSplineCache.get(scoop.id);
+    if (!cached) {
+      cached = buildVukTubeSpline({ x: scoop.x, y: scoop.y }, scoop.ejectTo);
+      this.tubeSplineCache.set(scoop.id, cached);
+    }
+    return cached;
   }
 
   private buildSharedCabinetGeometry() {
@@ -451,10 +579,27 @@ export class PinballSimulation {
     this.jackpotLit = false;
     this.multiballSpawnQueue = 0;
     this.ballSaveTimer = 0;
+    this.huntSlot = 0;
+    this.huntHits = 0;
+    this.huntFlash = 0;
+    this.litBumperIdx = 0;
     this.kickbackLeftLit = true;
     this.kickbackRightLit = false;
     this.jackpotMultiplierBoost = 1;
     this.cameraY = MAX_CAMERA_Y;
+
+    this.toyStates = {};
+    for (const toy of this.currentTable.interactiveToys ?? []) {
+      this.toyStates[toy.id] = {
+        hits: 0,
+        flash: 0,
+        angle: 0,
+        spinVel: 0,
+        openRatio: 0,
+        activeTimer: 0,
+        cooldown: 0,
+      };
+    }
 
     // Cinematic Full-Table Overview Zoom -> Progressive Zoom into Gameplay!
     if (triggerOverviewIntro) {
@@ -489,9 +634,15 @@ export class PinballSimulation {
       radius: BALL_RADIUS,
       layer: 0,
       activeRampId: null,
+      activeTubeId: null,
       rampProgress: 0,
+      rampDist: 0,
       rampSpeed: 0,
       rampReverse: false,
+      rampCommitted: false,
+      rampAwarded: false,
+      rampExitCooldown: 0,
+      rampEntryOffset: { x: 0, y: 0 },
       heldInScoopId: null,
       scoopTimer: 0,
       inShooterLane: true,
@@ -521,7 +672,7 @@ export class PinballSimulation {
     player.score += total;
     player.bonusPoints += Math.round(basePoints * 0.15);
 
-    if (player.score > this.highScores[this.currentTable.id]) {
+    if (player.score > (this.highScores[this.currentTable.id] ?? 0)) {
       this.highScores[this.currentTable.id] = player.score;
       this.highScoresDirty = true;
     }
@@ -800,6 +951,7 @@ export class PinballSimulation {
     }
     if (this.calloutTimer > 0) this.calloutTimer = Math.max(0, this.calloutTimer - dt);
     if (this.ballSaveTimer > 0) this.ballSaveTimer = Math.max(0, this.ballSaveTimer - dt);
+    if (this.huntFlash > 0) this.huntFlash = Math.max(0, this.huntFlash - dt);
     if (this.gateOpenTimer > 0) this.gateOpenTimer = Math.max(0, this.gateOpenTimer - dt);
     if (this.nudgeCooldown > 0) this.nudgeCooldown = Math.max(0, this.nudgeCooldown - dt);
     if (this.tiltMeter > 0 && !this.isTilted) {
@@ -829,12 +981,15 @@ export class PinballSimulation {
       }
     }
 
-    // Drop target bank auto-resets
+    // Drop target bank auto-resets (lower playfield + upper playfield)
     for (const bankId of Object.keys(this.dropBankResetTimers)) {
       this.dropBankResetTimers[bankId] -= dt;
       if (this.dropBankResetTimers[bankId] <= 0) {
         delete this.dropBankResetTimers[bankId];
         for (const t of this.currentTable.targets) {
+          if (t.bankId === bankId) this.hitTargets.delete(t.id);
+        }
+        for (const t of this.currentTable.upperPlayfield?.targets ?? []) {
           if (t.bankId === bankId) this.hitTargets.delete(t.id);
         }
       }
@@ -915,7 +1070,7 @@ export class PinballSimulation {
         soundEngine.playNudge(false);
         this.setCallout(this.tiltMeter >= 1.85 ? 'DANGER TILT !' : 'SECOUSSE !', 0);
         for (const b of this.balls) {
-          if (!b.inShooterLane && b.layer === 0 && !b.heldInScoopId) {
+          if (!b.inShooterLane && (b.layer === 0 || b.layer === 2) && !b.heldInScoopId) {
             b.vy -= 76;
             b.vx += (113 - b.x) * 0.55 + (this.rand() - 0.5) * 28;
           }
@@ -985,21 +1140,76 @@ export class PinballSimulation {
     }
   }
 
+  private stepToys(dt: number) {
+    const toys = this.currentTable.interactiveToys;
+    if (!toys || toys.length === 0) return;
+    for (const toy of toys) {
+      let st = this.toyStates[toy.id];
+      if (!st) {
+        st = {
+          hits: 0,
+          flash: 0,
+          angle: 0,
+          spinVel: 0,
+          openRatio: 0,
+          activeTimer: 0,
+          cooldown: 0,
+        };
+        this.toyStates[toy.id] = st;
+      }
+      if (st.flash > 0) st.flash = Math.max(0, st.flash - dt);
+      if (st.cooldown > 0) st.cooldown = Math.max(0, st.cooldown - dt);
+      if (st.activeTimer > 0) {
+        st.activeTimer = Math.max(0, st.activeTimer - dt);
+        if (st.activeTimer === 0 && toy.kind === 'SLIDING_CRYPT') {
+          st.openRatio = 0;
+        }
+      }
+
+      if (toy.kind === 'TURNTABLE' || toy.kind === 'ROTO_TARGET') {
+        const baseSpin = toy.kind === 'TURNTABLE' ? 1.1 : 0;
+        st.angle = (st.angle + (baseSpin + st.spinVel) * dt) % (Math.PI * 2);
+        st.spinVel *= Math.exp(-2.2 * dt);
+      } else if (toy.kind === 'GRAVITY_WELL') {
+        st.angle = (st.angle + (2.4 + st.spinVel) * dt) % (Math.PI * 2);
+        st.spinVel *= Math.exp(-2.5 * dt);
+      } else if (toy.kind === 'SWING_DOORS') {
+        // Amortissement ressort des portes battantes en bois de saloon
+        st.openRatio += st.spinVel * dt;
+        st.spinVel += (-18 * st.openRatio - 5.5 * st.spinVel) * dt;
+        st.openRatio = Math.max(-1.25, Math.min(1.25, st.openRatio));
+      } else if (toy.kind === 'BASH_TOY') {
+        st.openRatio *= Math.exp(-10 * dt);
+      }
+    }
+  }
+
   private stepBalls(dt: number) {
     const table = this.currentTable;
     const g = table.gravity;
 
+    this.stepToys(dt);
+
     for (let i = this.balls.length - 1; i >= 0; i--) {
       const b = this.balls[i];
+      if (b.rampExitCooldown > 0) {
+        b.rampExitCooldown = Math.max(0, b.rampExitCooldown - dt);
+      }
 
-      // Held in Scoop / VUK Teleport Tube?
+      // Held in Scoop / Lock Chamber (brief physical capture before kickout or tube travel)
       if (b.heldInScoopId) {
+        const heldScoop = table.scoops.find((s) => s.id === b.heldInScoopId);
+        if (heldScoop) {
+          const pull = 1 - Math.exp(-28 * dt);
+          b.x += (heldScoop.x - b.x) * pull;
+          b.y += (heldScoop.y - b.y) * pull;
+        }
         b.scoopTimer -= dt;
         if (b.scoopTimer <= 0) {
-          const scoop = table.scoops.find((s) => s.id === b.heldInScoopId);
+          const scoop = heldScoop;
           b.heldInScoopId = null;
 
-          // If this was Lock 1/2 (physical ball capture!) and solo ball on playfield:
+          // Physical Lock 1/2 capture when solo ball on playfield
           if (
             scoop &&
             scoop.kind === 'UPPER_LOCK' &&
@@ -1007,7 +1217,6 @@ export class PinballSimulation {
             this.lockedBallsCount === 1 &&
             this.balls.length === 1
           ) {
-            // Physically lock this ball inside the saucer and auto-launch next ball!
             this.balls.splice(i, 1);
             this.ballSaveTimer = Math.max(this.ballSaveTimer, 12.0);
             this.spawnBallInShooter(true);
@@ -1015,25 +1224,55 @@ export class PinballSimulation {
           }
 
           if (scoop) {
-            b.x = scoop.ejectTo.x;
-            b.y = scoop.ejectTo.y;
-            b.vx = scoop.ejectVelocity.x + (this.rand() - 0.5) * 18;
-            b.vy = scoop.ejectVelocity.y;
-            b.trail = [];
+            const distToExit = Math.hypot(scoop.ejectTo.x - scoop.x, scoop.ejectTo.y - scoop.y);
             this.scoopFlashTimers[scoop.id] = 0.35;
             soundEngine.playPlungerLaunch(0.95);
-            this.spawnSparks(b.x, b.y, scoop.color, 14);
+            this.spawnSparks(scoop.x, scoop.y, scoop.color, 12);
+
+            if (distToExit > 10) {
+              // ZERO TELEPORTATION: launch ball visibly through the curved overhead conduit!
+              b.layer = 1;
+              b.activeRampId = null;
+              b.activeTubeId = scoop.id;
+              b.rampDist = 0;
+              b.rampProgress = 0;
+              b.rampSpeed = 335;
+              b.rampReverse = false;
+              b.rampCommitted = true;
+              b.rampAwarded = true;
+              b.rampEntryOffset = { x: 0, y: 0 };
+            } else {
+              // Local saucer kickout right from the pocket (0px jump)
+              b.layer = scoop.ejectToUpperDeck && table.upperPlayfield ? 2 : 0;
+              b.x = scoop.x;
+              b.y = scoop.y;
+              b.vx = scoop.ejectVelocity.x + (this.rand() - 0.5) * 18;
+              b.vy = scoop.ejectVelocity.y;
+              b.rampExitCooldown = 0.2;
+            }
           }
         }
         continue;
       }
 
-      if (Math.random() < 0.32) {
+      if ((Math.floor(this.clock * 720) + b.id * 5) % 6 === 0) {
         b.trail.push({ x: b.x, y: b.y });
         if (b.trail.length > 8) b.trail.shift();
       }
 
-      // Layer 1: Overhead Ramp Track
+      // Layer 1A: Continuous Overhead VUK Conduit Travel (zero teleportation!)
+      if (b.layer === 1 && b.activeTubeId) {
+        const scoop = table.scoops.find((s) => s.id === b.activeTubeId);
+        if (!scoop) {
+          b.layer = 0;
+          b.activeTubeId = null;
+          continue;
+        }
+        this.stepBallInTube(b, scoop, dt);
+        continue;
+      }
+
+      // Layer 1B: Continuous Catmull-Rom Overhead Ramp Track
       if (b.layer === 1 && b.activeRampId) {
         const ramp = table.ramps.find((r) => r.id === b.activeRampId);
         if (!ramp) {
@@ -1045,7 +1284,17 @@ export class PinballSimulation {
         continue;
       }
 
-      // Layer 0: Rigid-Body Playfield Motion
+      // Layer 2: Elevated Upper Playfield ("Étage Supérieur")
+      if (b.layer === 2) {
+        if (!table.upperPlayfield) {
+          b.layer = 0;
+        } else {
+          this.stepBallOnUpperPlayfield(b, table.upperPlayfield, dt);
+          continue;
+        }
+      }
+
+      // Layer 0: Rigid-Body Main Playfield Motion
       b.vy += g * dt;
       b.vx *= 1 - 0.05 * dt;
       b.vy *= 1 - 0.03 * dt;
@@ -1111,25 +1360,49 @@ export class PinballSimulation {
         }
       }
 
-      // Check Overhead Ramp Entrances
-      if (!this.isTilted && !b.inShooterLane) {
+      // Check Overhead Ramp Entrances (smooth sub-pixel funnel capture, zero snap!)
+      if (!this.isTilted && !b.inShooterLane && b.rampExitCooldown <= 0) {
         for (const ramp of table.ramps) {
           const dx = b.x - ramp.entry.x;
           const dy = b.y - ramp.entry.y;
           if (dx * dx + dy * dy <= ramp.entryRadius * ramp.entryRadius) {
             const alignVel = b.vx * ramp.entryDir.x + b.vy * ramp.entryDir.y;
-            const minUpwardCheck = ramp.allowSideEntry ? b.vy < 25 : b.vy < -45;
-            if (alignVel > 125 && minUpwardCheck) {
+            const minUpwardCheck = ramp.allowSideEntry ? b.vy < 35 : b.vy < -32;
+            if (alignVel > 88 && minUpwardCheck) {
+              const spline = this.getRampSpline(ramp);
+              if (spline.samples.length < 2) continue;
+
+              // Find nearest initial arc-length near the ramp mouth so entry is 100% seamless
+              let bestDist = 0;
+              let bestD2 = Infinity;
+              const searchCount = Math.min(8, spline.samples.length);
+              for (let si = 0; si < searchCount; si++) {
+                const smp = spline.samples[si];
+                const d2 = (b.x - smp.x) ** 2 + (b.y - smp.y) ** 2;
+                if (d2 < bestD2) {
+                  bestD2 = d2;
+                  bestDist = smp.dist;
+                }
+              }
+              const s0 = sampleSplineAtDistance(spline, bestDist);
+
               b.layer = 1;
               b.activeRampId = ramp.id;
-              b.rampProgress = 0.02;
-              if (alignVel >= 175) {
+              b.activeTubeId = null;
+              b.rampDist = bestDist;
+              b.rampProgress = bestDist / spline.totalLen;
+              b.rampEntryOffset = { x: b.x - s0.x, y: b.y - s0.y };
+              b.rampAwarded = false;
+
+              if (alignVel >= 168) {
+                b.rampCommitted = true;
                 b.rampReverse = false;
-                b.rampSpeed = Math.max(310, Math.min(520, alignVel * 1.06));
-                this.onRampCompleted(ramp.id, ramp.name, ramp.points, ramp.chuteColor, ramp.entry);
+                b.rampSpeed = Math.max(265, Math.min(460, alignVel * 1.04));
               } else {
-                b.rampReverse = true;
-                b.rampSpeed = alignVel * 0.85;
+                // Weak shot: climbs part of the slope then rolls naturally back down!
+                b.rampCommitted = false;
+                b.rampReverse = false;
+                b.rampSpeed = alignVel * 0.92;
               }
               break;
             }
@@ -1138,19 +1411,18 @@ export class PinballSimulation {
         if (b.layer === 1) continue;
       }
 
-      // Check Scoops / Lock Chambers / VUK Teleporters
-      if (!this.isTilted && !b.inShooterLane) {
+      // Check Scoops / Lock Chambers / VUK Conduits
+      if (!this.isTilted && !b.inShooterLane && b.rampExitCooldown <= 0) {
         for (const sc of table.scoops) {
           const dx = b.x - sc.x;
           const dy = b.y - sc.y;
           if (dx * dx + dy * dy <= sc.radius * sc.radius) {
+            const distToExit = Math.hypot(sc.ejectTo.x - sc.x, sc.ejectTo.y - sc.y);
             b.heldInScoopId = sc.id;
-            b.scoopTimer = 0.5;
-            b.x = sc.x;
-            b.y = sc.y;
+            b.scoopTimer = distToExit > 10 ? 0.24 : 0.45;
             b.vx = 0;
             b.vy = 0;
-            this.scoopFlashTimers[sc.id] = 0.5;
+            this.scoopFlashTimers[sc.id] = 0.45;
             this.onScoopEntered(sc);
             break;
           }
@@ -1190,15 +1462,49 @@ export class PinballSimulation {
       }
 
       // Collide with Active 3D Pop Bumpers
-      for (const bmp of table.bumpers) {
+      for (let bi = 0; bi < table.bumpers.length; bi++) {
+        const bmp = table.bumpers[bi];
         const kick = this.isTilted ? 0 : 298;
         const hit = this.collideBallWithCircle(b, bmp.x, bmp.y, bmp.radius, 0.86, kick);
         if (hit && !this.isTilted) {
           this.bumperFlashTimers[bmp.id] = 0.18;
           soundEngine.playBumperHit(this.comboCount);
           this.spawnSparks(bmp.x, bmp.y, table.palette.accentPrimary, 7);
-          this.awardPoints(bmp.points, `${bmp.label} +${bmp.points}`, { x: bmp.x, y: bmp.y - 8 });
+          const golden = !!table.litBumperRotate && bi === this.litBumperIdx % table.bumpers.length;
+          const pts = golden ? bmp.points * 3 : bmp.points;
+          this.awardPoints(pts, golden ? `${bmp.label} DORÉ ×3 +${pts}` : `${bmp.label} +${pts}`, {
+            x: bmp.x,
+            y: bmp.y - 8,
+          });
+          if (golden) this.litBumperIdx = (this.litBumperIdx + 1 + (this.huntHits++ % 2)) % table.bumpers.length;
           this.advanceMission('BUMPER', { x: bmp.x, y: bmp.y });
+        }
+      }
+
+      // Interactive Decor Toys (Volcan, Portes Saloon, Plaque Tournante, Sarcophage, Roto-Cible...)
+      if (table.interactiveToys && table.interactiveToys.length > 0) {
+        this.stepBallWithInteractiveToys(b, table.interactiveToys, dt);
+      }
+
+      // Cible mobile propre à la table (WANTED, fantôme, mammouth, sucette, locomotive, zombie)
+      if (table.hunt) {
+        const hd = table.hunt;
+        const slot = hd.slots[this.huntSlot % hd.slots.length];
+        const hit = this.collideBallWithCircle(b, slot.x, slot.y, hd.radius, 0.7, this.isTilted ? 0 : 140);
+        if (hit && !this.isTilted) {
+          this.huntHits++;
+          this.huntFlash = 0.35;
+          soundEngine.playBumperHit(this.comboCount);
+          this.spawnSparks(slot.x, slot.y, hd.color, 10);
+          this.awardPoints(hd.points, `${hd.name} +${hd.points}`, { x: slot.x, y: slot.y - 10 }, hd.color);
+          this.advanceMission('TARGET', { x: slot.x, y: slot.y });
+          if (this.huntHits % hd.goal === 0) {
+            this.awardPoints(hd.reward, `PRIME ${hd.name} +${hd.reward} !`, { x: 113, y: 250 }, hd.color);
+          }
+          const n = hd.slots.length;
+          this.huntSlot = hd.sequential
+            ? (this.huntSlot + 1) % n
+            : (this.huntSlot + 1 + ((this.huntHits * 7) % Math.max(1, n - 1))) % n;
         }
       }
 
@@ -1207,15 +1513,20 @@ export class PinballSimulation {
         this.checkRolloversAndSpinners(b, dt);
       }
 
-      // Collide with all Table Flippers
+      // Collide with Lower-Playfield Flippers ONLY (deckLayer === 0)
       for (const f of this.flippers) {
-        this.collideBallWithFlipper(b, f);
+        if (f.deckLayer === 0) {
+          this.collideBallWithFlipper(b, f);
+        }
       }
 
       // Fast Anti-Stuck Safeguard (0.7s)
       const spd = Math.hypot(b.vx, b.vy);
       const heldCradle = this.flippers.some(
-        (f) => f.pressed && Math.hypot(b.x - f.pivot.x, b.y - f.pivot.y) < f.length + 12
+        (f) =>
+          f.deckLayer === 0 &&
+          f.pressed &&
+          Math.hypot(b.x - f.pivot.x, b.y - f.pivot.y) < f.length + 12
       );
       if (!b.inShooterLane && !heldCradle && b.y < 490 && spd < 10) {
         b.stuckTimer += dt;
@@ -1229,12 +1540,19 @@ export class PinballSimulation {
       }
     }
 
-    // Ball-to-Ball Collisions during Multiball!
+    // Ball-to-Ball Collisions during Multiball (only on identical layer & not in ramps/tubes)
     for (let i = 0; i < this.balls.length; i++) {
       for (let j = i + 1; j < this.balls.length; j++) {
         const a = this.balls[i];
         const b = this.balls[j];
-        if (a.layer !== b.layer || a.heldInScoopId || b.heldInScoopId) continue;
+        if (
+          a.layer !== b.layer ||
+          a.layer === 1 ||
+          a.heldInScoopId ||
+          b.heldInScoopId
+        ) {
+          continue;
+        }
         const dx = b.x - a.x;
         const dy = b.y - a.y;
         const dist = Math.hypot(dx, dy);
@@ -1263,61 +1581,514 @@ export class PinballSimulation {
     }
   }
 
-  private stepBallOnRamp(b: BallEntity, ramp: PinballTableDef['ramps'][number], dt: number) {
-    const pts = ramp.path;
-    let cached = this.rampLengthCache.get(ramp.id);
-    if (!cached) {
-      const lens: number[] = [];
-      let sum = 0;
-      for (let i = 0; i < pts.length - 1; i++) {
-        const l = Math.hypot(pts[i + 1].x - pts[i].x, pts[i + 1].y - pts[i].y);
-        lens.push(l);
-        sum += l;
-      }
-      cached = { segLens: lens, totalLen: sum };
-      this.rampLengthCache.set(ramp.id, cached);
+  private stepBallOnRamp(b: BallEntity, ramp: RampDef, dt: number) {
+    const spline = this.getRampSpline(ramp);
+    if (spline.samples.length < 2) {
+      b.layer = 0;
+      b.activeRampId = null;
+      return;
     }
-    const { segLens, totalLen } = cached;
 
-    if (b.rampReverse) {
-      b.rampSpeed -= 380 * dt;
-      b.rampProgress += (b.rampSpeed * dt) / Math.max(1, totalLen);
-      if (b.rampProgress <= 0) {
-        b.layer = 0;
-        b.activeRampId = null;
-        b.x = pts[0].x;
-        b.y = pts[0].y + 8;
-        b.vx = -ramp.entryDir.x * 115;
+    const cur = sampleSplineAtDistance(spline, b.rampDist);
+    const g = this.currentTable.gravity;
+
+    if (b.rampCommitted) {
+      // Realistic slope acceleration: uphill (ty < 0) decelerates, downhill (ty > 0) accelerates
+      b.rampSpeed += g * 0.48 * cur.ty * dt;
+      b.rampSpeed = Math.max(175, Math.min(490, b.rampSpeed));
+    } else {
+      // Uncommitted weak entry: decelerates uphill then rolls smoothly back out the entrance
+      const pullBack = Math.min(-215, g * 0.72 * Math.min(-0.35, cur.ty));
+      b.rampSpeed += pullBack * dt;
+      if (b.rampSpeed < 0) b.rampReverse = true;
+      b.rampSpeed = Math.max(-340, b.rampSpeed);
+    }
+
+    b.rampDist += b.rampSpeed * dt;
+    b.rampProgress = Math.max(0, Math.min(1, b.rampDist / spline.totalLen));
+
+    // Smoothly center entry offset inside the ramp mouth over the first ~15px
+    const offsetDecay = Math.exp(-26 * dt);
+    b.rampEntryOffset.x *= offsetDecay;
+    b.rampEntryOffset.y *= offsetDecay;
+
+    // Award ramp points & mission progress when cresting the ramp!
+    if (!b.rampAwarded && b.rampCommitted && b.rampProgress >= 0.62) {
+      b.rampAwarded = true;
+      const crest = sampleSplineAtDistance(spline, b.rampDist);
+      this.onRampCompleted(ramp.id, ramp.name, ramp.points, ramp.chuteColor, {
+        x: crest.x,
+        y: crest.y,
+      });
+    }
+
+    // Rollback exit out the entrance
+    if (b.rampDist <= 0 && b.rampSpeed < 0) {
+      const sStart = spline.samples[0];
+      b.layer = 0;
+      b.activeRampId = null;
+      b.rampExitCooldown = 0.22;
+      b.x = sStart.x + b.rampEntryOffset.x;
+      b.y = sStart.y + b.rampEntryOffset.y;
+      const outSpd = Math.max(95, Math.min(235, Math.abs(b.rampSpeed)));
+      b.vx = -sStart.tx * outSpd;
+      b.vy = Math.max(75, -sStart.ty * outSpd);
+      return;
+    }
+
+    // Forward exit at end of ramp (onto Upper Playfield Layer 2 or Lower Playfield Layer 0)
+    if (b.rampDist >= spline.totalLen) {
+      const sEnd = spline.samples[spline.samples.length - 1];
+      if (!b.rampAwarded && b.rampCommitted) {
+        b.rampAwarded = true;
+        this.onRampCompleted(ramp.id, ramp.name, ramp.points, ramp.chuteColor, {
+          x: sEnd.x,
+          y: sEnd.y,
+        });
+      }
+      const toUpper = Boolean(ramp.exitsToUpperDeck && this.currentTable.upperPlayfield);
+      b.layer = toUpper ? 2 : 0;
+      b.activeRampId = null;
+      b.rampExitCooldown = 0.24;
+      b.x = sEnd.x;
+      b.y = sEnd.y;
+      const exitSpd = Math.max(155, Math.min(340, b.rampSpeed * 0.78));
+      b.vx = sEnd.tx * exitSpd;
+      b.vy = sEnd.ty * exitSpd;
+      if (toUpper && this.currentTable.upperPlayfield) {
+        this.setCallout(`ÉTAGE : ${this.currentTable.upperPlayfield.name.toUpperCase()}`, 0);
+      }
+      return;
+    }
+
+    const next = sampleSplineAtDistance(spline, b.rampDist);
+    b.x = next.x + b.rampEntryOffset.x;
+    b.y = next.y + b.rampEntryOffset.y;
+    b.vx = next.tx * b.rampSpeed;
+    b.vy = next.ty * b.rampSpeed;
+  }
+
+  private stepBallInTube(b: BallEntity, scoop: ScoopVukDef, dt: number) {
+    const spline = this.getTubeSpline(scoop);
+    if (spline.samples.length < 2) {
+      b.layer = 0;
+      b.activeTubeId = null;
+      return;
+    }
+
+    b.rampDist += b.rampSpeed * dt;
+    b.rampProgress = Math.max(0, Math.min(1, b.rampDist / spline.totalLen));
+
+    if (b.rampDist >= spline.totalLen) {
+      const sEnd = spline.samples[spline.samples.length - 1];
+      b.layer = scoop.ejectToUpperDeck && this.currentTable.upperPlayfield ? 2 : 0;
+      b.activeTubeId = null;
+      b.rampExitCooldown = 0.22;
+      b.x = sEnd.x;
+      b.y = sEnd.y;
+      b.vx = scoop.ejectVelocity.x + (this.rand() - 0.5) * 14;
+      b.vy = scoop.ejectVelocity.y;
+      this.scoopFlashTimers[scoop.id] = 0.3;
+      this.spawnSparks(b.x, b.y, scoop.color, 10);
+      return;
+    }
+
+    const s = sampleSplineAtDistance(spline, b.rampDist);
+    b.x = s.x;
+    b.y = s.y;
+    b.vx = s.tx * b.rampSpeed;
+    b.vy = s.ty * b.rampSpeed;
+  }
+
+  private stepBallOnUpperPlayfield(b: BallEntity, up: UpperPlayfieldDef, dt: number) {
+    const table = this.currentTable;
+    const g = table.gravity;
+
+    b.vy += g * dt;
+    b.vx *= 1 - 0.05 * dt;
+    b.vy *= 1 - 0.03 * dt;
+
+    const maxSpeed = 1020;
+    const speedSq = b.vx * b.vx + b.vy * b.vy;
+    if (speedSq > maxSpeed * maxSpeed) {
+      const scale = maxSpeed / Math.sqrt(speedSq);
+      b.vx *= scale;
+      b.vy *= scale;
+    }
+
+    b.x += b.vx * dt;
+    b.y += b.vy * dt;
+
+    // Collide ONLY with upper-deck closed walls, posts, upper targets, upper bumpers & upper flippers
+    for (const w of this.upperDeckWalls) this.collideBallWithSegment(b, w);
+    // Safety clamp against outer cabinet walls
+    if (b.x - b.radius < 10) {
+      b.x = 10 + b.radius;
+      if (b.vx < 0) b.vx = -b.vx * 0.48;
+    } else if (b.x + b.radius > 215) {
+      b.x = 215 - b.radius;
+      if (b.vx > 0) b.vx = -b.vx * 0.48;
+    }
+    if (b.y - b.radius < 22) {
+      b.y = 22 + b.radius;
+      if (b.vy < 0) b.vy = -b.vy * 0.48;
+    }
+
+    for (const peg of this.upperDeckPegs) {
+      this.collideBallWithCircle(b, peg.x, peg.y, peg.radius, peg.restitution ?? 0.52, 0);
+    }
+
+    for (const t of up.targets) {
+      if (t.kind === 'DROP' && this.hitTargets.has(t.id)) continue;
+      const hit = this.collideBallWithSegment(b, {
+        x1: t.x1,
+        y1: t.y1,
+        x2: t.x2,
+        y2: t.y2,
+        restitution: 0.72,
+      });
+      if (hit && !this.isTilted) {
+        const already = this.hitTargets.has(t.id);
+        this.hitTargets.add(t.id);
+        const mx = (t.x1 + t.x2) * 0.5;
+        const my = (t.y1 + t.y2) * 0.5;
+        this.spawnSparks(mx, my, t.lampColor, 8);
+        if (!already) this.advanceMission('TARGET', { x: mx, y: my });
+
+        const bank = up.targets.filter((x) => x.bankId === t.bankId);
+        if (bank.length > 0 && bank.every((x) => this.hitTargets.has(x.id))) {
+          soundEngine.playTargetHit(true);
+          if (t.kind === 'DROP') {
+            this.dropBankResetTimers[t.bankId] = 0.65;
+          } else {
+            for (const bt of bank) this.hitTargets.delete(bt.id);
+          }
+          this.awardPoints(
+            28000,
+            `ÉTAGE COMPLÉTÉ : ${up.name.toUpperCase()} !`,
+            { x: mx, y: my },
+            '#FDE047'
+          );
+        } else {
+          soundEngine.playTargetHit(false);
+          this.awardPoints(t.points * 2, `ÉTAGE ${t.letter} ×2`, { x: mx, y: my }, t.lampColor);
+        }
+      }
+    }
+
+    for (const bmp of up.bumpers) {
+      const hit = this.collideBallWithCircle(
+        b,
+        bmp.x,
+        bmp.y,
+        bmp.radius,
+        0.86,
+        this.isTilted ? 0 : 280
+      );
+      if (hit && !this.isTilted) {
+        this.bumperFlashTimers[bmp.id] = 0.2;
+        soundEngine.playBumperHit(this.comboCount + 1);
+        this.spawnSparks(bmp.x, bmp.y, up.borderColor, 8);
+        const pts = bmp.points * 2;
+        this.awardPoints(pts, `${bmp.label} ÉTAGE +${pts}`, { x: bmp.x, y: bmp.y - 8 }, up.borderColor);
+        this.advanceMission('BUMPER', { x: bmp.x, y: bmp.y });
+      }
+    }
+
+    if (!this.isTilted) {
+      for (const r of up.rollovers) {
+        const dx = b.x - r.x;
+        const dy = b.y - r.y;
+        if (dx * dx + dy * dy <= (r.radius + b.radius * 0.6) ** 2) {
+          if (!this.litRollovers.has(r.id)) {
+            this.litRollovers.add(r.id);
+            this.rolloverOffTimers[r.id] = ROLLOVER_RELIGHT_DELAY;
+            soundEngine.playRollover();
+            this.awardPoints(r.points * 2, `PASSAGE ÉTAGE ${r.letter}`, { x: r.x, y: r.y });
+          }
+        }
+      }
+    }
+
+    for (const f of this.flippers) {
+      if (f.deckLayer === 2) {
+        this.collideBallWithFlipper(b, f);
+      }
+    }
+
+    // Drop smoothly back to Layer 0 as soon as ball crosses an open edge of the upper deck!
+    if (!isPointInPolygon(b.x, b.y, up.bounds)) {
+      b.layer = 0;
+      b.rampExitCooldown = 0.22;
+      this.spawnSparks(b.x, b.y, up.borderColor, 7);
+      return;
+    }
+
+    // Anti-stuck safeguard on Upper Playfield
+    const spd = Math.hypot(b.vx, b.vy);
+    const cradled = this.flippers.some(
+      (f) =>
+        f.deckLayer === 2 &&
+        f.pressed &&
+        Math.hypot(b.x - f.pivot.x, b.y - f.pivot.y) < f.length + 12
+    );
+    if (!cradled && spd < 12) {
+      b.stuckTimer += dt;
+      if (b.stuckTimer > 0.6) {
         b.vy = 145;
-        return;
+        b.vx = (b.x < 113 ? 1 : -1) * 75;
+        b.stuckTimer = 0;
       }
     } else {
-      b.rampProgress += (b.rampSpeed * dt) / Math.max(1, totalLen);
-      if (b.rampProgress >= 1) {
-        const last = pts[pts.length - 1];
-        const prev = pts[pts.length - 2];
-        const dx = last.x - prev.x;
-        const dy = last.y - prev.y;
-        const len = Math.max(1, Math.hypot(dx, dy));
-        b.layer = 0;
-        b.activeRampId = null;
-        b.x = last.x;
-        b.y = last.y;
-        b.vx = (dx / len) * 90;
-        b.vy = Math.max(85, (dy / len) * 140);
-        return;
-      }
+      b.stuckTimer = 0;
     }
+  }
 
-    let targetDist = Math.max(0, Math.min(1, b.rampProgress)) * totalLen;
-    for (let i = 0; i < segLens.length; i++) {
-      if (targetDist <= segLens[i] || i === segLens.length - 1) {
-        const t = segLens[i] > 0 ? targetDist / segLens[i] : 0;
-        b.x = pts[i].x + (pts[i + 1].x - pts[i].x) * t;
-        b.y = pts[i].y + (pts[i + 1].y - pts[i].y) * t;
-        break;
+  private stepBallWithInteractiveToys(b: BallEntity, toys: InteractiveToyDef[], dt: number) {
+    for (const toy of toys) {
+      const st = this.toyStates[toy.id];
+      if (!st) continue;
+
+      if (toy.kind === 'BASH_TOY') {
+        const kick = this.isTilted ? 0 : st.activeTimer > 0 ? 335 : 255;
+        const hit = this.collideBallWithCircle(b, toy.x, toy.y, toy.radius, 0.84, kick);
+        if (hit && !this.isTilted && st.cooldown <= 0) {
+          st.cooldown = 0.12;
+          st.hits++;
+          st.flash = 0.35;
+          st.openRatio = 1.0;
+          soundEngine.playBumperHit(this.comboCount + 1);
+          this.spawnSparks(toy.x, toy.y, toy.accentColor, 11);
+          this.advanceMission('TARGET', { x: toy.x, y: toy.y });
+          if (st.hits % Math.max(1, toy.hitsRequired) === 0) {
+            st.activeTimer = 4.0;
+            soundEngine.playJackpotOrMultiball();
+            this.spawnSparks(toy.x, toy.y, '#FDE047', 18);
+            this.awardPoints(
+              toy.rewardPoints,
+              `${toy.name} SURACTIVÉ !`,
+              { x: toy.x, y: toy.y - 10 },
+              '#FDE047'
+            );
+          } else {
+            this.awardPoints(
+              toy.points,
+              `${toy.name} (${st.hits % toy.hitsRequired}/${toy.hitsRequired})`,
+              { x: toy.x, y: toy.y - 8 },
+              toy.accentColor
+            );
+          }
+        }
+      } else if (toy.kind === 'SWING_DOORS') {
+        // Deux montants latéraux en bois + portes battantes traversables au centre
+        this.collideBallWithCircle(b, toy.x - toy.radius - 2, toy.y, 2.5, 0.55, 0);
+        this.collideBallWithCircle(b, toy.x + toy.radius + 2, toy.y, 2.5, 0.55, 0);
+        if (
+          !this.isTilted &&
+          st.cooldown <= 0 &&
+          Math.abs(b.x - toy.x) <= toy.radius &&
+          Math.abs(b.y - toy.y) <= 6.5 &&
+          Math.abs(b.vy) > 35
+        ) {
+          st.cooldown = 0.3;
+          st.hits++;
+          st.flash = 0.35;
+          const dir = b.vy < 0 ? 1 : -1;
+          st.openRatio = dir * 0.95;
+          st.spinVel = dir * 13;
+          b.vx *= 0.95;
+          b.vy *= 0.92;
+          soundEngine.playTargetHit(st.hits % Math.max(1, toy.hitsRequired) === 0);
+          this.spawnSparks(toy.x, toy.y, toy.accentColor, 8);
+          this.advanceMission('RAMP', { x: toy.x, y: toy.y });
+          if (st.hits % Math.max(1, toy.hitsRequired) === 0) {
+            this.awardPoints(
+              toy.rewardPoints,
+              `${toy.name} : ENTRÉE FRACASSANTE !`,
+              { x: toy.x, y: toy.y - 10 },
+              '#FDE047'
+            );
+          } else {
+            this.awardPoints(toy.points, toy.name, { x: toy.x, y: toy.y - 8 }, toy.accentColor);
+          }
+        }
+      } else if (toy.kind === 'TURNTABLE') {
+        const dx = b.x - toy.x;
+        const dy = b.y - toy.y;
+        const dist = Math.hypot(dx, dy);
+        if (dist < toy.radius + b.radius && dist > 0.5) {
+          const nx = dx / dist;
+          const ny = dy / dist;
+          // Force tangentielle d'entraînement du plateau tournant (dévie la trajectoire avec panache)
+          const tangSign = st.spinVel >= 0 ? 1 : -1;
+          const swirlForce = 210 + Math.min(220, Math.abs(st.spinVel) * 18);
+          b.vx += -ny * tangSign * swirlForce * dt;
+          b.vy += nx * tangSign * swirlForce * dt;
+
+          if (!this.isTilted && st.cooldown <= 0 && dist < toy.radius) {
+            st.cooldown = 0.28;
+            st.hits++;
+            st.flash = 0.3;
+            const cross = dx * b.vy - dy * b.vx;
+            st.spinVel = (cross >= 0 ? 1 : -1) * 15;
+            soundEngine.playSpinnerTick();
+            this.spawnSparks(b.x, b.y, toy.accentColor, 6);
+            this.advanceMission('BUMPER', { x: toy.x, y: toy.y });
+            if (st.hits % Math.max(1, toy.hitsRequired) === 0) {
+              // Éjection centrifuge haute vitesse !
+              b.vx += nx * 165;
+              b.vy += ny * 165;
+              soundEngine.playTargetHit(true);
+              this.awardPoints(
+                toy.rewardPoints,
+                `TURBO ${toy.name} !`,
+                { x: toy.x, y: toy.y - 10 },
+                '#FDE047'
+              );
+            } else {
+              this.awardPoints(toy.points, toy.name, { x: toy.x, y: toy.y - 8 }, toy.accentColor);
+            }
+          }
+        }
+      } else if (toy.kind === 'GRAVITY_WELL') {
+        const dx = toy.x - b.x;
+        const dy = toy.y - b.y;
+        const dist = Math.hypot(dx, dy);
+        const reach = toy.radius * 1.55;
+        if (dist < reach && dist > 2) {
+          const ux = dx / dist;
+          const uy = dy / dist;
+          const pull = 195 * (1 - dist / reach);
+          b.vx += (ux * pull - uy * 125) * dt;
+          b.vy += (uy * pull + ux * 125) * dt;
+          // Garantit que la bille ne stagne jamais dans l'anneau gravitationnel
+          const curSpd = Math.hypot(b.vx, b.vy);
+          if (curSpd < 135) {
+            b.vx += -uy * 95 * dt;
+            b.vy += ux * 95 * dt;
+          }
+
+          if (!this.isTilted && st.cooldown <= 0 && dist < toy.radius * 0.72) {
+            st.cooldown = 0.68;
+            st.hits++;
+            st.flash = 0.38;
+            st.spinVel = 16;
+            // Fronde orbitale !
+            const slingSpd = Math.max(295, curSpd * 1.18);
+            const outAng = Math.atan2(-uy, -ux) + 0.45;
+            b.vx = Math.cos(outAng) * slingSpd;
+            b.vy = Math.sin(outAng) * slingSpd;
+            soundEngine.playRampClimb(this.comboCount + 1);
+            this.spawnSparks(toy.x, toy.y, toy.accentColor, 12);
+            this.advanceMission('RAMP', { x: toy.x, y: toy.y });
+            if (st.hits % Math.max(1, toy.hitsRequired) === 0) {
+              this.awardPoints(
+                toy.rewardPoints,
+                `FRONDE ${toy.name} !`,
+                { x: toy.x, y: toy.y - 10 },
+                '#FDE047'
+              );
+            } else {
+              this.awardPoints(toy.points, toy.name, { x: toy.x, y: toy.y - 8 }, toy.accentColor);
+            }
+          }
+        }
+      } else if (toy.kind === 'SLIDING_CRYPT') {
+        if (st.activeTimer > 0) {
+          // Le couvercle de pierre est ouvert : passage secret vers la crypte !
+          const dx = b.x - toy.x;
+          const dy = b.y - toy.y;
+          if (!this.isTilted && st.cooldown <= 0 && dx * dx + dy * dy <= (toy.radius * 0.9) ** 2) {
+            st.cooldown = 0.45;
+            st.flash = 0.45;
+            b.vx = (this.rand() - 0.5) * 90;
+            b.vy = -430;
+            soundEngine.playJackpotOrMultiball();
+            this.spawnSparks(toy.x, toy.y, '#38BDF8', 18);
+            this.advanceMission('SCOOP', { x: toy.x, y: toy.y }, true);
+            this.awardPoints(
+              toy.rewardPoints,
+              `TRÉSOR DU ${toy.name} !`,
+              { x: toy.x, y: toy.y - 12 },
+              '#FDE047'
+            );
+          }
+        } else {
+          // Couvercle scellé : chaque impact fait coulisser la dalle de pierre
+          const hit = this.collideBallWithCircle(
+            b,
+            toy.x,
+            toy.y,
+            toy.radius,
+            0.78,
+            this.isTilted ? 0 : 225
+          );
+          if (hit && !this.isTilted && st.cooldown <= 0) {
+            st.cooldown = 0.15;
+            st.hits++;
+            st.flash = 0.35;
+            const req = Math.max(1, toy.hitsRequired);
+            const stepInCycle = st.hits % req;
+            if (stepInCycle === 0) {
+              st.activeTimer = 7.5;
+              st.openRatio = 1.0;
+              soundEngine.playTargetHit(true);
+              this.spawnSparks(toy.x, toy.y, toy.accentColor, 15);
+              this.awardPoints(
+                toy.points * 2,
+                `${toy.name} OUVERT ! TIREZ DEDANS !`,
+                { x: toy.x, y: toy.y - 10 },
+                toy.accentColor
+              );
+            } else {
+              st.openRatio = stepInCycle / req;
+              soundEngine.playTargetHit(false);
+              this.spawnSparks(toy.x, toy.y, toy.accentColor, 7);
+              this.awardPoints(
+                toy.points,
+                `SCEAU ${stepInCycle}/${req}`,
+                { x: toy.x, y: toy.y - 8 },
+                toy.accentColor
+              );
+            }
+            this.advanceMission('TARGET', { x: toy.x, y: toy.y });
+          }
+        }
+      } else if (toy.kind === 'ROTO_TARGET') {
+        const hit = this.collideBallWithCircle(
+          b,
+          toy.x,
+          toy.y,
+          toy.radius,
+          0.82,
+          this.isTilted ? 0 : 240
+        );
+        if (hit && !this.isTilted && st.cooldown <= 0) {
+          st.cooldown = 0.14;
+          st.hits++;
+          st.flash = 0.35;
+          st.spinVel = 22;
+          const mult = 1 + (st.hits % 3);
+          soundEngine.playTargetHit(st.hits % Math.max(1, toy.hitsRequired) === 0);
+          this.spawnSparks(toy.x, toy.y, toy.accentColor, 9);
+          this.advanceMission('TARGET', { x: toy.x, y: toy.y });
+          if (st.hits % Math.max(1, toy.hitsRequired) === 0) {
+            this.awardPoints(
+              toy.rewardPoints,
+              `ROTO SPÉCIAL +${toy.rewardPoints} !`,
+              { x: toy.x, y: toy.y - 10 },
+              '#FDE047'
+            );
+          } else {
+            this.awardPoints(
+              toy.points * mult,
+              `${toy.name} ×${mult}`,
+              { x: toy.x, y: toy.y - 8 },
+              toy.accentColor
+            );
+          }
+        }
       }
-      targetDist -= segLens[i];
     }
   }
 
