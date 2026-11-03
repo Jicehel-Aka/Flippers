@@ -152,7 +152,18 @@ for (const t of PINBALL_TABLES) {
     if (h.points.length > 5) throw new Error(`${t.id}: boitier a plus de 5 points`);
     o += `      {${h.points.length}, {${h.points.map((q) => `{${f(q.x)}, ${f(q.y)}}`).join(', ')}}},\n`;
   }
-  o += '    }\n  },\n';
+  o += '    },\n';
+  const h = t.hunt;
+  if (h) {
+    if (h.slots.length > 6) throw new Error(`${t.id}: plus de 6 emplacements de cible`);
+    const KIND = { WANTED: 1, GHOST: 2, MAMMOTH: 3, LOLLIPOP: 4, LOCOMOTIVE: 5 };
+    const sl = h.slots.map((q) => `{${f(q.x)}, ${f(q.y)}}`);
+    while (sl.length < 6) sl.push('{0, 0}');
+    o += `    {${KIND[h.kind]}, ${h.slots.length}, ${h.sequential}, {${sl.join(', ')}}, ${f(h.radius)}, ${h.points}, ${h.goal}, ${h.reward}, ${hex(h.color)}, ${cstr(h.name)}},\n`;
+  } else {
+    o += '    {0, 0, false, {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}}, 0, 0, 0, 0, 0, ""},\n';
+  }
+  o += `    ${!!t.litBumperRotate}\n  },\n`;
 }
 o += '};\n';
 

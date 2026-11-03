@@ -3,6 +3,7 @@ import {
   BallEntity,
   BumperColorStyle,
   BumperDef,
+  HuntDef,
   HUD_HEIGHT,
   PinballTableDef,
   RampDef,
@@ -654,6 +655,21 @@ export class PinballCanvasRenderer {
         sim.clock
       );
     }
+    if (table.litBumperRotate && table.bumpers.length) {
+      const gb = table.bumpers[sim.litBumperIdx % table.bumpers.length];
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(gb.x, gb.y, gb.radius + 3 + Math.sin(sim.clock * 8) * 1.2, 0, Math.PI * 2);
+      ctx.strokeStyle = '#FDE047';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.fillStyle = '#FDE047';
+      ctx.font = 'bold 7px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText('x3', gb.x, gb.y + 2.5);
+      ctx.restore();
+    }
+    if (table.hunt) this.renderHunt(ctx, table.hunt, sim.huntSlot, sim.huntFlash, sim.clock);
 
     // 13. All Table Flippers (Main + Unique Mid/Upper Flippers!)
     this.render3DFlippers(ctx, sim, table);
@@ -794,8 +810,8 @@ export class PinballCanvasRenderer {
       plate('ÂGE DE PIERRE', '#2A1A0E', '#F97316', '#FDBA74');
     } else if (id === 'farwest') {
       // Soleil couchant, cactus et étoile de shérif
-      circ(113, 238, 30, 'rgba(245, 158, 11, 0.22)');
-      circ(113, 238, 20, 'rgba(253, 230, 138, 0.25)');
+      circ(113, 250, 28, 'rgba(245, 158, 11, 0.22)');
+      circ(113, 250, 19, 'rgba(253, 230, 138, 0.25)');
       for (const x of [46, 180]) {
         ctx.fillStyle = '#15803D';
         ctx.fillRect(x - 3, 232, 6, 36);
@@ -804,7 +820,7 @@ export class PinballCanvasRenderer {
         ctx.fillRect(x + 5, 248, 6, 4);
         ctx.fillRect(x + 8, 240, 4, 12);
       }
-      this.drawStarShape(ctx, 113, 220, 16, 7, '#FACC15');
+      this.drawStarShape(ctx, 113, 250, 13, 6, '#FACC15');
       ctx.strokeStyle = '#7C2D12';
       ctx.lineWidth = 1;
       ctx.stroke();
@@ -835,7 +851,7 @@ export class PinballCanvasRenderer {
         }
       }
       ctx.fillStyle = '#1E1B4B';
-      for (const [x, y] of [[62, 104], [166, 108]]) {
+      for (const [x, y] of [[98, 84], [134, 92]]) {
         ctx.beginPath();
         ctx.moveTo(x, y);
         ctx.quadraticCurveTo(x - 8, y - 8, x - 14, y);
@@ -1863,6 +1879,92 @@ export class PinballCanvasRenderer {
       ctx.lineWidth = 0.9;
       ctx.strokeStyle = stroke;
       ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  private renderHunt(
+    ctx: CanvasRenderingContext2D,
+    h: HuntDef,
+    slotIdx: number,
+    flash: number,
+    clock: number
+  ) {
+    const n = h.slots.length;
+    ctx.save();
+    // Repères discrets des emplacements possibles
+    ctx.fillStyle = 'rgba(255,255,255,0.12)';
+    for (const sl of h.slots) {
+      ctx.beginPath();
+      ctx.arc(sl.x, sl.y, 1.6, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    const p = h.slots[slotIdx % n];
+    const r = h.radius + (flash > 0 ? 2 : 0);
+    const pulse = 1 + Math.sin(clock * 6) * 0.06;
+    ctx.translate(p.x, p.y);
+    ctx.scale(pulse, pulse);
+    ctx.beginPath();
+    ctx.arc(0, 0, r + 2.5, 0, Math.PI * 2);
+    ctx.fillStyle = flash > 0 ? '#FFFFFF' : `${h.color}55`;
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(0, 0, r, 0, Math.PI * 2);
+    ctx.fillStyle = h.color;
+    ctx.fill();
+    ctx.strokeStyle = '#1C1917';
+    ctx.lineWidth = 1.2;
+    ctx.stroke();
+    ctx.fillStyle = '#1C1917';
+    ctx.strokeStyle = '#1C1917';
+    switch (h.kind) {
+      case 'WANTED': // affiche + étoile
+        ctx.fillRect(-r * 0.55, -r * 0.6, r * 1.1, r * 1.2);
+        ctx.fillStyle = h.color;
+        ctx.beginPath();
+        ctx.arc(0, -r * 0.15, r * 0.3, 0, Math.PI * 2);
+        ctx.fill();
+        break;
+      case 'GHOST':
+        ctx.beginPath();
+        ctx.arc(0, -r * 0.1, r * 0.55, Math.PI, 0);
+        ctx.lineTo(r * 0.55, r * 0.55);
+        ctx.lineTo(0, r * 0.3);
+        ctx.lineTo(-r * 0.55, r * 0.55);
+        ctx.closePath();
+        ctx.fillStyle = '#F0FDF4';
+        ctx.fill();
+        ctx.fillStyle = '#1C1917';
+        ctx.fillRect(-r * 0.3, -r * 0.2, 2, 2.4);
+        ctx.fillRect(r * 0.15, -r * 0.2, 2, 2.4);
+        break;
+      case 'MAMMOTH':
+        ctx.beginPath();
+        ctx.arc(0, -r * 0.1, r * 0.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(r * 0.3, r * 0.2, r * 0.5, -0.4, 1.8);
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+        break;
+      case 'LOLLIPOP':
+        ctx.beginPath();
+        ctx.arc(0, 0, r * 0.55, 0, Math.PI * 2);
+        ctx.fillStyle = '#FFF1F2';
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(0, 0, r * 0.3, 0, Math.PI * 4 * 0.75);
+        ctx.lineWidth = 1.2;
+        ctx.stroke();
+        break;
+      case 'LOCOMOTIVE':
+        ctx.fillRect(-r * 0.65, -r * 0.25, r * 1.3, r * 0.7);
+        ctx.fillRect(-r * 0.15, -r * 0.65, r * 0.55, r * 0.5);
+        ctx.beginPath();
+        ctx.arc(-r * 0.35, r * 0.5, 1.6, 0, Math.PI * 2);
+        ctx.arc(r * 0.35, r * 0.5, 1.6, 0, Math.PI * 2);
+        ctx.fill();
+        break;
     }
     ctx.restore();
   }

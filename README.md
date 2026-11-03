@@ -37,6 +37,22 @@ Jeu de flipper arcade néo-pixel conçu sur mesure pour la console **Gamebuino A
 | **11. Train** | **2 flippers**, rails et traverses, signal ferroviaire, phare de locomotive et vapeur | *Voie 1* + *Voie 2* (rails chromés) | *Voies*, *Vapeur*, *Express* |
 | **5. Flipper Classique** | **2 flippers seulement**, table mécanique d'arcade : triangle de 3 bumpers sous un verrou central, cartouche « FLIPPER » et voyants dorés | Deux rampes aux tracés différents (ambre à gauche, rail doré à droite) | *Rampes x2*, *Triangle Or*, *Cibles* |
 
+
+### Mécaniques propres aux plateaux thématiques
+
+Chaque plateau thématique a son **puits Multibille sur un côté** (gauche ou droite selon le décor) et une règle qui lui est propre :
+
+| Plateau | Mécanique |
+| :--- | :--- |
+| **Préhistoire** | **Mammouths** : une cible mobile change de piste à chaque touche, 4 touches = prime de 40 000 |
+| **Far West** | **WANTED** : l'affiche d'un bandit saute à un autre emplacement à chaque tir, 5 touches = prime de 50 000 |
+| **Halloween** | **Fantômes** : un fantôme hante le manoir et réapparaît ailleurs quand on le touche, 4 touches = prime de 45 000 |
+| **Candy Pop** | **Bumper doré ×3** : un seul bumper vaut triple, et il change à chaque touche |
+| **Bonbons** | **Sucettes** : la sucette saute de place quand on la croque, 4 touches = prime de 40 000 |
+| **Train** | **Locomotive** : elle avance d'une gare à chaque arrêt (ordre fixe), 4 arrêts = prime de 45 000 |
+
+Les touches de cible comptent aussi pour la mission « cibles ». Ces mécaniques existent sur le Web/PC et sur la console.
+
 ---
 
 ## Commandes (Console tournée à 90° droite & PC)

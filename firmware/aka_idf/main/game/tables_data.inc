@@ -46,7 +46,9 @@ static const TableDef TABLES[TABLE_COUNT] = {
       {4, {{217.0f, 210.0f}, {207.0f, 220.0f}, {207.0f, 280.0f}, {217.0f, 290.0f}}},
       {4, {{9.0f, 314.0f}, {18.5f, 323.5f}, {18.5f, 360.5f}, {9.0f, 370.0f}}},
       {4, {{217.0f, 314.0f}, {207.5f, 323.5f}, {207.5f, 360.5f}, {217.0f, 370.0f}}},
-    }
+    },
+    {0, 0, false, {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}}, 0, 0, 0, 0, 0, ""},
+    false
   },
   {
     "ODYSSEE SPATIALE", "FRONDE ORBITALE GAUCHE & CONSTELLATION 5 ETOILES", "MULTIBILLE APOLLO", 1,
@@ -93,7 +95,9 @@ static const TableDef TABLES[TABLE_COUNT] = {
       {4, {{217.0f, 306.0f}, {207.5f, 315.5f}, {207.5f, 357.5f}, {217.0f, 367.0f}}},
       {0, {}},
       {0, {}},
-    }
+    },
+    {0, 0, false, {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}}, 0, 0, 0, 0, 0, ""},
+    false
   },
   {
     "STAR WARS - YAVIN", "BATAILLE DE YAVIN - SABRES EN X & ASSAUT DROIT", "ESCADRON ROUGE", 2,
@@ -140,7 +144,9 @@ static const TableDef TABLES[TABLE_COUNT] = {
       {4, {{9.0f, 282.0f}, {18.5f, 291.5f}, {18.5f, 335.5f}, {9.0f, 345.0f}}},
       {4, {{217.0f, 304.0f}, {207.5f, 313.5f}, {207.5f, 355.5f}, {217.0f, 365.0f}}},
       {0, {}},
-    }
+    },
+    {0, 0, false, {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}}, 0, 0, 0, 0, 0, ""},
+    false
   },
   {
     "TEMPLE SOLAIRE", "TERRASSES DECALEES & SERPENT QUETZAL", "ECLIPSE MULTIBILLE", 3,
@@ -187,7 +193,9 @@ static const TableDef TABLES[TABLE_COUNT] = {
       {4, {{217.0f, 316.0f}, {207.5f, 325.5f}, {207.5f, 363.5f}, {217.0f, 373.0f}}},
       {0, {}},
       {0, {}},
-    }
+    },
+    {0, 0, false, {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}}, 0, 0, 0, 0, 0, ""},
+    false
   },
   {
     "FLIPPER CLASSIQUE", "TRIANGLE DE BUMPERS & VOYANTS LUMINEUX", "MULTIBILLE JACKPOT", 4,
@@ -234,7 +242,9 @@ static const TableDef TABLES[TABLE_COUNT] = {
       {4, {{217.0f, 314.0f}, {207.5f, 323.5f}, {207.5f, 360.5f}, {217.0f, 370.0f}}},
       {0, {}},
       {0, {}},
-    }
+    },
+    {0, 0, false, {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}}, 0, 0, 0, 0, 0, ""},
+    false
   },
   {
     "PREHISTOIRE", "VOLCAN EN ERUPTION & CHASSE AU MAMMOUTH", "MULTIBILLE ERUPTION", 5,
@@ -258,7 +268,7 @@ static const TableDef TABLES[TABLE_COUNT] = {
       {{{48.0f, 334.0f}, {26.27f, 289.02f}, {39.87f, 240.69f}, {38.25f, 191.53f}, {30.0f, 142.0f}}, false, 15.0f, 0xF97316, 18000, "RIVIERE DE LAVE"},
       {{{178.0f, 334.0f}, {195.67f, 285.06f}, {192.67f, 236.92f}, {178.54f, 188.76f}, {190.0f, 138.0f}}, true, 15.0f, 0x16A34A, 18000, "PONT DE LIANES"},
     },
-    {113.0f, 96.0f}, 9.0f,
+    {52.0f, 100.0f}, 9.0f,
     {
       {"LAVE", 1, 2, 45000, 0xF97316},
       {"ERUPTION", 0, 5, 55000, 0xDC2626},
@@ -281,7 +291,9 @@ static const TableDef TABLES[TABLE_COUNT] = {
       {4, {{217.0f, 314.0f}, {207.5f, 323.5f}, {207.5f, 360.5f}, {217.0f, 370.0f}}},
       {0, {}},
       {0, {}},
-    }
+    },
+    {3, 5, false, {{84.0f, 236.0f}, {142.0f, 236.0f}, {66.0f, 296.0f}, {160.0f, 296.0f}, {113.0f, 268.0f}, {0, 0}}, 9.0f, 3000, 4, 40000, 0xF97316, "MAMMOUTH"},
+    false
   },
   {
     "FAR WEST", "SALOON, SHERIF & TRAIN DE L'OR", "MULTIBILLE DUEL", 6,
@@ -305,7 +317,7 @@ static const TableDef TABLES[TABLE_COUNT] = {
       {{{48.0f, 334.0f}, {32.06f, 286.18f}, {24.71f, 237.09f}, {27.9f, 187.05f}, {46.0f, 140.0f}}, false, 15.0f, 0xB45309, 18000, "RAIL DE LA MINE"},
       {{{178.0f, 334.0f}, {204.0f, 292.88f}, {204.0f, 242.96f}, {198.09f, 193.89f}, {184.0f, 146.0f}}, false, 15.0f, 0xF59E0B, 18000, "DILIGENCE"},
     },
-    {113.0f, 96.0f}, 9.0f,
+    {174.0f, 100.0f}, 9.0f,
     {
       {"MINE D'OR", 1, 2, 45000, 0xFACC15},
       {"COUPS DE FEU", 0, 5, 55000, 0xDC2626},
@@ -328,7 +340,9 @@ static const TableDef TABLES[TABLE_COUNT] = {
       {4, {{217.0f, 314.0f}, {207.5f, 323.5f}, {207.5f, 360.5f}, {217.0f, 370.0f}}},
       {0, {}},
       {0, {}},
-    }
+    },
+    {1, 6, false, {{84.0f, 232.0f}, {142.0f, 232.0f}, {60.0f, 262.0f}, {166.0f, 262.0f}, {84.0f, 300.0f}, {142.0f, 300.0f}}, 8.5f, 3000, 5, 50000, 0xFDE68A, "WANTED"},
+    false
   },
   {
     "HALLOWEEN", "MANOIR HANTE & NUIT DES CITROUILLES", "MULTIBILLE NUIT NOIRE", 7,
@@ -352,7 +366,7 @@ static const TableDef TABLES[TABLE_COUNT] = {
       {{{48.0f, 334.0f}, {33.65f, 287.75f}, {43.21f, 242.38f}, {45.3f, 196.56f}, {32.0f, 150.0f}}, false, 15.0f, 0x8B5CF6, 18000, "BRUME VIOLETTE"},
       {{{178.0f, 334.0f}, {191.73f, 285.2f}, {181.82f, 238.1f}, {179.55f, 190.59f}, {194.0f, 142.0f}}, true, 15.0f, 0xF97316, 18000, "ESCALIER DU CAVEAU"},
     },
-    {113.0f, 96.0f}, 9.0f,
+    {52.0f, 100.0f}, 9.0f,
     {
       {"BRUME", 1, 2, 45000, 0x8B5CF6},
       {"CITROUILLES", 0, 5, 55000, 0xF97316},
@@ -375,7 +389,9 @@ static const TableDef TABLES[TABLE_COUNT] = {
       {4, {{217.0f, 314.0f}, {207.5f, 323.5f}, {207.5f, 360.5f}, {217.0f, 370.0f}}},
       {0, {}},
       {0, {}},
-    }
+    },
+    {2, 5, false, {{62.0f, 230.0f}, {164.0f, 230.0f}, {113.0f, 240.0f}, {84.0f, 298.0f}, {142.0f, 298.0f}, {0, 0}}, 9.0f, 3000, 4, 45000, 0xA3E635, "FANTOME"},
+    false
   },
   {
     "CANDY POP", "COEURS, RUBANS & ETOILES PASTEL", "MULTIBILLE COEUR", 8,
@@ -399,7 +415,7 @@ static const TableDef TABLES[TABLE_COUNT] = {
       {{{48.0f, 334.0f}, {25.4f, 286.92f}, {38.69f, 237.27f}, {39.74f, 186.88f}, {28.0f, 136.0f}}, false, 15.0f, 0xF472B6, 18000, "RUBAN ROSE"},
       {{{178.0f, 334.0f}, {200.99f, 286.37f}, {193.6f, 236.54f}, {188.53f, 185.62f}, {200.0f, 134.0f}}, false, 15.0f, 0xA78BFA, 18000, "ARC-EN-CIEL"},
     },
-    {113.0f, 96.0f}, 9.0f,
+    {174.0f, 100.0f}, 9.0f,
     {
       {"RUBANS", 1, 2, 45000, 0xF472B6},
       {"COEURS", 0, 5, 55000, 0xEF4444},
@@ -422,7 +438,9 @@ static const TableDef TABLES[TABLE_COUNT] = {
       {4, {{217.0f, 314.0f}, {207.5f, 323.5f}, {207.5f, 360.5f}, {217.0f, 370.0f}}},
       {0, {}},
       {0, {}},
-    }
+    },
+    {0, 0, false, {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}}, 0, 0, 0, 0, 0, ""},
+    true
   },
   {
     "BONBONS", "CONFISERIE, SUCETTES & REGLISSE", "MULTIBILLE BOCAL", 9,
@@ -446,7 +464,7 @@ static const TableDef TABLES[TABLE_COUNT] = {
       {{{48.0f, 334.0f}, {34.39f, 285.6f}, {30.0f, 235.93f}, {35.33f, 186.68f}, {54.0f, 140.0f}}, false, 15.0f, 0xFB7185, 18000, "SUCRE D'ORGE"},
       {{{178.0f, 334.0f}, {190.14f, 285.45f}, {196.78f, 236.14f}, {193.71f, 187.09f}, {172.0f, 142.0f}}, false, 15.0f, 0xFACC15, 18000, "TOBOGGAN CARAMEL"},
     },
-    {113.0f, 96.0f}, 9.0f,
+    {52.0f, 100.0f}, 9.0f,
     {
       {"SUCRES", 1, 2, 45000, 0xFB7185},
       {"GOURMAND", 0, 5, 55000, 0xFACC15},
@@ -469,7 +487,9 @@ static const TableDef TABLES[TABLE_COUNT] = {
       {4, {{217.0f, 314.0f}, {207.5f, 323.5f}, {207.5f, 360.5f}, {217.0f, 370.0f}}},
       {0, {}},
       {0, {}},
-    }
+    },
+    {4, 5, false, {{76.0f, 236.0f}, {150.0f, 236.0f}, {113.0f, 252.0f}, {70.0f, 300.0f}, {156.0f, 300.0f}, {0, 0}}, 8.0f, 3000, 4, 40000, 0xFB7185, "SUCETTE"},
+    false
   },
   {
     "TRAIN", "RAILS, VAPEUR & EXPRESS DE NUIT", "MULTIBILLE EXPRESS", 10,
@@ -493,7 +513,7 @@ static const TableDef TABLES[TABLE_COUNT] = {
       {{{48.0f, 334.0f}, {40.12f, 285.39f}, {36.0f, 236.48f}, {36.0f, 187.24f}, {36.0f, 138.0f}}, true, 15.0f, 0x94A3B8, 18000, "VOIE 1"},
       {{{178.0f, 334.0f}, {185.88f, 285.39f}, {190.0f, 236.48f}, {190.0f, 187.24f}, {190.0f, 138.0f}}, true, 15.0f, 0x94A3B8, 18000, "VOIE 2"},
     },
-    {113.0f, 96.0f}, 9.0f,
+    {174.0f, 100.0f}, 9.0f,
     {
       {"VOIES", 1, 2, 45000, 0x94A3B8},
       {"VAPEUR", 0, 5, 55000, 0xE2E8F0},
@@ -516,6 +536,8 @@ static const TableDef TABLES[TABLE_COUNT] = {
       {4, {{217.0f, 314.0f}, {207.5f, 323.5f}, {207.5f, 360.5f}, {217.0f, 370.0f}}},
       {0, {}},
       {0, {}},
-    }
+    },
+    {5, 6, true, {{84.0f, 244.0f}, {113.0f, 252.0f}, {142.0f, 244.0f}, {142.0f, 296.0f}, {113.0f, 288.0f}, {84.0f, 296.0f}}, 9.0f, 3000, 4, 45000, 0xF59E0B, "LOCOMOTIVE"},
+    false
   },
 };

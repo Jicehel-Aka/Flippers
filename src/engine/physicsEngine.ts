@@ -82,6 +82,12 @@ export class PinballSimulation {
   public lastCallout: string = 'PRÊT AU LANCEMENT';
   public calloutTimer: number = 0;
   public ballSaveTimer: number = 0;
+  /** Cible mobile de la table (si elle en a une) : emplacement courant, touches cumulées, éclat. */
+  public huntSlot: number = 0;
+  public huntHits: number = 0;
+  public huntFlash: number = 0;
+  /** Bumper « doré » (points x3) quand la table a le mécanisme de rotation. */
+  public litBumperIdx: number = 0;
   public kickbackLeftLit: boolean = true;
   public kickbackRightLit: boolean = false;
   public kickbackFlash: { LEFT: number; RIGHT: number } = { LEFT: 0, RIGHT: 0 };
@@ -451,6 +457,10 @@ export class PinballSimulation {
     this.jackpotLit = false;
     this.multiballSpawnQueue = 0;
     this.ballSaveTimer = 0;
+    this.huntSlot = 0;
+    this.huntHits = 0;
+    this.huntFlash = 0;
+    this.litBumperIdx = 0;
     this.kickbackLeftLit = true;
     this.kickbackRightLit = false;
     this.jackpotMultiplierBoost = 1;
@@ -800,6 +810,7 @@ export class PinballSimulation {
     }
     if (this.calloutTimer > 0) this.calloutTimer = Math.max(0, this.calloutTimer - dt);
     if (this.ballSaveTimer > 0) this.ballSaveTimer = Math.max(0, this.ballSaveTimer - dt);
+    if (this.huntFlash > 0) this.huntFlash = Math.max(0, this.huntFlash - dt);
     if (this.gateOpenTimer > 0) this.gateOpenTimer = Math.max(0, this.gateOpenTimer - dt);
     if (this.nudgeCooldown > 0) this.nudgeCooldown = Math.max(0, this.nudgeCooldown - dt);
     if (this.tiltMeter > 0 && !this.isTilted) {
@@ -1190,15 +1201,44 @@ export class PinballSimulation {
       }
 
       // Collide with Active 3D Pop Bumpers
-      for (const bmp of table.bumpers) {
+      for (let bi = 0; bi < table.bumpers.length; bi++) {
+        const bmp = table.bumpers[bi];
         const kick = this.isTilted ? 0 : 298;
         const hit = this.collideBallWithCircle(b, bmp.x, bmp.y, bmp.radius, 0.86, kick);
         if (hit && !this.isTilted) {
           this.bumperFlashTimers[bmp.id] = 0.18;
           soundEngine.playBumperHit(this.comboCount);
           this.spawnSparks(bmp.x, bmp.y, table.palette.accentPrimary, 7);
-          this.awardPoints(bmp.points, `${bmp.label} +${bmp.points}`, { x: bmp.x, y: bmp.y - 8 });
+          const golden = !!table.litBumperRotate && bi === this.litBumperIdx % table.bumpers.length;
+          const pts = golden ? bmp.points * 3 : bmp.points;
+          this.awardPoints(pts, golden ? `${bmp.label} DORÉ ×3 +${pts}` : `${bmp.label} +${pts}`, {
+            x: bmp.x,
+            y: bmp.y - 8,
+          });
+          if (golden) this.litBumperIdx = (this.litBumperIdx + 1 + (this.huntHits++ % 2)) % table.bumpers.length;
           this.advanceMission('BUMPER', { x: bmp.x, y: bmp.y });
+        }
+      }
+
+      // Cible mobile propre à la table (WANTED, fantôme, mammouth, sucette, locomotive)
+      if (table.hunt) {
+        const hd = table.hunt;
+        const slot = hd.slots[this.huntSlot % hd.slots.length];
+        const hit = this.collideBallWithCircle(b, slot.x, slot.y, hd.radius, 0.7, this.isTilted ? 0 : 140);
+        if (hit && !this.isTilted) {
+          this.huntHits++;
+          this.huntFlash = 0.35;
+          soundEngine.playBumperHit(this.comboCount);
+          this.spawnSparks(slot.x, slot.y, hd.color, 10);
+          this.awardPoints(hd.points, `${hd.name} +${hd.points}`, { x: slot.x, y: slot.y - 10 }, hd.color);
+          this.advanceMission('TARGET', { x: slot.x, y: slot.y });
+          if (this.huntHits % hd.goal === 0) {
+            this.awardPoints(hd.reward, `PRIME ${hd.name} +${hd.reward} !`, { x: 113, y: 250 }, hd.color);
+          }
+          const n = hd.slots.length;
+          this.huntSlot = hd.sequential
+            ? (this.huntSlot + 1) % n
+            : (this.huntSlot + 1 + ((this.huntHits * 7) % Math.max(1, n - 1))) % n;
         }
       }
 

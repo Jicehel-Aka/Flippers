@@ -332,6 +332,28 @@ static void draw_art_dynamic(const Game& g, const View& v, const TableDef& t) {
         pdisc(bx, by, br, C3(255, 255, 255));
         pdisc(bx, by, br * 0.66f, lighten(b.fill, 60));
     }
+    if (t.rotateBumper && t.bumperCount) {   // bumper dore (x3)
+        const BumperDef& gb = t.bumpers[g.litBumper % t.bumperCount];
+        const float pul = ((g.nowMs / 120u) & 1u) ? 3.0f : 4.5f;
+        pring(v.Xf(gb.x), v.Yf(gb.y), gb.r * v.zoom + pul, 1.4f, C3(253, 224, 71));
+    }
+    if (t.hunt.kind) {   // cible mobile : WANTED, fantome, mammouth, sucette, locomotive
+        const HuntDef& hd = t.hunt;
+        const Vec2& sp = hd.slots[g.huntSlot % hd.slotCount];
+        const float hx = v.Xf(sp.x), hy = v.Yf(sp.y), hr = hd.radius * v.zoom;
+        const bool fl = g.huntFlash > 0.0f;
+        pdisc(hx, hy, hr + 2.5f * v.zoom, fl ? C3(255, 255, 255) : darken(hd.color, 90));
+        pdisc(hx, hy, hr, C(hd.color));
+        const uint16_t ink = C3(28, 25, 23);
+        switch (hd.kind) {
+            case 1: pdisc(hx, hy, hr * 0.62f, ink); pdisc(hx, hy - hr * 0.15f, hr * 0.28f, C(hd.color)); break;   // affiche
+            case 2: pdisc(hx, hy, hr * 0.62f, C3(240, 253, 244)); pdisc(hx - hr * 0.25f, hy - hr * 0.1f, hr * 0.15f, ink);
+                    pdisc(hx + hr * 0.25f, hy - hr * 0.1f, hr * 0.15f, ink); break;                                  // fantome
+            case 3: pdisc(hx, hy, hr * 0.55f, ink); pdisc(hx + hr * 0.4f, hy + hr * 0.3f, hr * 0.25f, C3(254, 243, 199)); break;
+            case 4: pdisc(hx, hy, hr * 0.6f, C3(255, 241, 242)); pdisc(hx, hy, hr * 0.3f, C(hd.color)); break;       // sucette
+            default: pdisc(hx, hy, hr * 0.62f, ink); pdisc(hx, hy - hr * 0.4f, hr * 0.25f, C3(254, 243, 199)); break; // locomotive
+        }
+    }
     {   // puits Multibille : clignote quand il est arme, billes verrouillees visibles
         const int lx = v.X(t.lockPos.x), ly = v.Y(t.lockPos.y);
         if (g.lockLit && ((g.nowMs / 200u) & 1u)) {

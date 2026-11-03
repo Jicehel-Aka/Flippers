@@ -4,7 +4,7 @@
   Elles partagent la même architecture que les autres plateaux (2 rampes, verrou central, 4 banques de cibles,
   6 rollovers) et ne diffèrent que par la disposition des bumpers, les couleurs, les noms et le décor.
 */
-import { PinballTableDef, TargetDef, BumperDef, MissionDef, TablePalette } from '../types/pinball';
+import { PinballTableDef, TargetDef, BumperDef, MissionDef, TablePalette, HuntDef } from '../types/pinball';
 
 type BumperSpec = [number, number, number, string, BumperDef['colorStyle'], BumperDef['iconStyle']]; // x, y, points, label, color, icon
 
@@ -38,6 +38,10 @@ interface Spec {
   rollovers: string[]; // 4 lettres du haut puis 2 retours
   banks: [BankSpec, BankSpec, BankSpec, BankSpec];
   lockName: string;
+  lockSide: 'LEFT' | 'RIGHT';
+  hunt?: HuntDef;
+  litBumperRotate?: boolean;
+  missionDescs: [string, string, string];
   lockColor: string;
   vukName: string;
   vukExitRight: boolean;
@@ -69,9 +73,9 @@ function build(s: Spec): PinballTableDef {
     id: `${p}_${id}`, groupId: group, x, y, radius: r, letter, points: pts,
   });
   const missionDefs: MissionDef[] = [
-    { id: `${p}_m1`, title: s.missions[0], description: 'Franchir 2 rampes pour allumer les voyants', targetKind: 'RAMP', goal: 2, rewardPoints: 45000, accentColor: s.missionColors[0] },
-    { id: `${p}_m2`, title: s.missions[1], description: 'Frapper 5 fois les bumpers du plateau', targetKind: 'BUMPER', goal: 5, rewardPoints: 55000, accentColor: s.missionColors[1] },
-    { id: `${p}_m3`, title: s.missions[2], description: 'Toucher 4 cibles ou puits pour le bonus final', targetKind: 'TARGET', goal: 4, rewardPoints: 75000, accentColor: s.missionColors[2] },
+    { id: `${p}_m1`, title: s.missions[0], description: s.missionDescs[0], targetKind: 'RAMP', goal: 2, rewardPoints: 45000, accentColor: s.missionColors[0] },
+    { id: `${p}_m2`, title: s.missions[1], description: s.missionDescs[1], targetKind: 'BUMPER', goal: 5, rewardPoints: 55000, accentColor: s.missionColors[1] },
+    { id: `${p}_m3`, title: s.missions[2], description: s.missionDescs[2], targetKind: 'TARGET', goal: 4, rewardPoints: 75000, accentColor: s.missionColors[2] },
   ];
   return {
     id: s.id,
@@ -128,7 +132,13 @@ function build(s: Spec): PinballTableDef {
       { id: `${p}_sp2`, name: s.spinners[1], x: 170, y: 204, width: 15, angle: 0.2, pointsPerSpin: 900 },
     ],
     scoops: [
-      { id: `${p}_lock`, name: s.lockName, kind: 'UPPER_LOCK', x: 113, y: 96, radius: 9, ejectTo: { x: 113, y: 112 }, ejectVelocity: { x: 0, y: 165 }, points: 22000, color: s.lockColor },
+      {
+        id: `${p}_lock`, name: s.lockName, kind: 'UPPER_LOCK',
+        x: s.lockSide === 'LEFT' ? 52 : 174, y: 100, radius: 9,
+        ejectTo: { x: s.lockSide === 'LEFT' ? 52 : 174, y: 116 },
+        ejectVelocity: { x: s.lockSide === 'LEFT' ? 45 : -45, y: 150 },
+        points: 22000, color: s.lockColor,
+      },
       {
         id: `${p}_vuk`, name: s.vukName, kind: 'MID_VUK_TELEPORT', x: 113, y: 316, radius: 9,
         ejectTo: s.vukExitRight ? { x: 192, y: 134 } : { x: 34, y: 134 },
@@ -140,6 +150,8 @@ function build(s: Spec): PinballTableDef {
     extraWalls: [],
     extraPegs: [],
     missionEmblemPos: { x: 113, y: 364 },
+    hunt: s.hunt,
+    litBumperRotate: s.litBumperRotate,
     rulesSummary: { rampsRule: s.rules[0], bumpersRule: s.rules[1], targetsRule: s.rules[2], multiballRule: s.rules[3] },
   };
 }
@@ -173,6 +185,12 @@ export const EXTRA_TABLES: PinballTableDef[] = [
       { name: 'OS', role: 'JACKPOT_BOOST', kind: 'STANDUP', letters: ['O', 'S', '!'], colors: C4('#E7E5E4', '#FACC15', '#F97316', '#DC2626') },
     ],
     lockName: 'GROTTE DU CLAN', lockColor: '#F97316', vukName: 'PUITS DE GOUDRON', vukExitRight: false,
+    lockSide: 'LEFT',
+    hunt: {
+      kind: 'MAMMOTH', name: 'MAMMOUTH', radius: 9, points: 3000, goal: 4, reward: 40000, sequential: false, color: '#F97316',
+      slots: [{ x: 84, y: 236 }, { x: 142, y: 236 }, { x: 66, y: 296 }, { x: 160, y: 296 }, { x: 113, y: 268 }],
+    },
+    missionDescs: ['Franchir 2 rampes de lave et de lianes', 'Frapper 5 fois les roches du volcan', 'Abattre 4 mammouths qui changent de piste'],
     spinners: ['ROUE DE PIERRE', 'ROUE DE SILEX'],
     missions: ['LAVE', 'ÉRUPTION', 'CHASSE'], missionColors: ['#F97316', '#DC2626', '#FACC15'],
     rules: [
@@ -208,6 +226,12 @@ export const EXTRA_TABLES: PinballTableDef[] = [
       { name: 'BOX', role: 'JACKPOT_BOOST', kind: 'STANDUP', letters: ['B', 'O', 'X'], colors: C4('#FDE68A', '#DC2626', '#F59E0B', '#16A34A') },
     ],
     lockName: 'COFFRE DE LA BANQUE', lockColor: '#FACC15', vukName: 'PUITS DE LA MINE', vukExitRight: true,
+    lockSide: 'RIGHT',
+    hunt: {
+      kind: 'WANTED', name: 'WANTED', radius: 8.5, points: 3000, goal: 5, reward: 50000, sequential: false, color: '#FDE68A',
+      slots: [{ x: 84, y: 232 }, { x: 142, y: 232 }, { x: 60, y: 262 }, { x: 166, y: 262 }, { x: 84, y: 300 }, { x: 142, y: 300 }],
+    },
+    missionDescs: ['Franchir 2 rampes pour rejoindre la mine', 'Frapper 5 fois les bumpers du saloon', 'Abattre 4 bandits WANTED qui changent de place'],
     spinners: ['ROUE DU MOULIN', 'ROUE DE CHARIOT'],
     missions: ['MINE D’OR', 'COUPS DE FEU', 'BRIGADE'], missionColors: ['#FACC15', '#DC2626', '#F59E0B'],
     rules: [
@@ -244,6 +268,12 @@ export const EXTRA_TABLES: PinballTableDef[] = [
       { name: 'RIP', role: 'JACKPOT_BOOST', kind: 'STANDUP', letters: ['R', 'I', 'P'], colors: C4('#E9D5FF', '#F97316', '#A3E635', '#DC2626') },
     ],
     lockName: 'CAVEAU DU MANOIR', lockColor: '#A3E635', vukName: 'PUITS DU CHAUDRON', vukExitRight: false,
+    lockSide: 'LEFT',
+    hunt: {
+      kind: 'GHOST', name: 'FANTÔME', radius: 9, points: 3000, goal: 4, reward: 45000, sequential: false, color: '#A3E635',
+      slots: [{ x: 62, y: 230 }, { x: 164, y: 230 }, { x: 113, y: 240 }, { x: 84, y: 298 }, { x: 142, y: 298 }],
+    },
+    missionDescs: ['Franchir 2 rampes dans la brume', 'Frapper 5 fois les citrouilles', 'Chasser 4 fantômes qui hantent le manoir'],
     spinners: ['ROUE DE LA TOILE', 'ROUE DU CORBEAU'],
     missions: ['BRUME', 'CITROUILLES', 'MANOIR'], missionColors: ['#8B5CF6', '#F97316', '#A3E635'],
     rules: [
@@ -279,6 +309,9 @@ export const EXTRA_TABLES: PinballTableDef[] = [
       { name: 'KISS', role: 'JACKPOT_BOOST', kind: 'STANDUP', letters: ['K', 'I', 'S'], colors: C4('#FFFFFF', '#F472B6', '#FDE047', '#A78BFA') },
     ],
     lockName: 'BOÎTE À BIJOUX', lockColor: '#FDE047', vukName: 'PUITS DE RUBAN', vukExitRight: true,
+    lockSide: 'RIGHT',
+    litBumperRotate: true,
+    missionDescs: ['Franchir 2 rampes ornées de rubans', 'Frapper 5 fois le bumper doré (×3, il change à chaque touche)', 'Toucher 4 cibles ou puits pour le bonus final'],
     spinners: ['ROUE PAPILLON', 'ROUE ÉTOILE'],
     missions: ['RUBANS', 'CŒURS', 'ÉTOILES'], missionColors: ['#F472B6', '#EF4444', '#FDE047'],
     rules: [
@@ -315,6 +348,12 @@ export const EXTRA_TABLES: PinballTableDef[] = [
       { name: 'POP', role: 'JACKPOT_BOOST', kind: 'STANDUP', letters: ['P', 'O', 'P'], colors: C4('#FFFFFF', '#FB7185', '#FACC15', '#2DD4BF') },
     ],
     lockName: 'GRAND BOCAL', lockColor: '#FACC15', vukName: 'PUITS DU COMPTOIR', vukExitRight: false,
+    lockSide: 'LEFT',
+    hunt: {
+      kind: 'LOLLIPOP', name: 'SUCETTE', radius: 8, points: 3000, goal: 4, reward: 40000, sequential: false, color: '#FB7185',
+      slots: [{ x: 76, y: 236 }, { x: 150, y: 236 }, { x: 113, y: 252 }, { x: 70, y: 300 }, { x: 156, y: 300 }],
+    },
+    missionDescs: ['Franchir 2 rampes de sucre', 'Frapper 5 fois les bumpers gourmands', 'Croquer 4 sucettes qui sautent de place'],
     spinners: ['ROUE SUCETTE', 'ROUE CARAMEL'],
     missions: ['SUCRES', 'GOURMAND', 'BOCAL'], missionColors: ['#FB7185', '#FACC15', '#2DD4BF'],
     rules: [
@@ -350,6 +389,12 @@ export const EXTRA_TABLES: PinballTableDef[] = [
       { name: 'EXP', role: 'JACKPOT_BOOST', kind: 'STANDUP', letters: ['E', 'X', 'P'], colors: C4('#F59E0B', '#E2E8F0', '#DC2626', '#16A34A') },
     ],
     lockName: 'DÉPÔT DES LOCOS', lockColor: '#F59E0B', vukName: 'PUITS D’EAU', vukExitRight: true,
+    lockSide: 'RIGHT',
+    hunt: {
+      kind: 'LOCOMOTIVE', name: 'LOCOMOTIVE', radius: 9, points: 3000, goal: 4, reward: 45000, sequential: true, color: '#F59E0B',
+      slots: [{ x: 84, y: 244 }, { x: 113, y: 252 }, { x: 142, y: 244 }, { x: 142, y: 296 }, { x: 113, y: 288 }, { x: 84, y: 296 }],
+    },
+    missionDescs: ['Franchir 2 voies pour monter en gare', 'Frapper 5 fois les bumpers de la locomotive', 'Arrêter 4 fois la locomotive : elle avance d’un cran à chaque arrêt'],
     spinners: ['ROUE MOTRICE', 'ROUE D’AIGUILLAGE'],
     missions: ['VOIES', 'VAPEUR', 'EXPRESS'], missionColors: ['#94A3B8', '#E2E8F0', '#F59E0B'],
     rules: [

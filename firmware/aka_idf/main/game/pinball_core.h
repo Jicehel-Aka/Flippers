@@ -85,6 +85,19 @@ struct HousingDef {
     Vec2 p[5];
 };
 
+struct HuntDef {
+    uint8_t kind;             // 0 aucune, 1 WANTED, 2 FANTOME, 3 MAMMOUTH, 4 SUCETTE, 5 LOCOMOTIVE
+    uint8_t slotCount;
+    bool sequential;          // true : la cible suit l'ordre des emplacements
+    Vec2 slots[6];
+    float radius;
+    uint16_t points;
+    uint8_t goal;             // touches pour decrocher la prime
+    uint32_t reward;
+    uint32_t color;
+    const char* name;
+};
+
 struct TableDef {
     const char* name;
     const char* subName;
@@ -104,6 +117,8 @@ struct TableDef {
     RolloverDef rollovers[MAX_ROLLOVERS];
     uint8_t housingCount;     // boitiers biseautes pleins (collision identique au moteur Web)
     HousingDef housings[6];
+    HuntDef hunt;
+    bool rotateBumper;        // un bumper dore (x3) qui change a chaque touche
 };
 
 const TableDef& table(int index);
@@ -181,6 +196,10 @@ public:
     uint8_t wallCount = 0;
     float wallFlash[MAX_WALLS] = {};
     float bumperFlash[MAX_BUMPERS] = {};
+    uint8_t huntSlot = 0;
+    uint16_t huntHits = 0;
+    float huntFlash = 0.0f;
+    uint8_t litBumper = 0;
 
     uint32_t score = 0;
     uint32_t highScores[TABLE_COUNT] = {25000, 25000, 25000, 25000};

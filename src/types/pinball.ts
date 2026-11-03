@@ -159,6 +159,21 @@ export interface TablePalette {
   ballTint: string;
 }
 
+/** Cible mobile propre à une table : elle change d'emplacement à chaque fois qu'on la touche. */
+export interface HuntDef {
+  kind: 'WANTED' | 'GHOST' | 'MAMMOTH' | 'LOLLIPOP' | 'LOCOMOTIVE';
+  name: string;
+  slots: Vec2[];
+  radius: number;
+  points: number;
+  /** Nombre de touches qui déclenchent la prime. */
+  goal: number;
+  reward: number;
+  /** Vrai : les emplacements se suivent dans l'ordre (le train avance) ; sinon ordre pseudo-aléatoire déterministe. */
+  sequential: boolean;
+  color: string;
+}
+
 export interface PinballTableDef {
   id: TableThemeId;
   name: string;
@@ -184,6 +199,10 @@ export interface PinballTableDef {
   extraWalls: WallSegment[];
   extraPegs: PostPeg[];
   missionEmblemPos: Vec2;
+  /** Mécanisme propre à la table : cible mobile à abattre. */
+  hunt?: HuntDef;
+  /** Mécanisme propre à la table : un bumper « doré » (points x3) change à chaque touche. */
+  litBumperRotate?: boolean;
   rulesSummary: {
     rampsRule: string;
     bumpersRule: string;

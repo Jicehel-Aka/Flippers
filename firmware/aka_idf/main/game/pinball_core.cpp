@@ -167,6 +167,7 @@ void Game::startNewGame(uint8_t tableIndex) {
     for (int i = 0; i < MAX_BALLS; i++) balls[i] = {0, 0, 0, 0, false, false, 0.0f, 0.0f};
     spawnBallInShooter(0);
     for (int i = 0; i < MAX_BUMPERS; i++) bumperFlash[i] = 0.0f;
+    huntSlot = 0; huntHits = 0; huntFlash = 0.0f; litBumper = 0;
     score = 0;
     ballsRemaining = 3;
     lockedBalls = 0;
@@ -353,7 +354,9 @@ void Game::stepSubstep(float dt, bool leftHeld, bool rightHeld) {
                 b.y = bmp.y + dy * minD;
                 b.vx = dx * 235.0f;
                 b.vy = dy * 235.0f;
-                score += bmp.points;
+                bool golden = t.rotateBumper && k == litBumper % t.bumperCount;
+                score += golden ? bmp.points * 3 : bmp.points;
+                if (golden) litBumper = (uint8_t)((litBumper + 1 + (huntHits++ % 2)) % t.bumperCount);
                 bumperFlash[k] = 0.14f;
                 if (!lockLit && !multiballActive && ++lockHits >= 5) {
                     lockLit = true;
@@ -362,6 +365,41 @@ void Game::stepSubstep(float dt, bool leftHeld, bool rightHeld) {
                 }
                 advanceMission(0);
                 emit(Sfx::Bumper, k);
+                touchHud();
+            }
+        }
+
+        // Cible mobile (WANTED, fantome...) : change d'emplacement a chaque touche
+        if (t.hunt.kind && !b.inShooter) {
+            const HuntDef& hd = t.hunt;
+            const Vec2& sp = hd.slots[huntSlot % hd.slotCount];
+            float dx = b.x - sp.x;
+            float dy = b.y - sp.y;
+            float minD = BALL_RADIUS + hd.radius;
+            float d2 = dx * dx + dy * dy;
+            if (d2 < minD * minD && d2 > 0.001f) {
+                float d = sqrtf(d2);
+                dx /= d;
+                dy /= d;
+                b.x = sp.x + dx * minD;
+                b.y = sp.y + dy * minD;
+                b.vx = dx * 190.0f;
+                b.vy = dy * 190.0f;
+                huntHits++;
+                huntFlash = 0.35f;
+                score += hd.points;
+                uint8_t n = hd.slotCount;
+                huntSlot = hd.sequential
+                    ? (uint8_t)((huntSlot + 1) % n)
+                    : (uint8_t)((huntSlot + 1 + ((huntHits * 7) % (n > 1 ? n - 1 : 1))) % n);
+                if (huntHits % hd.goal == 0) {
+                    score += hd.reward;
+                    bannerf(1.8f, "%s ! +%luK", hd.name, (unsigned long)(hd.reward / 1000));
+                    emit(Sfx::Mission, 1);
+                } else {
+                    emit(Sfx::Bumper, 0);
+                }
+                advanceMission(2);
                 touchHud();
             }
         }
@@ -549,6 +587,7 @@ void Game::updatePlaying(float dt, const Input& in, bool nudgePressed, bool flip
     (void)flipperEdge;
     if (bannerTimer > 0.0f) bannerTimer = maxf(0.0f, bannerTimer - dt);
     for (int i = 0; i < MAX_BUMPERS; i++) if (bumperFlash[i] > 0.0f) bumperFlash[i] = maxf(0.0f, bumperFlash[i] - dt);
+    if (huntFlash > 0.0f) huntFlash = maxf(0.0f, huntFlash - dt);
     for (int i = 0; i < wallCount; i++) if (wallFlash[i] > 0.0f) wallFlash[i] = maxf(0.0f, wallFlash[i] - dt);
     if (rolloverFlash > 0.0f) rolloverFlash = maxf(0.0f, rolloverFlash - dt);
     if (ballSaveTimer > 0.0f) ballSaveTimer = maxf(0.0f, ballSaveTimer - dt);

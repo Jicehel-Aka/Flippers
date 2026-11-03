@@ -406,6 +406,48 @@ static void test_ramp_follow() {
     printf("  %d rampes suivies sans teleportation\n", checked);
 }
 
+static void test_hunt() {
+    printf("[cibles mobiles et bumper dore]\n");
+    int tested = 0;
+    for (int t = 0; t < TABLE_COUNT; t++) {
+        const TableDef& td = tbl_of(t);
+        if (td.hunt.kind) {
+            Game g; g.begin(STORE()); g.startNewGame((uint8_t)t); g.introTimer = 0.0f;
+            g.ballSaveUsed = true;
+            Input in;
+            int relocated = 0;
+            uint32_t prize = 0;
+            for (int h = 0; h < td.hunt.goal; h++) {
+                const Vec2 sp = td.hunt.slots[g.huntSlot % td.hunt.slotCount];
+                const uint8_t before = g.huntSlot;
+                const uint32_t sc = g.score;
+                g.balls[0] = {sp.x, sp.y - td.hunt.radius - 6.0f, 0.0f, 40.0f, true, false, 0.0f, 0.0f};
+                for (int f = 0; f < 20 && g.huntSlot == before; f++) tick(g, in, 1.0f / 60.0f);
+                if (g.huntSlot != before) relocated++;
+                prize = g.score - sc;
+            }
+            CHECK(relocated == td.hunt.goal, "table %d : la cible doit changer de place a chaque touche (%d/%d)", t, relocated, td.hunt.goal);
+            CHECK(prize >= td.hunt.reward, "table %d : prime de %u attendue au %de coup (obtenu %u)", t, td.hunt.reward, td.hunt.goal, prize);
+            tested++;
+        }
+        if (td.rotateBumper) {
+            Game g; g.begin(STORE()); g.startNewGame((uint8_t)t); g.introTimer = 0.0f;
+            g.ballSaveUsed = true;
+            Input in;
+            const uint8_t k = g.litBumper % td.bumperCount;
+            const BumperDef& bm = td.bumpers[k];
+            const uint32_t sc = g.score;
+            g.balls[0] = {bm.x, bm.y - bm.r - 6.0f, 0.0f, 60.0f, true, false, 0.0f, 0.0f};
+            for (int f = 0; f < 20 && g.litBumper == k; f++) tick(g, in, 1.0f / 60.0f);
+            CHECK(g.litBumper != k, "table %d : le bumper dore doit changer apres la touche", t);
+            CHECK(g.score - sc >= (uint32_t)bm.points * 3, "table %d : bumper dore x3 (%u)", t, g.score - sc);
+            tested++;
+        }
+    }
+    CHECK(tested >= 5, "au moins 5 tables avec mecanique propre (%d)", tested);
+    printf("  %d tables avec mecanique propre verifiees\n", tested);
+}
+
 static void test_music() {
     printf("[musique]\n");
     for (int decor = 0; decor < DECOR_COUNT; decor++) {
@@ -525,6 +567,7 @@ int main(int argc, char** argv) {
     test_launch_and_save();
     test_containment();
     test_ramp_follow();
+    test_hunt();
     test_music();
     test_render(outDir);
     if (g_fail) { printf("\n%d ECHEC(S)\n", g_fail); return 1; }
