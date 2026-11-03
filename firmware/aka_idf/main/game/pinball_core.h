@@ -29,6 +29,7 @@ constexpr float PLUNGER_TOP_Y = 478.0f;   // sommet du ressort au repos (identiq
 constexpr float BALL_SAVE_SEC = 20.0f;    // duree de la protection contre la chute directe, apres la sortie du couloir
 
 constexpr int TABLE_COUNT  = 12;
+constexpr int RAMP_PTS    = 16;           // points suivis le long d'une rampe (echantillonnes sur la meme spline que le decor)
 constexpr int MAX_BALLS    = 3;
 constexpr int MAX_BUMPERS  = 6;
 constexpr int MAX_WALLS    = 128;
@@ -63,7 +64,7 @@ struct ExtraFlipperDef {
 };
 
 struct RampDef {
-    Vec2 pts[5];              // entree = pts[0], sortie = pts[4]
+    Vec2 pts[RAMP_PTS];       // entree = pts[0], sortie = pts[RAMP_PTS-1]
     bool wireform;
     bool toUpper;             // la sortie depose la bille sur l'etage superieur (couche 2)
     float entryRadius;
@@ -113,7 +114,7 @@ struct PegDef { float x, y, r, bounce; };
 struct VukDef {
     bool present;
     float x, y, r;
-    Vec2 pts[5];              // conduit : pts[0] = entree, pts[4] = sortie
+    Vec2 pts[RAMP_PTS];       // conduit : pts[0] = entree, derniere = sortie
     float evx, evy;           // vitesse d'ejection
     uint16_t points;
     uint32_t color;

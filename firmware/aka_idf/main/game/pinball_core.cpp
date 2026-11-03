@@ -587,9 +587,22 @@ void Game::stepUpper(Ball& b, float dt, bool leftHeld, bool rightHeld) {
         const float cdx = b.x - flippers[f].px, cdy = b.y - flippers[f].py, reach = flippers[f].length + 12.0f;
         if (active && cdx * cdx + cdy * cdy < reach * reach) cradled = true;
     }
-    if (!cradled && b.vx * b.vx + b.vy * b.vy < 144.0f) {
+    if (!cradled && b.vx * b.vx + b.vy * b.vy < 900.0f) {
         b.stuckTime += dt;
-        if (b.stuckTime > 0.6f) { b.vy = 145.0f; b.vx = (b.x < 113.0f ? 1.0f : -1.0f) * 75.0f; b.stuckTime = 0.0f; }
+        if (b.stuckTime > 0.22f) {   // bille posee sur un rebord : petit saut en direction du rebord ouvert (ou du centre)
+            float tx = 113.0f, ty = 200.0f;
+            for (uint8_t i = 0; i < up.n; i++) {
+                if (!(up.openMask & (1u << i))) continue;
+                tx = (up.b[i].x + up.b[(i + 1) % up.n].x) * 0.5f;
+                ty = (up.b[i].y + up.b[(i + 1) % up.n].y) * 0.5f;
+                break;
+            }
+            float dx = tx - b.x, dy = ty - b.y;
+            const float dl = maxf(1.0f, sqrtf(dx * dx + dy * dy));
+            b.vx = dx / dl * 130.0f;
+            b.vy = dy / dl * 130.0f - 70.0f;
+            b.stuckTime = 0.0f;
+        }
     } else {
         b.stuckTime = 0.0f;
     }
@@ -703,8 +716,8 @@ void Game::stepSubstep(float dt, bool leftHeld, bool rightHeld) {
             const int rampIdx = b.ramp;
             const bool tube = (rampIdx == 2);
             const Vec2* P = tube ? t.vuk.pts : t.ramps[b.ramp].pts;
-            float total = 0.0f, segLen[4];
-            for (int k = 0; k < 4; k++) {
+            float total = 0.0f, segLen[RAMP_PTS - 1];
+            for (int k = 0; k < RAMP_PTS - 1; k++) {
                 const float sx = P[k + 1].x - P[k].x, sy = P[k + 1].y - P[k].y;
                 segLen[k] = sqrtf(sx * sx + sy * sy);
                 total += segLen[k];
@@ -712,7 +725,7 @@ void Game::stepSubstep(float dt, bool leftHeld, bool rightHeld) {
             if (!tube) b.rampSpeed = maxf(120.0f, b.rampSpeed - 40.0f * dt);   // la bille ralentit un peu en montant
             b.rampDist += b.rampSpeed * dt;
             if (b.rampDist >= total) {
-                const Vec2 a = P[3], e = P[4];
+                const Vec2 a = P[RAMP_PTS - 2], e = P[RAMP_PTS - 1];
                 float ddx = e.x - a.x, ddy = e.y - a.y;
                 const float dl = maxf(1.0f, sqrtf(ddx * ddx + ddy * ddy));
                 b.x = e.x; b.y = e.y;
@@ -738,8 +751,8 @@ void Game::stepSubstep(float dt, bool leftHeld, bool rightHeld) {
                 continue;
             }
             float d = b.rampDist;
-            for (int k = 0; k < 4; k++) {
-                if (d <= segLen[k] || k == 3) {
+            for (int k = 0; k < RAMP_PTS - 1; k++) {
+                if (d <= segLen[k] || k == RAMP_PTS - 2) {
                     const float u = segLen[k] > 0.0f ? d / segLen[k] : 0.0f;
                     b.x = P[k].x + (P[k + 1].x - P[k].x) * u;
                     b.y = P[k].y + (P[k + 1].y - P[k].y) * u;
@@ -923,7 +936,7 @@ void Game::stepSubstep(float dt, bool leftHeld, bool rightHeld) {
         if (b.rampCool <= 0.0f && b.vy < -55.0f) {
             for (uint8_t r = 0; r < 2; r++) {
                 Vec2 entry = t.ramps[r].pts[0];
-                Vec2 exitP = t.ramps[r].pts[4];
+                Vec2 exitP = t.ramps[r].pts[RAMP_PTS - 1];
                 float dx = b.x - entry.x;
                 float dy = b.y - entry.y;
                 float rad = t.ramps[r].entryRadius;
@@ -1098,18 +1111,24 @@ void Game::updatePlaying(float dt, const Input& in, bool nudgePressed, bool flip
     if (ballSaveTimer > 0.0f) ballSaveTimer = maxf(0.0f, ballSaveTimer - dt);
 
     bool anyInShooter = false;
+    bool onSpring = false;   // une bille repose sur la tete du ressort (seule situation ou on peut le tendre / tirer)
     for (int i = 0; i < MAX_BALLS; i++) {
-        if (balls[i].active && balls[i].inShooter) anyInShooter = true;
+        if (balls[i].active && balls[i].inShooter) {
+            anyInShooter = true;
+            const float headY = PLUNGER_TOP_Y + plungerCharge * 22.0f;
+            if (balls[i].y + BALL_RADIUS >= headY - 3.0f && fabsf(balls[i].vy) < 60.0f) onSpring = true;
+        }
         if (balls[i].active && balls[i].rampCool > 0.0f) balls[i].rampCool = maxf(0.0f, balls[i].rampCool - dt);
     }
+    (void)anyInShooter;
 
-    // Ressort du lance-bille
-    if (in.plunger && anyInShooter) {
+    // Ressort du lance-bille : inactif tant qu'aucune bille ne repose dessus (bille deja lancee, en vol dans le couloir)
+    if (in.plunger && onSpring) {
         plungerCharge = minf(1.0f, plungerCharge + dt * 1.15f);
-    } else if (prevPlunger_ && !in.plunger && anyInShooter) {
+    } else if (prevPlunger_ && !in.plunger && onSpring && plungerCharge > 0.03f) {
         float launchVy = -(360.0f + plungerCharge * 220.0f);
         for (int i = 0; i < MAX_BALLS; i++) {
-            if (balls[i].active && balls[i].inShooter) {
+            if (balls[i].active && balls[i].inShooter && balls[i].y + BALL_RADIUS >= PLUNGER_TOP_Y + plungerCharge * 22.0f - 3.0f && fabsf(balls[i].vy) < 60.0f) {
                 balls[i].vy = launchVy;
                 balls[i].vx = -18.0f;
             }
@@ -1118,7 +1137,7 @@ void Game::updatePlaying(float dt, const Input& in, bool nudgePressed, bool flip
         plungerCharge = 0.0f;
         introTimer = 0.0f;   // passe immediatement en zoom jeu au tir
     } else {
-        plungerCharge = maxf(0.0f, plungerCharge - dt * 3.0f);
+        plungerCharge = maxf(0.0f, plungerCharge - dt * (in.plunger ? 6.0f : 3.0f));
     }
 
     // Secousse (Nudge) et jauge de TILT

@@ -239,6 +239,11 @@ constexpr uint8_t ORDER[16] = {
     1, 5, 2, 0
 };
 
+// Rupture de rythme par phrase de la grande arche (evite la boucle monotone) :
+// 0 normal ; 1 demi-temps (une note sur deux) ; 2 pause rythmique (seulement les temps forts) ; 3 syncope (notes voisines permutees)
+constexpr uint8_t FEEL_RHYTHMIC[16] = {0, 0, 0, 3,   0, 1, 0, 2,   0, 3, 1, 0,   3, 1, 0, 2};
+constexpr uint8_t FEEL_LYRICAL[16]  = {0, 0, 0, 0,   0, 0, 0, 2,   0, 0, 3, 0,   0, 0, 0, 2};
+
 } // namespace
 
 uint16_t music_step_ms(uint8_t decor, bool intense) {
@@ -254,7 +259,18 @@ bool music_note(uint8_t decor, uint32_t step, MusicNote& out) {
     const uint32_t pos = step % MUSIC_STEPS;
     const uint32_t phraseSlot = pos / PHRASE_STEPS;
     const uint8_t phraseId = ORDER[phraseSlot];
-    const int8_t s = t.ph[phraseId][pos % PHRASE_STEPS];
+    const uint32_t inPhrase = pos % PHRASE_STEPS;
+    const bool lyrical = (d == 1 || d == 2 || d == 3 || d == 9 || d == 11);
+    const uint8_t feel = lyrical ? FEEL_LYRICAL[phraseSlot] : FEEL_RHYTHMIC[phraseSlot];
+    // le dernier tiers de la derniere phrase reste normal pour que la boucle reparte proprement
+    const bool tail = (phraseSlot == 15 && inPhrase >= 24);
+    uint32_t idx = inPhrase;
+    if (!tail) {
+        if (feel == 1 && (inPhrase & 1u)) return false;
+        if (feel == 2 && (inPhrase & 3u)) return false;
+        if (feel == 3) idx = inPhrase ^ 1u;
+    }
+    const int8_t s = t.ph[phraseId][idx];
     if (s == R) return false;
 
     float freq = t.rootHz * powf(2.0f, (float)s / 12.0f);

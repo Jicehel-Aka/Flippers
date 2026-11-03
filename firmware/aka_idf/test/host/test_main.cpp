@@ -17,6 +17,7 @@ unsigned count_non_background(uint16_t bg);
 }
 
 using namespace pinball;
+static float clampf(float v, float lo, float hi) { return v < lo ? lo : (v > hi ? hi : v); }
 
 static int g_fail = 0;
 #define CHECK(cond, ...)                                  \
@@ -546,6 +547,14 @@ static void test_render(const char* outDir) {
             if (outDir) { snprintf(path, sizeof(path), "%s/t%d_lamps_top.ppm", outDir, t); vid::dump_ppm(path); }
             g.cameraY = MAX_CAM_Y; render::draw(g);
             if (outDir) { snprintf(path, sizeof(path), "%s/t%d_lamps_bot.ppm", outDir, t); vid::dump_ppm(path); }
+            if (outDir && (t == 0 || t == 1)) {   // bille en pleine rampe (controle visuel : elle doit rester dans le rail du decor)
+                const Ball sb = g.balls[0]; const Vec2 en = g.tbl().ramps[1].pts[0];
+                g.balls[0] = {en.x, en.y + 4.0f, 0.0f, -260.0f, true, false, 0, 0};
+                for (int f = 0; f < 40; f++) tick(g, Input(), 1.0f / 60.0f);
+                g.cameraZoom = 1.0f; g.cameraY = clampf(g.balls[0].y - 120.0f, 0.0f, MAX_CAM_Y); render::draw(g);
+                snprintf(path, sizeof(path), "%s/t%d_ramp.ppm", outDir, t); vid::dump_ppm(path);
+                g.balls[0] = sb;
+            }
             {   // mecaniques : cibles touchees / escamotees, spinner en rotation, jouet actif, bille a l'etage
                 const uint16_t th = g.targetHit; const uint8_t uh = g.upTargetHit; const Ball sb = g.balls[0];
                 g.targetHit = 0x2B; g.upTargetHit = 0x01; g.targetFlash[1] = 0.2f; g.targetFlash[MAX_TARGETS + 1] = 0.2f;
@@ -753,7 +762,7 @@ static void test_vuk_tube() {
         CHECK(held && inTube && out, "table %d : capture %d / conduit %d / sortie %d", t, held, inTube, out);
         CHECK(maxJump < 8.0f, "table %d : saut de %.1f px dans le conduit", t, maxJump);
         CHECK(g->score >= sc0 + d.vuk.points, "table %d : points de l'ejecteur", t);
-        CHECK(hypotf(g->balls[0].x - d.vuk.pts[4].x, g->balls[0].y - d.vuk.pts[4].y) < 12.0f, "table %d : la bille ressort a la sortie du conduit", t);
+        CHECK(hypotf(g->balls[0].x - d.vuk.pts[RAMP_PTS - 1].x, g->balls[0].y - d.vuk.pts[RAMP_PTS - 1].y) < 12.0f, "table %d : la bille ressort a la sortie du conduit", t);
         delete g; n++;
     }
     CHECK(n >= 2, "au moins 2 tables avec ejecteur (%d)", n);
@@ -828,6 +837,23 @@ static void test_upper_deck() {
     printf("  %d etages jouables (rampe -> bumpers/cibles/flipper -> retour)\n", decks);
 }
 
+static void test_plunger_in_flight() {
+    printf("[ressort : pas de tir a vide]\n");
+    Game g; g.begin(STORE()); g.startNewGame(0); g.introTimer = 0.0f;
+    Input in;
+    in.plunger = true; for (int f = 0; f < 40; f++) tick(g, in, 1.0f / 60.0f);
+    CHECK(g.plungerCharge > 0.3f, "le ressort se tend avec la bille dessus (%.2f)", g.plungerCharge);
+    in.plunger = false; tick(g, in, 1.0f / 60.0f);
+    for (int f = 0; f < 3; f++) tick(g, in, 1.0f / 60.0f);
+    CHECK(g.balls[0].vy < -200.0f && g.balls[0].inShooter, "bille lancee dans le couloir (vy=%.0f)", g.balls[0].vy);
+    in.plunger = true;
+    float maxCharge = 0.0f;
+    for (int f = 0; f < 8 && g.balls[0].inShooter; f++) { tick(g, in, 1.0f / 60.0f); if (g.plungerCharge > maxCharge) maxCharge = g.plungerCharge; }
+    CHECK(maxCharge < 0.05f, "pas de tension tant que la bille ne touche pas le ressort (%.2f)", maxCharge);
+    in.plunger = false; tick(g, in, 1.0f / 60.0f);
+    CHECK(g.balls[0].vy < 0.0f || !g.balls[0].inShooter, "un relachement en vol ne relance pas la bille");
+}
+
 int main(int argc, char** argv) {
     const char* outDir = argc > 1 ? argv[1] : nullptr;
     test_tables();
@@ -840,6 +866,7 @@ int main(int argc, char** argv) {
     test_art();
     test_art_alignment();
     test_launch_and_save();
+    test_plunger_in_flight();
     test_containment();
     test_ramp_follow();
     test_hunt();

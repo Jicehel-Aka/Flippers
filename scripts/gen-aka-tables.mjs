@@ -15,7 +15,7 @@ const check = process.argv.includes('--check');
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'aka-gen-'));
 const bundle = path.join(tmp, 'tables.mjs');
 const entry = path.join(tmp, 'entry.ts');
-fs.writeFileSync(entry, `export { PINBALL_TABLES } from ${JSON.stringify(path.join(root, 'src/data/tables.ts'))};\n`);
+fs.writeFileSync(entry, `export { PINBALL_TABLES } from ${JSON.stringify(path.join(root, 'src/data/tables.ts'))};\nexport { buildRampSpline, buildVukTubeSpline } from ${JSON.stringify(path.join(root, 'src/engine/rampSpline.ts'))};\n`);
 globalThis.window = globalThis;
 globalThis.localStorage = { getItem: () => null, setItem: () => {} };
 await build({
@@ -27,7 +27,7 @@ await build({
   loader: { '.jpg': 'dataurl', '.png': 'dataurl' },
   logLevel: 'error',
 });
-const { PINBALL_TABLES } = await import(pathToFileURL(bundle).href);
+const { PINBALL_TABLES, buildRampSpline, buildVukTubeSpline } = await import(pathToFileURL(bundle).href);
 
 // --- helpers -----------------------------------------------------------------
 const ascii = (s) =>
@@ -66,65 +66,22 @@ const rollChar = (l) => ROLL_CHAR[l] ?? (/^[A-Za-z0-9]$/.test(l) ? l.toUpperCase
 const MISSION_KIND = { BUMPER: 0, RAMP: 1, TARGET: 2, SCOOP: 2 };
 const DECOR = { aka_esp32: 0, space_odyssey: 1, star_galaxy: 2, solaire: 3, classique: 4, prehistoire: 5, farwest: 6, halloween: 7, candy: 8, bonbons: 9, train: 10, crypte: 11 };
 
-// Rééchantillonne un chemin de rampe Catmull-Rom lisse sur exactement 5 points (le moteur embarqué en suit 5).
-function resample5(path) {
-  const dense = [];
-  const n = path.length;
-  const sub = 8;
-  for (let i = 0; i < n - 1; i++) {
-    const p0 = path[Math.max(0, i - 1)];
-    const p1 = path[i];
-    const p2 = path[i + 1];
-    const p3 = path[Math.min(n - 1, i + 2)];
-    for (let s = 0; s < sub; s++) {
-      const u = s / sub;
-      const u2 = u * u;
-      const u3 = u2 * u;
-      const x =
-        0.5 *
-        (2 * p1.x +
-          (-p0.x + p2.x) * u +
-          (2 * p0.x - 5 * p1.x + 4 * p2.x - p3.x) * u2 +
-          (-p0.x + 3 * p1.x - 3 * p2.x + p3.x) * u3);
-      const y =
-        0.5 *
-        (2 * p1.y +
-          (-p0.y + p2.y) * u +
-          (2 * p0.y - 5 * p1.y + 4 * p2.y - p3.y) * u2 +
-          (-p0.y + 3 * p1.y - 3 * p2.y + p3.y) * u3);
-      dense.push({
-        x: Math.max(16, Math.min(209, x)),
-        y: Math.max(22, Math.min(439, y)),
-      });
-    }
-  }
-  dense.push({ ...path[n - 1] });
-
-  const seg = [];
-  let total = 0;
-  for (let i = 0; i + 1 < dense.length; i++) {
-    const d = Math.hypot(dense[i + 1].x - dense[i].x, dense[i + 1].y - dense[i].y);
-    seg.push(d);
-    total += d;
-  }
+const RAMP_PTS = 16;
+// Echantillonne la spline REELLE du decor (meme courbe que la bille suit cote Web) en RAMP_PTS points a pas egal.
+function sampleSpline(spline) {
+  const sm = spline.samples;
   const out = [];
-  for (let k = 0; k < 5; k++) {
-    let want = (total * k) / 4;
+  for (let k = 0; k < RAMP_PTS; k++) {
+    const d = (spline.totalLen * k) / (RAMP_PTS - 1);
     let i = 0;
-    while (i < seg.length - 1 && want > seg[i]) {
-      want -= seg[i];
-      i++;
-    }
-    const t = seg[i] > 0 ? Math.min(1, want / seg[i]) : 0;
-    out.push({
-      x: dense[i].x + (dense[i + 1].x - dense[i].x) * t,
-      y: dense[i].y + (dense[i + 1].y - dense[i].y) * t,
-    });
+    while (i < sm.length - 2 && sm[i + 1].dist < d) i++;
+    const seg = sm[i + 1].dist - sm[i].dist;
+    const u = seg > 0 ? Math.max(0, Math.min(1, (d - sm[i].dist) / seg)) : 0;
+    out.push({ x: sm[i].x + (sm[i + 1].x - sm[i].x) * u, y: sm[i].y + (sm[i + 1].y - sm[i].y) * u });
   }
-  out[0] = { ...path[0] };
-  out[4] = { ...path[path.length - 1] };
   return out;
 }
+const resampleRamp = (path) => sampleSpline(buildRampSpline(path, 9, false));
 
 const ROLE = { MULTIPLIER: 0, MULTIBALL: 1, KICKBACK: 2, JACKPOT_BOOST: 3 };
 const TOY_KIND = { BASH_TOY: 0, SWING_DOORS: 1, TURNTABLE: 2, GRAVITY_WELL: 3, SLIDING_CRYPT: 4, ROTO_TARGET: 5 };
@@ -149,7 +106,7 @@ function vukTube(from, to) {
     x: Math.max(24, Math.min(200, mx + (-dy / chord) * Math.min(28, chord * 0.22) * archSign)),
     y: Math.max(36, Math.min(448, my + -Math.min(24, chord * 0.16))),
   };
-  return resample5([from, ctrl, to]);
+  return sampleSpline(buildVukTubeSpline(from, to));
 }
 
 let o = '';
@@ -193,7 +150,7 @@ for (const t of PINBALL_TABLES) {
   o += '    },\n    {\n';
   for (let i = 0; i < 2; i++) {
     const r = t.ramps[i];
-    const pts = resample5(r.path)
+    const pts = resampleRamp(r.path)
       .map((q) => `{${f(q.x)}, ${f(q.y)}}`)
       .join(', ');
     o += `      {{${pts}}, ${r.style === 'WIREFORM_RAIL'}, ${!!(r.exitsToUpperDeck && t.upperPlayfield)}, ${f(r.entryRadius)}, ${hex(r.chuteColor)}, ${r.points}, ${cstr(r.name)}},\n`;
@@ -205,7 +162,7 @@ for (const t of PINBALL_TABLES) {
     const tube = vukTube({ x: vuk.x, y: vuk.y }, vuk.ejectTo).map((q) => `{${f(q.x)}, ${f(q.y)}}`).join(', ');
     o += `    {true, ${f(vuk.x)}, ${f(vuk.y)}, ${f(vuk.radius)}, {${tube}}, ${f(vuk.ejectVelocity.x)}, ${f(vuk.ejectVelocity.y)}, ${vuk.points}, ${hex(vuk.color)}, ${cstr(vuk.name)}},\n`;
   } else {
-    o += '    {false, 0, 0, 0, {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}}, 0, 0, 0, 0, ""},\n';
+    o += `    {false, 0, 0, 0, {${Array(16).fill('{0, 0}').join(', ')}}, 0, 0, 0, 0, ""},\n`;
   }
   // --- cibles du plateau : banques numerotees par ordre d'apparition -----------------
   if (t.targets.length > 8) throw new Error(`${t.id}: plus de 8 cibles`);
