@@ -96,6 +96,8 @@ function sampleSmoothRampSpline(pts: Vec2[], subdivisionsPerSeg: number = 7): Sp
   return samples;
 }
 
+const PLATE_DY: Record<string, number> = { prehistoire: -188, candy: -186, crypte: -192, bonbons: 0, train: 0 };
+
 export class PinballCanvasRenderer {
   private artImages: Map<string, HTMLImageElement> = new Map();
   private splineCache: Map<string, SplineSample[]> = new Map();
@@ -729,6 +731,7 @@ export class PinballCanvasRenderer {
   ) {
     const plate = (title: string, bg: string, border: string, fg: string) => {
       ctx.save();
+      ctx.translate(0, PLATE_DY[id] ?? 0);
       ctx.fillStyle = bg;
       ctx.strokeStyle = border;
       ctx.lineWidth = 1.4;
@@ -1605,13 +1608,18 @@ export class PinballCanvasRenderer {
       const isHit = sim.hitTargets.has(t.id);
       const mx = (t.x1 + t.x2) * 0.5;
       const my = (t.y1 + t.y2) * 0.5;
-      const lampX = mx < 113 ? mx + 8.5 : mx - 8.5;
+      const tvx = t.x2 - t.x1;
+      const tvy = t.y2 - t.y1;
+      const vertical = Math.abs(tvx) < 0.01;
+      const tl = Math.hypot(tvx, tvy) || 1;
+      const lampX = vertical ? (mx < 113 ? mx + 8.5 : mx - 8.5) : mx + (tvy / tl) * 8.5;
+      const lampY = vertical ? my : my - (Math.abs(tvx) / tl) * 8.5;
 
       const missionPulse =
         targetMissionActive && !isHit && Math.sin(sim.clock * 12 + my * 0.1) > 0.2;
 
       ctx.beginPath();
-      ctx.arc(lampX, my, 2.9, 0, Math.PI * 2);
+      ctx.arc(lampX, lampY, 2.9, 0, Math.PI * 2);
       ctx.fillStyle = isHit || missionPulse ? t.lampColor : 'rgba(15, 23, 42, 0.85)';
       ctx.fill();
       ctx.lineWidth = 0.8;
@@ -1642,12 +1650,13 @@ export class PinballCanvasRenderer {
         ctx.stroke();
       }
 
-      const textX = mx < 113 ? mx + 15.5 : mx - 15.5;
+      const textX = vertical ? (mx < 113 ? mx + 15.5 : mx - 15.5) : mx + (tvy / tl) * 15.5;
+      const textY = vertical ? my + 0.5 : my - (Math.abs(tvx) / tl) * 15.5;
       ctx.font = '700 5.6px "JetBrains Mono", monospace';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillStyle = isHit ? '#FEF08A' : '#CBD5E1';
-      ctx.fillText(t.letter, textX, my + 0.5);
+      ctx.fillText(t.letter, textX, textY);
     }
   }
 

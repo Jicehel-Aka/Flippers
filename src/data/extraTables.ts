@@ -4,7 +4,7 @@
   Elles partagent la même architecture que les autres plateaux (2 rampes, verrou central, 4 banques de cibles,
   6 rollovers) et ne diffèrent que par la disposition des bumpers, les couleurs, les noms et le décor.
 */
-import { PinballTableDef, TargetDef, BumperDef, MissionDef, TablePalette, HuntDef } from '../types/pinball';
+import { FlipperDef, PinballTableDef, TargetDef, BumperDef, MissionDef, TablePalette, HuntDef } from '../types/pinball';
 
 type BumperSpec = [number, number, number, string, BumperDef['colorStyle'], BumperDef['iconStyle']]; // x, y, points, label, color, icon
 
@@ -15,6 +15,12 @@ interface BankSpec {
   letters: string[];
   colors: string[];
 }
+
+/** Placement d'une banque de cibles : départ, pas entre deux lettres et vecteur d'une cible (par défaut vertical le long du mur). */
+interface BankPlace { x: number; y: number; stepX: number; stepY: number; segX: number; segY: number }
+const V = (x: number, y: number, step = 14): BankPlace => ({ x, y, stepX: 0, stepY: step, segX: 0, segY: 10.5 });
+const H = (x: number, y: number, step = 17): BankPlace => ({ x, y, stepX: step, stepY: 0, segX: 10.5, segY: 0 });
+const D = (x: number, y: number, sx: number, sy: number): BankPlace => ({ x, y, stepX: sx, stepY: sy, segX: sx > 0 ? 7.4 : -7.4, segY: 7.4 });
 
 interface Spec {
   id: PinballTableDef['id'];
@@ -39,6 +45,20 @@ interface Spec {
   banks: [BankSpec, BankSpec, BankSpec, BankSpec];
   lockName: string;
   lockSide: 'LEFT' | 'RIGHT' | 'CENTER';
+  /** Position libre du verrou (remplace lockSide) : x, y ; la bille est éjectée vers le bas, avec un léger écart vers le centre. */
+  lockAt?: [number, number];
+  /** Positions des 4 banques de cibles (par défaut : le long des murs). */
+  bankPlaces?: [BankPlace, BankPlace, BankPlace, BankPlace];
+  /** Obstacles biseautés du plateau (remplacent les 4 boîtiers latéraux par défaut). */
+  housings?: { x: number; y: number }[][];
+  /** Flippers intermédiaires ou hauts (0 à 2). */
+  extraFlippers?: FlipperDef[];
+  /** 4 couloirs du haut : positions [x, y]. */
+  topLanes?: [number, number][];
+  /** Spinners : [x, y, angle] ×2. */
+  spinnerAt?: [[number, number, number], [number, number, number]];
+  /** Puits du milieu : [x, y]. */
+  vukAt?: [number, number];
   hunt?: HuntDef;
   litBumperRotate?: boolean;
   missionDescs: [string, string, string];
@@ -51,16 +71,16 @@ interface Spec {
   rules: [string, string, string, string];
 }
 
-function bank(prefix: string, spec: BankSpec, idx: number, x: number, startY: number, stepY: number, points: number): TargetDef[] {
+function bank(prefix: string, spec: BankSpec, idx: number, pl: BankPlace, points: number): TargetDef[] {
   return spec.letters.map((letter, i) => ({
     id: `${prefix}_${spec.name}_${i}`,
     bankId: `${prefix}_${spec.name}`,
     bankRole: spec.role,
     kind: spec.kind,
-    x1: x,
-    y1: startY + i * stepY,
-    x2: x,
-    y2: startY + i * stepY + 10.5,
+    x1: pl.x + i * pl.stepX,
+    y1: pl.y + i * pl.stepY,
+    x2: pl.x + i * pl.stepX + pl.segX,
+    y2: pl.y + i * pl.stepY + pl.segY,
     letter,
     lampColor: spec.colors[(i + idx) % spec.colors.length],
     points,
@@ -72,6 +92,9 @@ function build(s: Spec): PinballTableDef {
   const rollover = (id: string, group: 'TOP_LANES' | 'INLANES', x: number, y: number, r: number, letter: string, pts: number) => ({
     id: `${p}_${id}`, groupId: group, x, y, radius: r, letter, points: pts,
   });
+  const bp = s.bankPlaces ?? [V(19.5, 222), V(206.5, 222), V(19, 325, 12.5), V(207, 325, 12.5)];
+  const lk = s.lockAt ? { x: s.lockAt[0], y: s.lockAt[1] } : { x: s.lockSide === 'LEFT' ? 52 : s.lockSide === 'CENTER' ? 113 : 174, y: s.lockSide === 'CENTER' ? 92 : 100 };
+  const tl = s.topLanes ?? [[68, 52], [98, 49], [128, 49], [158, 52]];
   const missionDefs: MissionDef[] = [
     { id: `${p}_m1`, title: s.missions[0], description: s.missionDescs[0], targetKind: 'RAMP', goal: 2, rewardPoints: 45000, accentColor: s.missionColors[0] },
     { id: `${p}_m2`, title: s.missions[1], description: s.missionDescs[1], targetKind: 'BUMPER', goal: 5, rewardPoints: 55000, accentColor: s.missionColors[1] },
@@ -89,8 +112,8 @@ function build(s: Spec): PinballTableDef {
     skillShotLabel: s.skill,
     gravity: s.gravity,
     palette: s.palette,
-    extraFlippers: [],
-    beveledHousings: [
+    extraFlippers: s.extraFlippers ?? [],
+    beveledHousings: s.housings ? s.housings.map((points) => ({ points })) : [
       { points: [{ x: 9, y: 210 }, { x: 19, y: 220 }, { x: 19, y: 280 }, { x: 9, y: 290 }] },
       { points: [{ x: 217, y: 210 }, { x: 207, y: 220 }, { x: 207, y: 280 }, { x: 217, y: 290 }] },
       { points: [{ x: 9, y: 314 }, { x: 18.5, y: 323.5 }, { x: 18.5, y: 360.5 }, { x: 9, y: 370 }] },
@@ -100,10 +123,10 @@ function build(s: Spec): PinballTableDef {
       id: `${p}_b${i + 1}`, x: b[0], y: b[1], radius: i === s.bumpers.length - 1 ? 11 : 10.5, points: b[2], label: b[3], colorStyle: b[4], iconStyle: b[5],
     })),
     targets: [
-      ...bank(p, s.banks[0], 0, 19.5, 222, 14, 3500),
-      ...bank(p, s.banks[1], 1, 206.5, 222, 14, 4500),
-      ...bank(p, s.banks[2], 2, 19, 325, 12.5, 3200),
-      ...bank(p, s.banks[3], 3, 207, 325, 12.5, 3500),
+      ...bank(p, s.banks[0], 0, bp[0], 3500),
+      ...bank(p, s.banks[1], 1, bp[1], 4500),
+      ...bank(p, s.banks[2], 2, bp[2], 3200),
+      ...bank(p, s.banks[3], 3, bp[3], 3500),
     ],
     ramps: [
       {
@@ -120,27 +143,27 @@ function build(s: Spec): PinballTableDef {
       },
     ],
     rollovers: [
-      rollover('r1', 'TOP_LANES', 68, 52, 6, s.rollovers[0], 3500),
-      rollover('r2', 'TOP_LANES', 98, 49, 6, s.rollovers[1], 3500),
-      rollover('r3', 'TOP_LANES', 128, 49, 6, s.rollovers[2], 3500),
-      rollover('r4', 'TOP_LANES', 158, 52, 6, s.rollovers[3], 3500),
+      rollover('r1', 'TOP_LANES', tl[0][0], tl[0][1], 6, s.rollovers[0], 3500),
+      rollover('r2', 'TOP_LANES', tl[1][0], tl[1][1], 6, s.rollovers[1], 3500),
+      rollover('r3', 'TOP_LANES', tl[2][0], tl[2][1], 6, s.rollovers[2], 3500),
+      rollover('r4', 'TOP_LANES', tl[3][0], tl[3][1], 6, s.rollovers[3], 3500),
       rollover('in_l', 'INLANES', 36, 414, 5.5, s.rollovers[4], 2500),
       rollover('in_r', 'INLANES', 190, 414, 5.5, s.rollovers[5], 2500),
     ],
     spinners: [
-      { id: `${p}_sp1`, name: s.spinners[0], x: 56, y: 204, width: 15, angle: -0.2, pointsPerSpin: 900 },
-      { id: `${p}_sp2`, name: s.spinners[1], x: 170, y: 204, width: 15, angle: 0.2, pointsPerSpin: 900 },
+      { id: `${p}_sp1`, name: s.spinners[0], x: s.spinnerAt?.[0][0] ?? 56, y: s.spinnerAt?.[0][1] ?? 204, width: 15, angle: s.spinnerAt?.[0][2] ?? -0.2, pointsPerSpin: 900 },
+      { id: `${p}_sp2`, name: s.spinners[1], x: s.spinnerAt?.[1][0] ?? 170, y: s.spinnerAt?.[1][1] ?? 204, width: 15, angle: s.spinnerAt?.[1][2] ?? 0.2, pointsPerSpin: 900 },
     ],
     scoops: [
       {
         id: `${p}_lock`, name: s.lockName, kind: 'UPPER_LOCK',
-        x: s.lockSide === 'LEFT' ? 52 : s.lockSide === 'CENTER' ? 113 : 174, y: s.lockSide === 'CENTER' ? 92 : 100, radius: 9,
-        ejectTo: { x: s.lockSide === 'LEFT' ? 52 : s.lockSide === 'CENTER' ? 113 : 174, y: s.lockSide === 'CENTER' ? 108 : 116 },
-        ejectVelocity: { x: s.lockSide === 'LEFT' ? 45 : s.lockSide === 'CENTER' ? 0 : -45, y: 150 },
+        x: lk.x, y: lk.y, radius: 9,
+        ejectTo: { x: lk.x, y: lk.y + 16 },
+        ejectVelocity: { x: lk.x < 100 ? 45 : lk.x > 126 ? -45 : 0, y: 150 },
         points: 22000, color: s.lockColor,
       },
       {
-        id: `${p}_vuk`, name: s.vukName, kind: 'MID_VUK_TELEPORT', x: 113, y: 316, radius: 9,
+        id: `${p}_vuk`, name: s.vukName, kind: 'MID_VUK_TELEPORT', x: s.vukAt?.[0] ?? 113, y: s.vukAt?.[1] ?? 316, radius: 9,
         ejectTo: s.vukExitRight ? { x: 192, y: 134 } : { x: 34, y: 134 },
         ejectVelocity: s.vukExitRight ? { x: -48, y: 135 } : { x: 48, y: 135 },
         points: 16000, color: s.lockColor,
@@ -172,8 +195,8 @@ export const EXTRA_TABLES: PinballTableDef[] = [
       hudBg: '#1C1209', hudBorder: '#F97316', hudDigits: '#FDBA74', hudStyle: 'LED_7SEG', ballTint: '#E7E5E4',
     },
     bumpers: [
-      [84, 128, 2000, 'ROCHE LAVE', 'RED', 'SUN'], [142, 128, 2000, 'ROCHE OCRE', 'GOLD', 'SUN'],
-      [113, 160, 2200, 'ŒUF DE DINO', 'JADE', 'SUN'], [113, 214, 2600, 'CRÂNE', 'GOLD', 'CREST'],
+      [66, 178, 2000, 'ROCHE LAVE', 'RED', 'SUN'], [89, 142, 2000, 'ROCHE OCRE', 'GOLD', 'SUN'],
+      [137, 142, 2200, 'ŒUF DE DINO', 'JADE', 'SUN'], [160, 178, 2600, 'CRÂNE', 'GOLD', 'CREST'],
     ],
     rampNames: ['RIVIÈRE DE LAVE', 'PONT DE LIANES'], rampColors: ['#F97316', '#FDE68A', '#16A34A', '#FDE68A'],
     rampStyles: ['MOLDED_ACRYLIC', 'WIREFORM_RAIL'], rollovers: ['R', 'O', 'C', 'K', '◆', '◆'],
@@ -186,9 +209,12 @@ export const EXTRA_TABLES: PinballTableDef[] = [
     ],
     lockName: 'GROTTE DU CLAN', lockColor: '#F97316', vukName: 'PUITS DE GOUDRON', vukExitRight: false,
     lockSide: 'LEFT',
+    bankPlaces: [H(78, 228), H(78, 252), H(96, 202, 17), H(96, 278, 17)],
+    topLanes: [[62, 56], [92, 50], [134, 50], [164, 56]],
+    spinnerAt: [[113, 120, 0], [113, 296, 0]],
     hunt: {
       kind: 'MAMMOTH', name: 'MAMMOUTH', radius: 9, points: 3000, goal: 4, reward: 40000, sequential: false, color: '#F97316',
-      slots: [{ x: 84, y: 236 }, { x: 142, y: 236 }, { x: 66, y: 296 }, { x: 160, y: 296 }, { x: 113, y: 268 }],
+      slots: [{ x: 60, y: 212 }, { x: 166, y: 226 }, { x: 62, y: 270 }, { x: 166, y: 276 }, { x: 113, y: 176 }],
     },
     missionDescs: ['Franchir 2 rampes de lave et de lianes', 'Frapper 5 fois les roches du volcan', 'Abattre 4 mammouths qui changent de piste'],
     spinners: ['ROUE DE PIERRE', 'ROUE DE SILEX'],
@@ -213,8 +239,8 @@ export const EXTRA_TABLES: PinballTableDef[] = [
       hudBg: '#1F1006', hudBorder: '#D97706', hudDigits: '#FCD34D', hudStyle: 'LED_7SEG', ballTint: '#F5F5F4',
     },
     bumpers: [
-      [70, 152, 2000, 'TONNEAU', 'GOLD', 'STAR'], [113, 132, 2200, 'ÉTOILE SHÉRIF', 'RED', 'STAR'],
-      [156, 152, 2000, 'FER À CHEVAL', 'BLUE', 'STAR'], [113, 204, 2600, 'SALOON', 'GOLD', 'STAR'],
+      [113, 112, 2600, 'ÉTOILE SHÉRIF', 'RED', 'STAR'], [66, 166, 2000, 'TONNEAU', 'GOLD', 'STAR'],
+      [113, 166, 2200, 'SALOON', 'GOLD', 'STAR'], [160, 166, 2000, 'FER À CHEVAL', 'BLUE', 'STAR'],
     ],
     rampNames: ['RAIL DE LA MINE', 'DILIGENCE'], rampColors: ['#B45309', '#FDE68A', '#F59E0B', '#E2E8F0'],
     rampStyles: ['MOLDED_ACRYLIC', 'MOLDED_ACRYLIC'], rollovers: ['C', 'O', 'L', 'T', '★', '★'],
@@ -227,9 +253,13 @@ export const EXTRA_TABLES: PinballTableDef[] = [
     ],
     lockName: 'COFFRE DE LA BANQUE', lockColor: '#FACC15', vukName: 'PUITS DE LA MINE', vukExitRight: true,
     lockSide: 'RIGHT',
+    bankPlaces: [H(70, 208, 24), V(60, 236, 14), H(92, 188, 22), V(166, 236, 14)],
+    topLanes: [[78, 54], [104, 49], [122, 49], [148, 54]],
+    spinnerAt: [[84, 302, 0.6], [142, 302, -0.6]],
+    vukAt: [113, 330],
     hunt: {
       kind: 'WANTED', name: 'WANTED', radius: 8.5, points: 3000, goal: 5, reward: 50000, sequential: false, color: '#FDE68A',
-      slots: [{ x: 84, y: 232 }, { x: 142, y: 232 }, { x: 60, y: 262 }, { x: 166, y: 262 }, { x: 84, y: 300 }, { x: 142, y: 300 }],
+      slots: [{ x: 84, y: 244 }, { x: 142, y: 244 }, { x: 113, y: 232 }, { x: 96, y: 276 }, { x: 130, y: 276 }, { x: 113, y: 258 }],
     },
     missionDescs: ['Franchir 2 rampes pour rejoindre la mine', 'Frapper 5 fois les bumpers du saloon', 'Abattre 4 bandits WANTED qui changent de place'],
     spinners: ['ROUE DU MOULIN', 'ROUE DE CHARIOT'],
@@ -254,9 +284,9 @@ export const EXTRA_TABLES: PinballTableDef[] = [
       hudBg: '#0C0614', hudBorder: '#F97316', hudDigits: '#A3E635', hudStyle: 'CYBER_AKA', ballTint: '#EDE9FE',
     },
     bumpers: [
-      [113, 124, 2200, 'CITROUILLE REINE', 'GOLD', 'STAR'], [80, 162, 2000, 'CITROUILLE ROUGE', 'RED', 'STAR'],
-      [146, 162, 2000, 'CITROUILLE VERTE', 'JADE', 'STAR'], [92, 206, 2000, 'FANTÔME', 'BLUE', 'CREST'],
-      [134, 206, 2400, 'CHAUVE-SOURIS', 'RED', 'CREST'],
+      [74, 128, 2200, 'CITROUILLE REINE', 'GOLD', 'STAR'], [152, 128, 2000, 'CITROUILLE ROUGE', 'RED', 'STAR'],
+      [113, 170, 2000, 'CITROUILLE VERTE', 'JADE', 'STAR'], [88, 210, 2000, 'FANTÔME', 'BLUE', 'CREST'],
+      [138, 210, 2400, 'CHAUVE-SOURIS', 'RED', 'CREST'],
     ],
     rampNames: ['BRUME VIOLETTE', 'ESCALIER DU CAVEAU'], rampColors: ['#8B5CF6', '#E9D5FF', '#F97316', '#FED7AA'],
     rampStyles: ['MOLDED_ACRYLIC', 'WIREFORM_RAIL'], rollovers: ['B', 'O', 'O', '!', '☠', '☠'],
@@ -269,9 +299,12 @@ export const EXTRA_TABLES: PinballTableDef[] = [
     ],
     lockName: 'CAVEAU DU MANOIR', lockColor: '#A3E635', vukName: 'PUITS DU CHAUDRON', vukExitRight: false,
     lockSide: 'CENTER',
+    bankPlaces: [D(60, 88, 12, 9), D(166, 88, -12, 9), D(86, 238, 14, 6), D(140, 238, -14, 6)],
+    topLanes: [[56, 60], [90, 50], [136, 50], [170, 60]],
+    spinnerAt: [[70, 276, 0.5], [156, 276, -0.5]],
     hunt: {
       kind: 'GHOST', name: 'FANTÔME', radius: 9, points: 3000, goal: 4, reward: 45000, sequential: false, color: '#A3E635',
-      slots: [{ x: 62, y: 230 }, { x: 164, y: 230 }, { x: 113, y: 240 }, { x: 84, y: 298 }, { x: 142, y: 298 }],
+      slots: [{ x: 96, y: 262 }, { x: 130, y: 262 }, { x: 113, y: 232 }, { x: 80, y: 302 }, { x: 146, y: 302 }],
     },
     missionDescs: ['Franchir 2 rampes dans la brume', 'Frapper 5 fois les citrouilles', 'Chasser 4 fantômes qui hantent le manoir'],
     spinners: ['ROUE DE LA TOILE', 'ROUE DU CORBEAU'],
@@ -296,8 +329,8 @@ export const EXTRA_TABLES: PinballTableDef[] = [
       hudBg: '#3B0A2C', hudBorder: '#F9A8D4', hudDigits: '#FDE047', hudStyle: 'CYBER_AKA', ballTint: '#FFF1F2',
     },
     bumpers: [
-      [113, 128, 2000, 'CŒUR ROSE', 'RED', 'STAR'], [82, 168, 2000, 'ÉTOILE OR', 'GOLD', 'STAR'],
-      [144, 168, 2000, 'CŒUR BLEU', 'BLUE', 'STAR'], [113, 208, 2600, 'GRAND CŒUR', 'RED', 'STAR'],
+      [113, 134, 2000, 'CŒUR ROSE', 'RED', 'STAR'], [82, 172, 2000, 'ÉTOILE OR', 'GOLD', 'STAR'],
+      [144, 172, 2000, 'CŒUR BLEU', 'BLUE', 'STAR'], [113, 210, 2600, 'GRAND CŒUR', 'RED', 'STAR'],
     ],
     rampNames: ['RUBAN ROSE', 'ARC-EN-CIEL'], rampColors: ['#F472B6', '#FFFFFF', '#A78BFA', '#FDE047'],
     rampStyles: ['MOLDED_ACRYLIC', 'MOLDED_ACRYLIC'], rollovers: ['L', 'O', 'V', 'E', '♥', '♥'],
@@ -310,6 +343,9 @@ export const EXTRA_TABLES: PinballTableDef[] = [
     ],
     lockName: 'BOÎTE À BIJOUX', lockColor: '#FDE047', vukName: 'PUITS DE RUBAN', vukExitRight: true,
     lockSide: 'RIGHT',
+    bankPlaces: [D(76, 236, 10, 10), D(150, 236, -10, 10), H(94, 262, 20), H(96, 292, 17)],
+    extraFlippers: [{ id: 'can_mid_left', side: 'LEFT', zone: 'MID', pivot: { x: 44, y: 300 }, length: 24, radius: 3.8, restAngle: 0.42, activeAngle: -0.52 }],
+    topLanes: [[64, 56], [96, 50], [130, 50], [162, 56]],
     litBumperRotate: true,
     missionDescs: ['Franchir 2 rampes ornées de rubans', 'Frapper 5 fois le bumper doré (×3, il change à chaque touche)', 'Toucher 4 cibles ou puits pour le bonus final'],
     spinners: ['ROUE PAPILLON', 'ROUE ÉTOILE'],
@@ -349,6 +385,15 @@ export const EXTRA_TABLES: PinballTableDef[] = [
     ],
     lockName: 'GRAND BOCAL', lockColor: '#FACC15', vukName: 'PUITS DU COMPTOIR', vukExitRight: false,
     lockSide: 'LEFT',
+    lockAt: [113, 98],
+    bankPlaces: [V(66, 206, 14), H(86, 262, 18), V(160, 206, 14), H(86, 290, 18)],
+    housings: [
+      [{ x: 100, y: 228 }, { x: 113, y: 218 }, { x: 126, y: 228 }, { x: 113, y: 238 }],
+      [{ x: 9, y: 314 }, { x: 18.5, y: 323.5 }, { x: 18.5, y: 360.5 }, { x: 9, y: 370 }],
+      [{ x: 217, y: 314 }, { x: 207.5, y: 323.5 }, { x: 207.5, y: 360.5 }, { x: 217, y: 370 }],
+    ],
+    topLanes: [[60, 58], [92, 50], [134, 50], [166, 58]],
+    spinnerAt: [[60, 150, -0.5], [166, 150, 0.5]],
     hunt: {
       kind: 'LOLLIPOP', name: 'SUCETTE', radius: 8, points: 3000, goal: 4, reward: 40000, sequential: false, color: '#FB7185',
       slots: [{ x: 76, y: 236 }, { x: 150, y: 236 }, { x: 113, y: 252 }, { x: 70, y: 300 }, { x: 156, y: 300 }],
@@ -376,8 +421,8 @@ export const EXTRA_TABLES: PinballTableDef[] = [
       hudBg: '#0B1220', hudBorder: '#F59E0B', hudDigits: '#FDE68A', hudStyle: 'LED_7SEG', ballTint: '#E2E8F0',
     },
     bumpers: [
-      [78, 124, 2000, 'LANTERNE', 'GOLD', 'GEAR'], [113, 154, 2200, 'PISTON', 'RED', 'GEAR'],
-      [148, 184, 2000, 'SIGNAL', 'BLUE', 'GEAR'], [84, 204, 2600, 'CHAUDIÈRE', 'GOLD', 'GEAR'],
+      [84, 126, 2000, 'LANTERNE', 'GOLD', 'GEAR'], [142, 156, 2200, 'PISTON', 'RED', 'GEAR'],
+      [84, 186, 2000, 'SIGNAL', 'BLUE', 'GEAR'], [113, 218, 2600, 'CHAUDIÈRE', 'GOLD', 'GEAR'],
     ],
     rampNames: ['VOIE 1', 'VOIE 2'], rampColors: ['#94A3B8', '#F59E0B', '#94A3B8', '#E2E8F0'],
     rampStyles: ['WIREFORM_RAIL', 'WIREFORM_RAIL'], rollovers: ['G', 'A', 'R', 'E', '►', '◄'],
@@ -390,6 +435,10 @@ export const EXTRA_TABLES: PinballTableDef[] = [
     ],
     lockName: 'DÉPÔT DES LOCOS', lockColor: '#F59E0B', vukName: 'PUITS D’EAU', vukExitRight: true,
     lockSide: 'RIGHT',
+    bankPlaces: [H(62, 232, 24), H(70, 290, 22), V(150, 142, 15), V(172, 238, 14)],
+    extraFlippers: [{ id: 'tra_mid_right', side: 'RIGHT', zone: 'MID', pivot: { x: 178, y: 262 }, length: 24, radius: 3.8, restAngle: Math.PI - 0.42, activeAngle: Math.PI + 0.52 }],
+    topLanes: [[70, 52], [96, 49], [130, 49], [156, 52]],
+    spinnerAt: [[60, 112, 0], [166, 112, 0]],
     hunt: {
       kind: 'LOCOMOTIVE', name: 'LOCOMOTIVE', radius: 9, points: 3000, goal: 4, reward: 45000, sequential: true, color: '#F59E0B',
       slots: [{ x: 84, y: 244 }, { x: 113, y: 252 }, { x: 142, y: 244 }, { x: 142, y: 296 }, { x: 113, y: 288 }, { x: 84, y: 296 }],
@@ -432,6 +481,14 @@ export const EXTRA_TABLES: PinballTableDef[] = [
     ],
     lockName: 'SARCOPHAGE GELÉ', lockColor: '#A5F3FC', vukName: 'PUITS GELÉ', vukExitRight: false,
     lockSide: 'RIGHT',
+    bankPlaces: [H(64, 250, 20), D(160, 214, -10, 10), V(36, 190, 14), H(96, 300, 18)],
+    housings: [
+      [{ x: 86, y: 206 }, { x: 92, y: 198 }, { x: 98, y: 206 }, { x: 98, y: 222 }, { x: 86, y: 222 }],
+      [{ x: 128, y: 206 }, { x: 134, y: 198 }, { x: 140, y: 206 }, { x: 140, y: 222 }, { x: 128, y: 222 }],
+      [{ x: 9, y: 314 }, { x: 18.5, y: 323.5 }, { x: 18.5, y: 360.5 }, { x: 9, y: 370 }],
+      [{ x: 217, y: 314 }, { x: 207.5, y: 323.5 }, { x: 207.5, y: 360.5 }, { x: 217, y: 370 }],
+    ],
+    topLanes: [[72, 54], [100, 49], [126, 49], [154, 54]],
     hunt: {
       kind: 'ZOMBIE', name: 'ZOMBIE', radius: 9, points: 3500, goal: 4, reward: 50000, sequential: false, color: '#86EFAC',
       slots: [{ x: 58, y: 258 }, { x: 113, y: 252 }, { x: 168, y: 258 }, { x: 84, y: 306 }, { x: 142, y: 306 }, { x: 113, y: 282 }],

@@ -40,6 +40,8 @@ Jeu de flipper arcade néo-pixel conçu sur mesure pour la console **Gamebuino A
 
 ### Mécaniques propres aux plateaux thématiques
 
+Chaque plateau thématique a sa **propre disposition** : bumpers en arc, en ligne, en croix, en zigzag ou en triangle ; cibles en rangées, en diagonales, face à face ou en colonnes ; couloirs du haut, spinners, puits du milieu et verrou Multibille placés différemment ; obstacles biseautés (losange, tombes) ; flipper intermédiaire sur Candy Pop et Train ; titre du plateau en haut ou au centre.
+
 Chaque plateau thématique a son **puits Multibille** placé selon le décor (gauche, droite ou centre) et une règle qui lui est propre :
 
 | Plateau | Mécanique |
