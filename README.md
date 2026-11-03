@@ -1,6 +1,6 @@
 # Gamebuino AKA Pinball (Web · PC · Firmware ESP32 AKA)
 
-Jeu de flipper arcade néo-pixel conçu sur mesure pour la console **Gamebuino AKA** tenue **tournée de 90° vers la droite** (`240 × 320 px` en mode portrait), accompagné d'un simulateur interactif **Web / PC (Windows, Linux, macOS)** et d'un **firmware ESP-IDF pour la console** *(voir « Firmware Gamebuino AKA »)*.
+Suite de **12 flippers d'arcade thématiques** conçue sur mesure pour la console **Gamebuino AKA** tenue **tournée de 90° vers la droite** (`240 × 320 px` en mode portrait), accompagnée d'un **éditeur de tables maison intégré**, d'un simulateur **Web / PC (Windows, Linux, macOS)** et d'un **firmware ESP-IDF pour la console** *(voir « Firmware Gamebuino AKA »)*.
 
 ---
 
@@ -8,53 +8,66 @@ Jeu de flipper arcade néo-pixel conçu sur mesure pour la console **Gamebuino A
 
 - **Orientation verticale native 90° droite (`240 × 320 px`)**
   - Le bandeau gauche de l'écran paysage (`46 px`) devient un **afficheur matriciel supérieur fixe (`240 × 46 px`)** affichant le score, le joueur actif, la bille, la mission en cours et l'état du Multibille.
-  - La fenêtre de jeu active (`240 × 274 px`) parcourt un **plateau équilibré de `240 × 520 px`** (~1,9 écran de hauteur), sans couloirs piégeurs grâce aux caissons latéraux biseautés à 45° et aux couloirs élargis (`18 px`).
-- **Arrivée en vue d'ensemble & Caméra « Bille la plus basse »**
-  - À l'arrivée sur une table, la caméra dézoome (`OVERVIEW_ZOOM`) pour dévoiler **100 % du plateau `240 × 520 px`**, puis zoome progressivement sur le lanceur et les flippers.
-  - En jeu et durant le **Multibille ×3**, le scrolling suit **systématiquement la bille active la plus basse** afin de garantir la défense aux flippers, tout en affichant des repères radar `▲` en haut d'écran pour les billes situées sur le plateau supérieur.
-- **Multibille physique ×3 & Système de Missions**
-  - Verrouillez **2 billes** dans le puits `LOCK` pour libérer **3 billes simultanées** sur le plateau.
-  - Chaque flipper intègre **3 missions scénarisées** (suivies par le médaillon central à 3 gemmes) menant à la **Finale Maître (`+100 000 pts` + Multibille ×3)**.
-- **1 à 4 joueurs en local** au tour par tour *(version Web / PC)*, synthèse audio arcade temps réel (WebAudio sur PC/Web, PWM sur ESP32) et support manette Gamepad API *(Web / PC)*.
-- **Physique à pas fixe** : 720 Hz sur Web/PC, 360 Hz sur le firmware. Les trajectoires ne dépendent pas de la fréquence d'affichage.
-- **Pause automatique** quand la fenêtre Web/PC perd le focus. *Recommencer* et *Quitter au menu* demandent une **confirmation en deux appuis** (2,5 s).
+  - La fenêtre de jeu active (`240 × 274 px`) parcourt un **plateau équilibré de `240 × 520 px`** (~1,9 écran de hauteur), avec une **disposition géométrique sur mesure pour chacune des 12 tables**, dictée par son décor illustré.
+- **Étages supérieurs jouables (`layer = 2`) & Décors physiquement interactifs**
+  - **4 plateaux à double niveau** (*Gamebuino AKA · ESP32*, *Temple Solaire*, *Far West*, *Halloween*) intègrent un véritable **étage supérieur en surplomb** (mezzanine PCB vitrée, terrasse de jade, balcon de saloon en bois, galerie gothique) accessible par rampe, doté de son propre mini-flipper, de ses bumpers/cibles dédiés et d'un rebord ouvert de retombée au niveau `0`.
+  - **Chacune des 12 tables possède son élément de décor interactif central** : processeur ESP32 à recul, anneau gravitationnel de Saturne, réacteur de l'Étoile Noire dans sa tranchée, disque solaire aztèque tournant, roto-cloche 1968, cratère de volcan en éruption, portes battantes de saloon traversables, Roi Citrouille, bonbonnière vitrée kawaii, grande roue sucette, plaque tournante ferroviaire et sarcophage de pierre coulissant.
+- **Rampes 3D Catmull-Rom & Conduits aériens 100 % continus (zéro téléportation)**
+  - La bille suit physiquement l'abscisse curviligne exacte des rampes moulées et rails tubulaires (capture progressive sans saut de position, ralentissement en montée, retour naturel en arrière si l'élan est trop faible, accélération en descente et sortie tangentielle sur le plateau ou l'étage supérieur).
+  - Les éjecteurs spéciaux (Trou de Ver sur *Odyssée Spatiale*, Tube à Sucre sur *Bonbons*) acheminent visiblement la bille dans un **conduit pneumatique courbé 3D** au-dessus du plateau.
+- **12 bandes-son originales longues & effets sonores dédiés**
+  - Chaque univers possède **sa propre composition originale de 32 mesures** (8 sections de 4 mesures = 512 doubles-croches par cycle, ~60 à 90 s avant rebouclage, enrichie de variations multi-cycles sur plus de 3 minutes) ainsi que des **bruitages spécialisés**.
+- **Configuration JSON ouverte (`src/data/tables.config.json`) & Éditeur de tables maison**
+  - Toutes les tables (y compris leurs `upperPlayfield` et `interactiveToys`) sont décrites dans `src/data/tables.config.json` et éditables en **glisser-déposer direct** depuis l'onglet **Éditeur**, avec export `.json` et synchronisation C++ AKA.
+- **Arrivée en vue d'ensemble, Multibille ×3 & Caméra « Bille la plus basse »**
+  - À l'arrivée sur une table, la caméra dézoome (`OVERVIEW_ZOOM`) pour dévoiler **100 % du plateau `240 × 520 px`**, puis zoome progressivement sur le lanceur et les flippers. En **Multibille ×3**, le scrolling suit toujours la bille active la plus basse.
+- **Physique déterministe à pas fixe** : 720 Hz sur Web/PC, 360 Hz sur le firmware. Pause automatique hors focus et confirmation en deux appuis (2,5 s) pour *Recommencer* ou *Quitter*.
 
 ---
 
-## Les 12 plateaux aux dispositions uniques
+## Les 12 plateaux aux dispositions, étages et décors interactifs uniques
 
-| Plateau | Architecture physique | Rampes 3D | Missions dédiées |
+| Plateau | Architecture & éléments spécialisés | Rampes 3D & Conduits continus | Musique originale (32 mes.) |
 | :--- | :--- | :--- | :--- |
-| **1. Gamebuino AKA · ESP32** | **4 flippers** (paire basse + 2 mini-flippers cyber-deck symétriques à `y=174`), grappe asymétrique de 3 engrenages en haut à gauche + cœur Wi-Fi central | Rampe moulée bleue **Bus SPI** + rail métallique **Antenne Wi-Fi** | *Init Bus SPI*, *Overclock 240 MHz*, *Flash Firmware OTA* |
-| **2. Odyssée Spatiale** | **3 flippers** (paire basse + flipper orbital gauche à mi-hauteur `y=256`), constellation centrale de 5 bumpers en diamant | Grande arche moulée **Apollo** + rail chromé croisé **Anneau de Saturne** | *Allumage Apollo*, *Champ d'Astéroïdes*, *Arrimage Station ISS* |
-| **3. Star Wars · Yavin** | **4 flippers** (paire basse + **double assaut étagé à droite** `y=154` & `y=282`), Conduit Thermique gardé par 2 turbolasers, bumpers X-Wing / Faucon Millenium / Y-Wing | Deux grandes rampes **Sabre Sith (rouge) & Sabre Jedi (bleu)** croisées en **X**, saut hyperespace | *Duel de sabres*, *Défense des turbolasers*, *Tranchée de l’Étoile Noire* ; sons de blaster et de sabre laser |
-| **4. Temple Solaire** | **4 flippers en terrasses diagonales** (terrasse jade haute-gauche `y=204` + terrasse or basse-droite `y=298`), sanctuaires séparés émeraude / solaire | Rampe sinueuse **Serpent Quetzal** en S + rail doré **Aqueduc Solaire** | *Réveil de Quetzal*, *Offrande Solaire*, *Éclipse d'Or* |
-| **6. Préhistoire** | **2 flippers**, volcan fumant, 4 bumpers de roche, empreintes et os croisés | *Rivière de lave* (ambre) + *Pont de lianes* (rail) | *Lave*, *Éruption*, *Chasse* |
-| **7. Far West** | **2 flippers**, saloon, étoile de shérif, cactus et fer à cheval | *Rail de la mine* + *Diligence* | *Mine d'or*, *Coups de feu*, *Brigade* |
-| **8. Halloween** | **2 flippers**, 5 citrouilles bumpers en étoile, pleine lune, toiles et chauves-souris | *Brume violette* + *Escalier du caveau* (rail) | *Brume*, *Citrouilles*, *Manoir* |
-| **9. Candy Pop** | **2 flippers**, univers pastel façon manga girly : cœurs, étoiles et nœud de ruban | *Ruban rose* + *Arc-en-ciel* | *Rubans*, *Cœurs*, *Étoiles* |
-| **10. Bonbons** | **2 flippers**, 6 bumpers gourmands, bonbons emballés, sucette spirale et comptoir rayé | *Sucre d'orge* + *Toboggan caramel* | *Sucres*, *Gourmand*, *Bocal* |
-| **11. Train** | **2 flippers**, rails et traverses, signal ferroviaire, phare de locomotive et vapeur | *Voie 1* + *Voie 2* (rails chromés) | *Voies*, *Vapeur*, *Express* |
-| **5. Flipper Classique** | **2 flippers seulement**, table mécanique d'arcade : triangle de 3 bumpers sous un verrou central, cartouche « FLIPPER » et voyants dorés | Deux rampes aux tracés différents (ambre à gauche, rail doré à droite) | *Rampes x2*, *Triangle Or*, *Cibles* |
+| **1. Gamebuino AKA · ESP32** | **4 flippers** dont **Mezzanine vitrée JTAG (étage droit)**, socket **ESP32-S3 interactif**, bumpers engrenages/puces à gauche | Rampe diagonale **Bus SPI → Étage** + boucle **Antenne Wi-Fi** | *Cyber-Chiptune* en La Dorien (124 BPM) |
+| **2. Odyssée Spatiale** | **3 flippers** (orbital gauche), **vortex gravitationnel de Saturne**, chevron NASA & sas lunaire | Grande **Arche Apollo** + **Fronde de Jupiter** + conduit **Trou de Ver** | *Kosmische Séquenceur* en Ré Lydien (108 BPM) |
+| **3. Star Wars · Yavin** | **4 flippers** (double aile droite étagée), tranchée blindée centrale & **réacteur Étoile Noire** | Rampes **Sabre Sith & Sabre Jedi** croisées en **X** | *Marche Space-Opera* en Sol Mineur (120 BPM) |
+| **4. Temple Solaire** | **4 flippers** dont **Sanctuaire de Jade (étage gauche)**, **disque solaire aztèque tournant**, marches ziggourat | **Serpent Quetzal → Étage** + rail **Aqueduc d'Or** | *Flûte de Pan & Marimba* en Ré Dorien-Harm. (116 BPM) |
+| **5. Flipper Classique** | **2 flippers pur 1968** sans caissons latéraux, couronne royale à 5 cabochons, losanges à plots & **Roto-Cloche** | Couloir chromé gauche + arche ambrée droite vers `1-9-6-8` | *Orgue Hammond Boogie* en Do Mixolydien (130 BPM) |
+| **6. Préhistoire** | **3 flippers** (falaise d'os droite), **cratère de volcan en éruption**, nid d'œufs jurassique encaissé à gauche | **Coulée de Magma** diagonale + **Pont de Lianes** | *Flûte d'Os & Tambours* en Mi Pentatonique (112 BPM) |
+| **7. Far West** | **3 flippers** dont **Balcon en bois du Saloon (étage droit)**, **portes battantes de saloon** traversables | Chevalement **Rail de la Mine → Balcon** + **Piste Diligence** | *Banjo Ragtime Saloon* en Ré Mixolydien (136 BPM) |
+| **8. Halloween** | **3 flippers** dont **Galerie gothique du Manoir (étage gauche)**, **Roi Citrouille** devant les flippers | **Escalier du Manoir → Étage** + **Volute de Brume** | *Toccata d'Orgue Gothique* en Do Min. Harm. (114 BPM) |
+| **9. Candy Pop** | **3 flippers** gaufrette, **bonbonnière kawaii tournante**, donuts glacés, macarons, cupcake chantilly, sucres d'orge & 5 bumpers sucrés | **Ruban Coulis de Fraise** + **Toboggan Menthe Glacée** croisés | *Future-Pop Harajuku* en Sol Majeur (138 BPM) |
+| **10. Bonbons** | **3 flippers** (spatule haute droite), **grande roue sucette**, slalom de **6 bumpers** acidulés & comptoir vitré | **Serpentin Sucre d'Orge** zig-zag + **Gouttière Caramel** + **Tube à Sucre** | *Gavotte Boîte à Musique* en Fa Majeur (118 BPM) |
+| **11. Train Express** | **4 flippers** (double aiguillage médian), **plaque tournante ferroviaire motorisée** & signaux sémaphores | Double viaduc d'acier **Voie 1 & Voie 2** croisé | *Marche Ferroviaire Vapeur* en La Mineur (132 BPM) |
+| **12. Crypte** | **3 flippers** (beffroi haut gauche), **croix gothique de 5 bumpers** de givre & **sarcophage coulissant** entre deux piliers | **Arc-Boutant de Givre** + **Galerie des Gargouilles** | *Procession & Glas* en Ré Phrygien Dom. (86 BPM) |
 
+### Spécialités mécaniques & Cibles vivantes
 
-### Mécaniques propres aux plateaux thématiques
-
-Chaque plateau thématique a sa **propre disposition** : bumpers en arc, en ligne, en croix, en zigzag ou en triangle ; cibles en rangées, en diagonales, face à face ou en colonnes ; couloirs du haut, spinners, puits du milieu et verrou Multibille placés différemment ; obstacles biseautés (losange, tombes) ; flipper intermédiaire sur Candy Pop et Train ; titre du plateau en haut ou au centre.
-
-Chaque plateau thématique a son **puits Multibille** placé selon le décor (gauche, droite ou centre) et une règle qui lui est propre :
-
-| Plateau | Mécanique |
+| Plateau | Spécialité interactive |
 | :--- | :--- |
-| **Préhistoire** | **Mammouths** : une cible mobile change de piste à chaque touche, 4 touches = prime de 40 000 |
-| **Far West** | **WANTED** : l'affiche d'un bandit saute à un autre emplacement à chaque tir, 5 touches = prime de 50 000 |
-| **Halloween** | **Fantômes** : un fantôme hante le manoir et réapparaît ailleurs quand on le touche, 4 touches = prime de 45 000 |
-| **Candy Pop** | **Bumper doré ×3** : un seul bumper vaut triple, et il change à chaque touche |
-| **Bonbons** | **Sucettes** : la sucette saute de place quand on la croque, 4 touches = prime de 40 000 |
-| **Train** | **Locomotive** : elle avance d'une gare à chaque arrêt (ordre fixe), 4 arrêts = prime de 45 000 |
-| **Crypte** *(nécropole glacée)* | **Zombies** : ils sortent de terre sur les tombes et ressortent ailleurs quand on les renvoie, 4 touches = prime de 50 000 ; marche funèbre lente en ré mineur |
+| **Gamebuino AKA · ESP32** | **Mezzanine JTAG + Socket ESP32** : étage vitré à mini-flipper droit et puce centrale à recul mécanique |
+| **Odyssée Spatiale** | **Gravité de Saturne + Trou de Ver** : déviation orbitale au centre et conduit pneumatique transparent |
+| **Star Wars · Yavin** | **Tranchée de l'Étoile Noire** : couloir blindé menant au cœur du réacteur et double flipper d'aile droite |
+| **Temple Solaire** | **Sanctuaire de Jade + Disque Solaire** : étage supérieur gauche et roue aztèque tournante |
+| **Flipper Classique** | **Roto-Cloche 1968** : cible étoilée tournante centrale et carré d'As `A-K-Q-J` dans une arène 100 % ouverte |
+| **Préhistoire** | **Volcan actif + Mammouths** : cratère explosif en haut du plateau et piste mobile à 4 touches (+40 000 pts) |
+| **Far West** | **Portes du Saloon + Balcon + WANTED** : portes battantes à double sens, balcon jouable et 5 hors-la-loi (+50 000 pts) |
+| **Halloween** | **Galerie Hantée + Roi Citrouille + Fantômes** : étage gothique gauche, citrouille gardienne et 4 esprits (+45 000 pts) |
+| **Candy Pop** | **Bonbonnière Kawaii + Bumper sucré ×3** : dôme de dragées tournant au milieu des pâtisseries et bumper doré ×3 rotatif |
+| **Bonbons** | **Roue Sucette + Sucettes mobiles** : disque sucette central, tube à sucre aérien et 4 sucettes à croquer (+40 000 pts) |
+| **Train Express** | **Plaque Tournante + Locomotive** : pont tournant motorisé central et progression séquentielle sur 5 gares (+45 000 pts) |
+| **Crypte** | **Sarcophage Coulissant + Zombies** : dalle runique s'ouvrant sous l'impact et 4 zombies à renvoyer sous terre (+50 000 pts) |
 
-Les touches de cible comptent aussi pour la mission « cibles ». Ces mécaniques existent sur le Web/PC et sur la console.
+---
+
+## Éditeur de tables maison & Configuration JSON
+
+Les définitions complètes des 12 plateaux résident dans **`src/data/tables.config.json`**. Depuis l'onglet **Éditeur** de l'application Web/PC :
+
+1. **Créer ou modifier un plateau** : déplacez directement à la souris les bumpers (8 couleurs, 24 icônes), points de contrôle des rampes Catmull-Rom (avec option de sortie sur étage supérieur), **décors interactifs** (6 comportements physiques, 12 visuels), **étages supérieurs surélevés** (`upperPlayfield`), cibles, flippers supplémentaires, spinners, puits Multibille et cibles mobiles.
+2. **Personnaliser l'ambiance** : associez librement l'un des 12 décors spécialisés, l'une des 12 compositions musicales (avec pré-écoute directe), la gravité, la palette lumineuse et les 3 missions scénarisées.
+3. **Tester & Exporter** : cliquez sur **Tester sur la console AKA** pour jouer immédiatement votre création, exportez une table individuelle (`.table.json`) pour la partager, ou exportez **`tables.config.json`** pour mettre à jour le dépôt et régénérer le firmware C++ (`npm run aka:tables` puis `npm run aka:art`).
 
 ---
 
@@ -67,8 +80,8 @@ Les touches de cible comptent aussi pour la mission « cibles ». Ces mécanique
 | **Tendre le ressort (Lanceur)** | **Gâchette R1** *(maintenir puis relâcher)* | `Espace`, `Entrée` ou `R` | `Bouton Sud (A)` |
 | **Secousse physique (Nudge)** | **Bouton B** *(attention au TILT)* | `B`, `Z`, `W`, `Flèche Haut` | `Bouton Nord (Y)` / `Ouest (X)` |
 | **Menu / Table / Pause** | **Bouton C** | `C`, `P`, `Échap` | `Start` |
+| **Musique de fond (On / Off)** | Réglage runtime AKA | `M` | — |
 | **Nombre de joueurs (Web / PC)** | — | `N` (+1) ou `Flèche Bas` (−1) au menu | — |
-| **Inverser rotation 180° (AKA)** | **L1 + C** | — | — |
 | **Plein écran (PC)** | — | `F11` ou `Alt + Entrée` | — |
 
 ---
@@ -77,109 +90,51 @@ Les touches de cible comptent aussi pour la mission « cibles ». Ces mécanique
 
 ```text
 .
-├── src/                        # Application Web & Simulateur Gamebuino AKA (React 19 + TS + Canvas 720Hz)
-│   ├── audio/soundEngine.ts    # Synthétiseur sonore arcade WebAudio sans fichier externe
-│   ├── components/             # Châssis interactif Gamebuino AKA 90° + panneaux compagnons
-│   ├── data/tables.ts          # Géométrie, rampes, bumpers et missions des 12 plateaux (240x520)
-│   ├── engine/physicsEngine.ts # Moteur physique 720Hz, Multibille x3, zoom d'arrivée & caméra
-│   └── engine/renderer.ts      # Rendu 2D haute précision, rampes Catmull-Rom & HUD 240x46
-├── tests/engine.test.mjs       # Tests headless du moteur (node:test) : stabilité, déterminisme, framerate, pause...
-├── desktop/                    # Wrapper Electron autonome (Windows .exe, Linux .AppImage, macOS .zip)
-│   ├── main.cjs                # Fenêtre arcade 60 FPS sans latence audio + plein écran F11
-│   ├── preload.cjs             # Pont sécurisé Electron
-│   └── scripts/sync-web.mjs    # Synchronisation du bundle Vite vers desktop/app
-├── firmware/aka_idf/          # Projet ESP-IDF 5.5.1 (ESP32-S3) pour la Gamebuino AKA
-│   ├── main/game/              # Coeur de jeu portable : physique 360 Hz, états, sons synthétisés, plateaux générés
-│   ├── main/ui/                # Rendu logiciel 240x320 avec clipping + police 8x8
-│   ├── main/platform/          # Adaptateurs AKA : écran, boutons, audio, records sur carte SD
-│   ├── components/             # gamebuino + aka_runtime (menu système, langues, captures, retour au loader)
-│   ├── sdcard_files/           # Dossiers pinball/ (meta.json, screen.bmp, lang) et AKA/lang à copier sur la carte SD
-│   └── test/host/              # Tests PC (g++) : physique, états, 168 motifs sonores, rendu sans écriture hors écran
-├── scripts/gen-aka-tables.mjs  # Génère les plateaux du firmware depuis src/data/tables.ts (--check en CI)
-├── scripts/gen-aka-art.mjs     # Génère les images de décor du firmware depuis le rendu Web (Chromium)
-└── .github/workflows/
-    ├── build-pc.yml            # CI/CD : Lint + Web (GitHub Pages) + Exécutables PC (Win/Linux/macOS)
-    └── build-aka.yml           # CI/CD : tests PC, build ESP-IDF 5.5.1, paquet carte SD & Releases
+├── src/
+│   ├── audio/
+│   │   ├── musicEngine.ts       # 12 compositions procédurales de 32 mesures + variations multi-cycles
+│   │   └── soundEngine.ts       # Synthétiseur d'effets sonores spécialisés par thème
+│   ├── components/
+│   │   ├── GamebuinoConsole.tsx # Châssis interactif Gamebuino AKA tourné à 90°
+│   │   ├── CompanionPanels.tsx  # Sélecteur des 12+ tables, scores, règles et aperçu C++
+│   │   └── TableEditor.tsx      # Éditeur visuel de tables maison (drag & drop + import/export JSON)
+│   ├── data/
+│   │   ├── tables.config.json   # Configuration déclarative JSON des 12 plateaux et de leurs éléments
+│   │   └── tables.ts            # Chargement, validation, persistance locale & compatibilité AKA
+│   ├── engine/
+│   │   ├── physicsEngine.ts     # Moteur physique 720 Hz, Multibille ×3, cibles mobiles & caméra
+│   │   └── renderer.ts          # Rendu 2D pro, 24 icônes de bumpers, décors illustrés & rampes 3D
+├── tests/
+│   ├── engine.test.mjs          # Tests headless du moteur physique (stabilité, déterminisme, pause)
+│   └── config-and-music.test.mjs# Tests du catalogue JSON, de l'éditeur et des 12 bandes-son
+├── desktop/                     # Wrapper Electron autonome (Windows .exe, Linux .AppImage, macOS .zip)
+├── firmware/aka_idf/            # Projet ESP-IDF 5.5.1 (ESP32-S3) pour la Gamebuino AKA
+│   ├── main/game/               # Cœur C++ 360 Hz, 12 musiques de 512 pas, SFX & tables_data.inc
+│   ├── main/ui/                 # Rendu logiciel 240x320 avec décor pré-rendu RGB565 compressé
+│   └── test/host/               # Suite de tests C++ native (physique, audio, rendu sans débordement)
+└── scripts/
+    ├── gen-aka-tables.mjs       # Génère tables_data.inc depuis src/data/tables.ts (--check en CI)
+    └── gen-aka-art.mjs          # Génère les décors RGB565 art0.z..art11.z depuis le rendu Web
 ```
 
 ---
 
-## Développement local & Compilation PC
-
-### 1. Lancer la version Web / Simulateur en développement
+## Développement local & Vérifications
 
 ```bash
 npm ci
 npm run dev
 ```
 
-Vérifications (les mêmes qu'en CI) :
+Vérifications complètes (identiques à la CI) :
 
 ```bash
-npm run lint   # tsc --noEmit
-npm test       # moteur physique (node:test)
-npm run aka:test   # coeur de jeu et rendu du firmware compilés sur PC
-node scripts/gen-aka-tables.mjs --check   # plateaux du firmware à jour avec tables.ts
+npm run lint                              # Typage TypeScript strict (tsc --noEmit)
+npm test                                  # Tests moteur physique + configuration JSON + 12 musiques
+npm run aka:tables                        # Régénère firmware/aka_idf/main/game/tables_data.inc
+node scripts/gen-aka-tables.mjs --check   # Vérifie la synchronisation tables.config.json <-> firmware
+npm run aka:test                          # Compile et exécute les tests C++ natifs du firmware AKA
 ```
-
-L'application démarre sur `http://localhost:3000`.
-
-### 2. Générer un exécutable PC autonome (Windows / Linux / macOS)
-
-```bash
-npm run desktop:install
-npm run desktop:dist
-```
-
-Les binaires autonomes (`.exe` portable sous Windows, `.AppImage` / `.tar.gz` sous Linux, `.zip` sous macOS) sont générés dans `desktop/release/`.
-
----
-
-## Firmware Gamebuino AKA
-
-Le firmware (`firmware/aka_idf`) est un projet **ESP-IDF 5.5.1** pour l'ESP32-S3 de la console, construit sur les composants `gamebuino` et `aka_runtime`. C'est un **moteur simplifié** par rapport au Web/PC : les 12 plateaux (générés depuis `src/data/tables.ts`), bumpers, slingshots, flippers, rampes, puits de verrouillage, Multibille, missions et records sont présents, mais pas les spinners, les cibles ni les rollovers du Web. Les textes en jeu sont en français ; le menu système (MENU) est traduit en fr, en, de, es et it.
-
-- **Graphismes** : le décor de chaque plateau (fond, rampes 3D, bumpers, cadre, cartouches) est **pré-rendu depuis le vrai moteur du jeu Web** (`PinballCanvasRenderer.renderTableArtwork`) et embarqué dans le firmware (`firmware/aka_idf/main/art/art<N>.z`, 240×520 RGB565 compressé en deflate, décompressé en PSRAM au choix du plateau). La console y superpose les éléments animés : flippers, bille, ressort, éclats des bumpers et slingshots, puits Multibille, et les **lampes** (chevrons du couloir lanceur en chenillard, 4 rollovers du haut + 2 retours allumés par la bille, gemmes de mission). Les boutons de flippers décalent les lampes du haut ; 4 couloirs = +10 000, 2 retours = +5 000. Pour régénérer les images après une modification des plateaux ou du rendu web : `node scripts/gen-aka-art.mjs` (Chromium + Playwright requis), puis committer les `.z`.
-- **Sons** : effets de flipper synthétisés (bumpers, slingshots, flippers, ressort, rampes, verrouillage, Multibille, tilt, fin de partie…), avec un décor sonore propre à chaque plateau. Aucun échantillon ni musique protégée.
-- **Lanceur et protection** : la bille repose sur la tête du ressort (qui descend quand on le tend). Une protection de 20 s après le tir rend la bille si elle tombe directement (une fois par bille), et des boucliers renvoient la bille aux sorties latérales (un coup chacun par bille).
-- **Musique de fond** : une composition originale par plateau (circuit, espace, Star Wars, temple), de 8 phrases (A B A C D B C A, plus de 30 s avant de reboucler), synthétisée sur une piste réservée ; elle joue pendant la partie, se coupe dans le menu et s'accélère en Multibille. Son volume suit le réglage musique du runtime AKA.
-- **Menu système (MENU)** : reprendre, commandes, langue, crédits, retour au loader. Appui long sur MENU : capture d'écran. RUN + MENU : retour au loader.
-- **Commandes** : A / L1 / Gauche = flippers gauches ; D / Droite = flippers droits ; R1 / Bas = ressort ; B / Haut = secousse ; pause = touche MENU uniquement (la partie reprend où elle en était via « Reprendre »).
-- **Records** : `/sdcard/pinball/records.bin`.
-- **Table Star Wars · Yavin** : univers hommage de fan (libellés, couleurs, sabres laser et sons génériques) sans logo, personnage, image ni musique de Lucasfilm.
-
-> **Limites connues :** le firmware n'a pas encore été validé sur une console réelle (la logique et le rendu sont testés sur PC, la compilation ESP-IDF est vérifiée en CI). Les volumes (effets et musique) suivent les réglages du runtime AKA, qui n'a pas encore de curseur dans son menu : valeurs par défaut.
-
-## Installer sur la console Gamebuino AKA
-
-1. Téléchargez **`AKA-Pinball-sdcard.zip`** depuis les **Releases** (ou l'artefact de l'onglet **Actions**).
-2. Copiez les dossiers `pinball` et `AKA` à la racine de la carte SD (le dossier `AKA` est commun à tous les jeux : ne remplacez pas une version plus récente).
-3. Lancez *Pinball* depuis le loader, console tournée de 90° vers la droite.
-
-Compiler soi-même (ESP-IDF 5.5.1 installé) : `npm run aka:build`, puis `npm run aka:flash`.
-
-## Workflows GitHub Actions (CI/CD PC & AKA)
-
-Deux workflows automatisés s'exécutent sur GitHub dès chaque `git push` :
-
-1. **`Build & Push PC + Web` (`.github/workflows/build-pc.yml`)**
-   - Installe avec `npm ci` (lockfile), vérifie le typage TypeScript (`npm run lint`), lance les tests du moteur (`npm test`) et compile le bundle Web (`npm run build`).
-   - Déploie automatiquement la version Web sur **GitHub Pages** (si activé dans *Settings → Pages → Source: GitHub Actions*).
-   - Compile en parallèle les exécutables autonomes **Windows x64 (`.exe`)**, **Linux x64 (`.AppImage` & `.tar.gz`)** et **macOS Universal (`.zip`)**.
-2. **`Build & Push Gamebuino AKA Firmware` (`.github/workflows/build-aka.yml`)**
-   - Vérifie que les plateaux générés sont à jour, lance les tests PC du firmware, puis compile avec **ESP-IDF 5.5.1** (conteneur `espressif/idf`).
-   - Produit `AKA-Pinball-sdcard.zip` (dossiers `pinball` et `AKA` prêts pour la carte SD) et `AKA-Pinball-firmware.bin`.
-
-### Publier une Release GitHub complète (PC + AKA) en une commande
-
-Pousser un tag `v*` déclenche automatiquement la création d'une **GitHub Release** regroupant les exécutables Windows/Linux/macOS **et** le paquet carte SD pour la Gamebuino AKA :
-
-```bash
-git tag v1.0.0
-git push origin v1.0.0
-```
-
-Sans pouvoir pousser de tag, lancez **les deux** workflows (`build-pc.yml` et `build-aka.yml`) à la main depuis l'onglet *Actions* avec `publish_release` coché et **le même `release_tag`** (ex. `v1.1.0`) : les exécutables PC et le paquet carte SD arrivent dans une seule Release.
 
 ---
 

@@ -4,6 +4,7 @@ import { musicEngine } from './audio/musicEngine';
 import { soundEngine } from './audio/soundEngine';
 import { ActivePanelTab, CompanionPanels } from './components/CompanionPanels';
 import { GamebuinoConsole } from './components/GamebuinoConsole';
+import { TableEditor } from './components/TableEditor';
 import { PinballSimulation } from './engine/physicsEngine';
 import { PinballCanvasRenderer } from './engine/renderer';
 import {
@@ -11,6 +12,7 @@ import {
   InputControlsState,
   LiveGameSnapshot,
   TableThemeId,
+  resolveMusicTheme,
 } from './types/pinball';
 
 const INITIAL_INPUTS: InputControlsState = {
@@ -39,11 +41,29 @@ export default function App() {
   const [activeInputs, setActiveInputs] = useState<InputControlsState>({ ...INITIAL_INPUTS });
   const [snapshot, setSnapshot] = useState<LiveGameSnapshot>(() => simRef.current.getSnapshot());
   const [activeTab, setActiveTab] = useState<ActivePanelTab>('tables');
+  const activeTabRef = useRef<ActivePanelTab>('tables');
+  const [editorTableId, setEditorTableId] = useState<TableThemeId>(
+    () => simRef.current.currentTable.id
+  );
+  const [catalogVersion, setCatalogVersion] = useState<number>(0);
+
   const [viewMode, setViewMode] = useState<ConsoleViewMode>('CONSOLE_90');
   const [muted, setMuted] = useState<boolean>(false);
   const [musicEnabled, setMusicEnabled] = useState<boolean>(true);
   const [windowFocused, setWindowFocused] = useState<boolean>(true);
   const [showLcdGrid, setShowLcdGrid] = useState<boolean>(false);
+
+  const switchTab = useCallback((nextTab: ActivePanelTab, targetTableId?: TableThemeId) => {
+    if (nextTab === 'editor') {
+      simRef.current.pauseIfPlaying();
+      setSnapshot(simRef.current.getSnapshot());
+      setEditorTableId(targetTableId ?? simRef.current.currentTable.id);
+    } else if (activeTabRef.current === 'editor') {
+      musicEngine.setEditorPreview(null, null);
+    }
+    activeTabRef.current = nextTab;
+    setActiveTab(nextTab);
+  }, []);
 
   const mergeInputs = useCallback((): InputControlsState => {
     const k = keyboardInputsRef.current;
@@ -96,17 +116,18 @@ export default function App() {
     [syncActiveInputsUI]
   );
 
-  // Synchronise le thème musical, le mode (Menu / Jeu / Pause) et l'intensité Multibille
+  // Synchronise le thème musical (y compris celui des tables maison), le mode et l'intensité Multibille
   useEffect(() => {
+    const musicTheme = resolveMusicTheme(simRef.current.currentTable);
     musicEngine.updateGameContext(
-      snapshot.selectedTableId,
+      musicTheme,
       snapshot.gameState,
       snapshot.multiballActive,
       windowFocused
     );
-  }, [snapshot.selectedTableId, snapshot.gameState, snapshot.multiballActive, windowFocused]);
+  }, [snapshot.selectedTableId, snapshot.gameState, snapshot.multiballActive, windowFocused, catalogVersion]);
 
-  // Keyboard bindings (AZERTY & QWERTY friendly: A/Q/Left = Bouton A, D/Right = Bouton D, Space/Enter/R = R1, B/Z/W/Up = Bouton B)
+  // Keyboard bindings (AZERTY & QWERTY friendly)
   useEffect(() => {
     const mapCodeToControl = (code: string): keyof InputControlsState | null => {
       switch (code) {
@@ -142,7 +163,14 @@ export default function App() {
     };
 
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      if (
+        activeTabRef.current === 'editor' ||
+        e.target instanceof HTMLInputElement ||
+        e.target instanceof HTMLTextAreaElement ||
+        e.target instanceof HTMLSelectElement
+      ) {
+        return;
+      }
       soundEngine.unlockAndGetContext();
       if (e.code === 'KeyM' && !e.repeat) {
         e.preventDefault();
@@ -165,8 +193,8 @@ export default function App() {
     const onKeyUp = (e: KeyboardEvent) => {
       const ctrl = mapCodeToControl(e.code);
       if (!ctrl) return;
-      e.preventDefault();
       if (keyboardInputsRef.current[ctrl]) {
+        e.preventDefault();
         keyboardInputsRef.current[ctrl] = false;
         syncActiveInputsUI();
       }
@@ -184,7 +212,6 @@ export default function App() {
       setWindowFocused(false);
       keyboardInputsRef.current = { ...INITIAL_INPUTS };
       pointerInputsRef.current = { ...INITIAL_INPUTS };
-      // Never lose a ball in the background: pause as soon as the window loses focus
       simRef.current.pauseIfPlaying();
       syncActiveInputsUI();
       setSnapshot(simRef.current.getSnapshot());
@@ -203,7 +230,7 @@ export default function App() {
     window.addEventListener('focus', onFocus);
     window.addEventListener('blur', onBlur);
     window.addEventListener('pagehide', onPageHide);
-    document.addEventListener('visibilitychange', onVisibilityChange);
+    window.addEventListener('visibilitychange', onVisibilityChange);
     return () => {
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('keyup', onKeyUp);
@@ -211,7 +238,7 @@ export default function App() {
       window.removeEventListener('focus', onFocus);
       window.removeEventListener('blur', onBlur);
       window.removeEventListener('pagehide', onPageHide);
-      document.removeEventListener('visibilitychange', onVisibilityChange);
+      window.removeEventListener('visibilitychange', onVisibilityChange);
     };
   }, [syncActiveInputsUI]);
 
@@ -225,21 +252,23 @@ export default function App() {
       const dt = (now - lastTime) / 1000;
       lastTime = now;
 
-      const combined = mergeInputs();
-      simRef.current.step(dt, combined);
+      if (activeTabRef.current !== 'editor') {
+        const combined = mergeInputs();
+        simRef.current.step(dt, combined);
 
-      const canvas = canvasRef.current;
-      if (canvas) {
-        const ctx = canvas.getContext('2d');
-        if (ctx) {
-          rendererRef.current.render(ctx, simRef.current, 3, showLcdGrid);
+        const canvas = canvasRef.current;
+        if (canvas) {
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            rendererRef.current.render(ctx, simRef.current, 3, showLcdGrid);
+          }
         }
-      }
 
-      uiSyncAccumulator += dt;
-      if (uiSyncAccumulator >= 0.08) {
-        uiSyncAccumulator = 0;
-        setSnapshot(simRef.current.getSnapshot());
+        uiSyncAccumulator += dt;
+        if (uiSyncAccumulator >= 0.08) {
+          uiSyncAccumulator = 0;
+          setSnapshot(simRef.current.getSnapshot());
+        }
       }
 
       rafId = requestAnimationFrame(frame);
@@ -289,6 +318,9 @@ export default function App() {
   };
 
   const handleStartNewGame = () => {
+    if (activeTabRef.current === 'editor') {
+      switchTab('tables');
+    }
     simRef.current.startNewGame(simRef.current.playerCount);
     setSnapshot(simRef.current.getSnapshot());
   };
@@ -300,6 +332,26 @@ export default function App() {
     }
     setSnapshot(simRef.current.getSnapshot());
   };
+
+  const handleCatalogChanged = useCallback((updatedTableId: TableThemeId) => {
+    rendererRef.current.invalidateCache();
+    simRef.current.reloadActiveTable(updatedTableId);
+    setCatalogVersion((v) => v + 1);
+    setSnapshot(simRef.current.getSnapshot());
+  }, []);
+
+  const handlePlayEditedTable = useCallback(
+    (tableId: TableThemeId) => {
+      musicEngine.setEditorPreview(null, null);
+      rendererRef.current.invalidateCache();
+      simRef.current.reloadActiveTable(tableId);
+      simRef.current.startNewGame(simRef.current.playerCount);
+      setCatalogVersion((v) => v + 1);
+      setSnapshot(simRef.current.getSnapshot());
+      switchTab('tables');
+    },
+    [switchTab]
+  );
 
   const toggleMute = () => {
     const next = !muted;
@@ -325,6 +377,7 @@ export default function App() {
           href="#top"
           onClick={(e) => {
             e.preventDefault();
+            switchTab('tables');
             simRef.current.openTableMenu();
             setSnapshot(simRef.current.getSnapshot());
           }}
@@ -333,11 +386,12 @@ export default function App() {
           Gamebuino AKA Pinball
         </a>
 
-        {/* Zone 2: 4 Clean Single-Line Navigation Links */}
+        {/* Zone 2: 5 Clean Single-Line Navigation Links */}
         <nav className="hidden md:flex items-center gap-6 text-sm font-medium">
           {(
             [
               ['tables', 'Plateaux'],
+              ['editor', 'Éditeur'],
               ['rules', 'Règles & Missions'],
               ['controls', 'Contrôles 90°'],
               ['cpp', 'Code C++ AKA'],
@@ -346,7 +400,7 @@ export default function App() {
             <button
               key={id}
               type="button"
-              onClick={() => setActiveTab(id)}
+              onClick={() => switchTab(id)}
               className={`py-1 transition-colors whitespace-nowrap shrink-0 cursor-pointer border-b-2 ${
                 activeTab === id
                   ? 'text-amber-400 border-amber-400'
@@ -365,7 +419,9 @@ export default function App() {
             onClick={handleStartNewGame}
             className="px-4 py-2 text-xs font-semibold text-slate-950 bg-amber-400 rounded-lg hover:bg-amber-300 transition-colors whitespace-nowrap shrink-0 cursor-pointer"
           >
-            {snapshot.gameState === 'PLAYING' ? 'Recommencer la partie' : 'Lancer une partie'}
+            {snapshot.gameState === 'PLAYING' && activeTab !== 'editor'
+              ? 'Recommencer la partie'
+              : 'Lancer une partie'}
           </button>
         </div>
       </header>
@@ -375,34 +431,41 @@ export default function App() {
         {/* Workspace Toolbar (View Orientation, Players 1-4, LCD Grid, Audio) */}
         <div className="flex flex-wrap items-center justify-between gap-3 pb-5 mb-5 border-b border-slate-800/70">
           {/* Console Orientation Switcher */}
-          <div className="flex items-center gap-1 p-1 bg-[#141923] rounded-lg border border-slate-800/80">
-            {(
-              [
-                ['CONSOLE_90', 'Console 90° (240×320)'],
-                ['SCREEN_ZOOM', 'Écran Zoom'],
-                ['NATIVE_0', 'Vue 0° Native (320×240)'],
-              ] as const
-            ).map(([mode, label]) => (
-              <button
-                key={mode}
-                type="button"
-                onClick={() => setViewMode(mode)}
-                className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
-                  viewMode === mode
-                    ? 'bg-amber-400 text-slate-950 font-semibold'
-                    : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
+          {activeTab !== 'editor' ? (
+            <div className="flex items-center gap-1 p-1 bg-[#141923] rounded-lg border border-slate-800/80">
+              {(
+                [
+                  ['CONSOLE_90', 'Console 90° (240×320)'],
+                  ['SCREEN_ZOOM', 'Écran Zoom'],
+                  ['NATIVE_0', 'Vue 0° Native (320×240)'],
+                ] as const
+              ).map(([mode, label]) => (
+                <button
+                  key={mode}
+                  type="button"
+                  onClick={() => setViewMode(mode)}
+                  className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
+                    viewMode === mode
+                      ? 'bg-amber-400 text-slate-950 font-semibold'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="text-xs text-slate-300 font-medium">
+              Atelier d’édition de tables maison · <span className="font-mono text-amber-300">src/data/tables.config.json</span>
+            </div>
+          )}
 
           {/* Mobile Tab Bar */}
           <div className="flex md:hidden items-center gap-1 p-1 bg-[#141923] rounded-lg border border-slate-800/80 overflow-x-auto">
             {(
               [
                 ['tables', 'Plateaux'],
+                ['editor', 'Éditeur'],
                 ['rules', 'Règles'],
                 ['controls', 'Contrôles'],
                 ['cpp', 'C++'],
@@ -411,7 +474,7 @@ export default function App() {
               <button
                 key={id}
                 type="button"
-                onClick={() => setActiveTab(id)}
+                onClick={() => switchTab(id)}
                 className={`px-2.5 py-1 text-xs font-medium rounded-md whitespace-nowrap shrink-0 cursor-pointer ${
                   activeTab === id ? 'bg-slate-700 text-white' : 'text-slate-400'
                 }`}
@@ -423,34 +486,38 @@ export default function App() {
 
           {/* Players + LCD + Sound Controls */}
           <div className="flex flex-wrap items-center gap-2.5">
-            <div className="flex items-center gap-1 p-1 bg-[#141923] rounded-lg border border-slate-800/80">
-              {[1, 2, 3, 4].map((n) => (
+            {activeTab !== 'editor' && (
+              <>
+                <div className="flex items-center gap-1 p-1 bg-[#141923] rounded-lg border border-slate-800/80">
+                  {[1, 2, 3, 4].map((n) => (
+                    <button
+                      key={n}
+                      type="button"
+                      onClick={() => handlePlayerCountChange(n)}
+                      className={`px-2.5 py-1 text-xs font-mono font-medium rounded transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
+                        snapshot.playerCount === n
+                          ? 'bg-slate-700 text-white'
+                          : 'text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      {n}J
+                    </button>
+                  ))}
+                </div>
+
                 <button
-                  key={n}
                   type="button"
-                  onClick={() => handlePlayerCountChange(n)}
-                  className={`px-2.5 py-1 text-xs font-mono font-medium rounded transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
-                    snapshot.playerCount === n
-                      ? 'bg-slate-700 text-white'
-                      : 'text-slate-400 hover:text-white'
+                  onClick={() => setShowLcdGrid((v) => !v)}
+                  className={`px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
+                    showLcdGrid
+                      ? 'bg-sky-500/15 border-sky-400/60 text-sky-300'
+                      : 'bg-[#141923] border-slate-800 text-slate-400 hover:text-white'
                   }`}
                 >
-                  {n}J
+                  Trame LCD
                 </button>
-              ))}
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setShowLcdGrid((v) => !v)}
-              className={`px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
-                showLcdGrid
-                  ? 'bg-sky-500/15 border-sky-400/60 text-sky-300'
-                  : 'bg-[#141923] border-slate-800 text-slate-400 hover:text-white'
-              }`}
-            >
-              Trame LCD
-            </button>
+              </>
+            )}
 
             <button
               type="button"
@@ -479,36 +546,46 @@ export default function App() {
           </div>
         </div>
 
-        {/* Balanced 2-Column Stage: Left = Rotated Gamebuino AKA Console, Right = Companion Panels */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-          <div className="lg:col-span-6 flex flex-col items-center">
-            <GamebuinoConsole
-              canvasRef={canvasRef}
-              viewMode={viewMode}
-              activeInputs={activeInputs}
-              onButtonStateChange={handlePointerButtonChange}
-              onCanvasClick={handleCanvasClick}
-            />
+        {/* Full-Width Custom Table Editor OR Balanced 2-Column Console + Companion Stage */}
+        {activeTab === 'editor' ? (
+          <TableEditor
+            initialTableId={editorTableId}
+            onPlayTable={handlePlayEditedTable}
+            onCatalogChanged={handleCatalogChanged}
+          />
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+            <div className="lg:col-span-6 flex flex-col items-center">
+              <GamebuinoConsole
+                canvasRef={canvasRef}
+                viewMode={viewMode}
+                activeInputs={activeInputs}
+                onButtonStateChange={handlePointerButtonChange}
+                onCanvasClick={handleCanvasClick}
+              />
 
-            <p className="mt-3 text-center text-xs text-slate-400 font-mono">
-              A / Q / ← : Flipper Gauche · D / → : Flipper Droit · Espace / R1 : Ressort · B / ↑ : Secousse
-            </p>
-          </div>
+              <p className="mt-3 text-center text-xs text-slate-400 font-mono">
+                A / Q / ← : Flipper Gauche · D / → : Flipper Droit · Espace / R1 : Ressort · B / ↑ : Secousse
+              </p>
+            </div>
 
-          <div className="lg:col-span-6">
-            <CompanionPanels
-              activeTab={activeTab}
-              snapshot={snapshot}
-              activeInputs={activeInputs}
-              onSelectTable={handleSelectTable}
-              onStartGame={handleStartNewGame}
-              onOpenInScreenMenu={() => {
-                simRef.current.openTableMenu();
-                setSnapshot(simRef.current.getSnapshot());
-              }}
-            />
+            <div className="lg:col-span-6">
+              <CompanionPanels
+                activeTab={activeTab}
+                snapshot={snapshot}
+                activeInputs={activeInputs}
+                catalogVersion={catalogVersion}
+                onSelectTable={handleSelectTable}
+                onStartGame={handleStartNewGame}
+                onEditTable={(id) => switchTab('editor', id)}
+                onOpenInScreenMenu={() => {
+                  simRef.current.openTableMenu();
+                  setSnapshot(simRef.current.getSnapshot());
+                }}
+              />
+            </div>
           </div>
-        </div>
+        )}
       </main>
     </div>
   );

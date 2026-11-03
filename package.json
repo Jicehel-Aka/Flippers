@@ -2,7 +2,7 @@
   "name": "gamebuino-aka-pinball",
   "private": true,
   "version": "1.0.0",
-  "description": "Flipper arcade 240x320 (plateau 240x520) pour Gamebuino AKA tournée à 90°, Web et PC",
+  "description": "Suite de 12 flippers 240x320 (plateau 240x520) avec éditeur de tables JSON pour Gamebuino AKA tournée à 90°, Web et PC",
   "type": "module",
   "scripts": {
     "dev": "vite --port=3000 --host=0.0.0.0",
@@ -15,6 +15,7 @@
     "desktop:sync": "npm run build && node desktop/scripts/sync-web.mjs",
     "desktop:dist": "npm run desktop:sync && npm --prefix desktop run dist",
     "aka:tables": "node scripts/gen-aka-tables.mjs",
+    "aka:art": "node scripts/gen-aka-art.mjs",
     "aka:test": "bash firmware/aka_idf/test/host/run.sh",
     "aka:build": "idf.py -C firmware/aka_idf build",
     "aka:flash": "idf.py -C firmware/aka_idf flash monitor"
@@ -28,6 +29,7 @@
     "vite": "^8.3.0"
   },
   "devDependencies": {
+    "@napi-rs/canvas": "^1.1.0",
     "@types/node": "^22.14.0",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
