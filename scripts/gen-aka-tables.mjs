@@ -60,7 +60,7 @@ const BUMPER_COLORS = {
 const ROLL_CHAR = { '★': '*', '☀': '*', '◆': '+', '◄': '<', '►': '>', '!': '!' };
 const rollChar = (l) => ROLL_CHAR[l] ?? (/^[A-Za-z0-9]$/.test(l) ? l.toUpperCase() : '*');
 const MISSION_KIND = { BUMPER: 0, RAMP: 1, TARGET: 2, SCOOP: 2 };
-const DECOR = { aka_esp32: 0, space_odyssey: 1, star_galaxy: 2, solaire: 3, classique: 4, prehistoire: 5, farwest: 6, halloween: 7, candy: 8, bonbons: 9, train: 10 };
+const DECOR = { aka_esp32: 0, space_odyssey: 1, star_galaxy: 2, solaire: 3, classique: 4, prehistoire: 5, farwest: 6, halloween: 7, candy: 8, bonbons: 9, train: 10, crypte: 11 };
 
 // Rééchantillonne un chemin de rampe sur exactement 5 points (le moteur embarqué en suit 5).
 function resample5(path) {
@@ -156,7 +156,7 @@ for (const t of PINBALL_TABLES) {
   const h = t.hunt;
   if (h) {
     if (h.slots.length > 6) throw new Error(`${t.id}: plus de 6 emplacements de cible`);
-    const KIND = { WANTED: 1, GHOST: 2, MAMMOTH: 3, LOLLIPOP: 4, LOCOMOTIVE: 5 };
+    const KIND = { WANTED: 1, GHOST: 2, MAMMOTH: 3, LOLLIPOP: 4, LOCOMOTIVE: 5, ZOMBIE: 6 };
     const sl = h.slots.map((q) => `{${f(q.x)}, ${f(q.y)}}`);
     while (sl.length < 6) sl.push('{0, 0}');
     o += `    {${KIND[h.kind]}, ${h.slots.length}, ${h.sequential}, {${sl.join(', ')}}, ${f(h.radius)}, ${h.points}, ${h.goal}, ${h.reward}, ${hex(h.color)}, ${cstr(h.name)}},\n`;

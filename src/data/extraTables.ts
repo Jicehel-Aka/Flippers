@@ -38,7 +38,7 @@ interface Spec {
   rollovers: string[]; // 4 lettres du haut puis 2 retours
   banks: [BankSpec, BankSpec, BankSpec, BankSpec];
   lockName: string;
-  lockSide: 'LEFT' | 'RIGHT';
+  lockSide: 'LEFT' | 'RIGHT' | 'CENTER';
   hunt?: HuntDef;
   litBumperRotate?: boolean;
   missionDescs: [string, string, string];
@@ -134,9 +134,9 @@ function build(s: Spec): PinballTableDef {
     scoops: [
       {
         id: `${p}_lock`, name: s.lockName, kind: 'UPPER_LOCK',
-        x: s.lockSide === 'LEFT' ? 52 : 174, y: 100, radius: 9,
-        ejectTo: { x: s.lockSide === 'LEFT' ? 52 : 174, y: 116 },
-        ejectVelocity: { x: s.lockSide === 'LEFT' ? 45 : -45, y: 150 },
+        x: s.lockSide === 'LEFT' ? 52 : s.lockSide === 'CENTER' ? 113 : 174, y: s.lockSide === 'CENTER' ? 92 : 100, radius: 9,
+        ejectTo: { x: s.lockSide === 'LEFT' ? 52 : s.lockSide === 'CENTER' ? 113 : 174, y: s.lockSide === 'CENTER' ? 108 : 116 },
+        ejectVelocity: { x: s.lockSide === 'LEFT' ? 45 : s.lockSide === 'CENTER' ? 0 : -45, y: 150 },
         points: 22000, color: s.lockColor,
       },
       {
@@ -268,7 +268,7 @@ export const EXTRA_TABLES: PinballTableDef[] = [
       { name: 'RIP', role: 'JACKPOT_BOOST', kind: 'STANDUP', letters: ['R', 'I', 'P'], colors: C4('#E9D5FF', '#F97316', '#A3E635', '#DC2626') },
     ],
     lockName: 'CAVEAU DU MANOIR', lockColor: '#A3E635', vukName: 'PUITS DU CHAUDRON', vukExitRight: false,
-    lockSide: 'LEFT',
+    lockSide: 'CENTER',
     hunt: {
       kind: 'GHOST', name: 'FANTÔME', radius: 9, points: 3000, goal: 4, reward: 45000, sequential: false, color: '#A3E635',
       slots: [{ x: 62, y: 230 }, { x: 164, y: 230 }, { x: 113, y: 240 }, { x: 84, y: 298 }, { x: 142, y: 298 }],
@@ -402,6 +402,48 @@ export const EXTRA_TABLES: PinballTableDef[] = [
       'Quatre bumpers : lanterne, piston et signal sur la diagonale de la locomotive, plus la chaudière.',
       'R-A-I-L monte le Bonus, T-R-A-I lance le Multibille, V-A-P rallume les Kickbacks.',
       'Verrouillez 2 billes dans le Dépôt des Locos ou complétez T-R-A-I pour libérer 3 billes !',
+    ],
+  }),
+  build({
+    id: 'crypte', prefix: 'cry',
+    name: 'Crypte', subtitle: 'Tombes Glacées & Morts-Vivants',
+    badge: '2 Flippers · Nécropole de Glace', env: 'Cimetière Gelé · Tombes & Brume',
+    desc: 'Une nécropole prise dans la glace : cinq bumpers en croix funéraire, des zombies qui sortent de terre sur les tombes, une brume bleue et un sarcophage gelé sur le côté.',
+    multiball: 'MULTIBILLE LÉGION', jackpot: 'SUPER NÉCROPOLE', skill: 'TIR FUNÈBRE', gravity: 316,
+    palette: {
+      bgPrimary: '#06121F', bgSecondary: '#0F2A44', cabinetFrame: '#334155', cabinetHighlight: '#E0F2FE',
+      wallMetal: '#7DD3FC', wallHighlight: '#F0F9FF', accentPrimary: '#38BDF8', accentSecondary: '#A5F3FC', accentWarm: '#6D28D9',
+      flipperTop: '#E0F2FE', flipperSkirt: '#1E3A5F', slingshotMain: '#0EA5E9', slingshotAccent: '#E0F2FE',
+      hudBg: '#050B14', hudBorder: '#38BDF8', hudDigits: '#A5F3FC', hudStyle: 'CYBER_AKA', ballTint: '#E0F2FE',
+    },
+    bumpers: [
+      [113, 116, 2400, 'CROIX DU HAUT', 'BLUE', 'CREST'], [113, 168, 2600, 'TOMBE CENTRALE', 'JADE', 'CREST'],
+      [76, 168, 2000, 'TOMBE GAUCHE', 'BLUE', 'CREST'], [150, 168, 2000, 'TOMBE DROITE', 'BLUE', 'CREST'],
+      [113, 220, 2200, 'CRÂNE GELÉ', 'RED', 'STAR'],
+    ],
+    rampNames: ['ALLÉE DES TOMBES', 'ESCALIER DU CAVEAU'], rampColors: ['#7DD3FC', '#F0F9FF', '#A78BFA', '#E0F2FE'],
+    rampStyles: ['MOLDED_ACRYLIC', 'WIREFORM_RAIL'], rollovers: ['R', 'I', 'P', '!', '☠', '☠'],
+    rampPaths: [[[24, 266], [44, 212], [24, 156], [40, 134]], [[202, 262], [184, 206], [204, 156], [186, 134]]],
+    banks: [
+      { name: 'GLACE', role: 'MULTIPLIER', kind: 'DROP', letters: ['G', 'L', 'A', 'C'], colors: C4('#38BDF8', '#E0F2FE', '#A78BFA', '#16A34A') },
+      { name: 'MORT', role: 'MULTIBALL', kind: 'STANDUP', letters: ['M', 'O', 'R', 'T'], colors: C4('#A78BFA', '#38BDF8', '#E0F2FE', '#DC2626') },
+      { name: 'RIP', role: 'KICKBACK', kind: 'DROP', letters: ['R', 'I', 'P'], colors: C4('#E0F2FE', '#38BDF8', '#A78BFA', '#DC2626') },
+      { name: 'ICE', role: 'JACKPOT_BOOST', kind: 'STANDUP', letters: ['I', 'C', 'E'], colors: C4('#A5F3FC', '#A78BFA', '#38BDF8', '#DC2626') },
+    ],
+    lockName: 'SARCOPHAGE GELÉ', lockColor: '#A5F3FC', vukName: 'PUITS GELÉ', vukExitRight: false,
+    lockSide: 'RIGHT',
+    hunt: {
+      kind: 'ZOMBIE', name: 'ZOMBIE', radius: 9, points: 3500, goal: 4, reward: 50000, sequential: false, color: '#86EFAC',
+      slots: [{ x: 58, y: 258 }, { x: 113, y: 252 }, { x: 168, y: 258 }, { x: 84, y: 306 }, { x: 142, y: 306 }, { x: 113, y: 282 }],
+    },
+    missionDescs: ['Franchir 2 allées entre les tombes', 'Frapper 5 fois les tombes du cimetière', 'Renvoyer 4 zombies sous terre : ils ressortent ailleurs'],
+    spinners: ['ROUE DU GLAS', 'ROUE DU SPECTRE'],
+    missions: ['ALLÉES', 'TOMBES', 'ZOMBIES'], missionColors: ['#7DD3FC', '#A78BFA', '#86EFAC'],
+    rules: [
+      'L’allée des tombes à gauche et l’escalier du caveau à droite ramènent la bille dans la brume du haut.',
+      'Cinq bumpers : une croix de quatre tombes et un crâne gelé au-dessus des flippers.',
+      'G-L-A-C monte le Bonus, M-O-R-T lance le Multibille, R-I-P rallume les Kickbacks.',
+      'Verrouillez 2 billes dans le Sarcophage Gelé ou complétez M-O-R-T pour libérer 3 billes !',
     ],
   }),
 ];

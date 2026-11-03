@@ -475,6 +475,35 @@ const THEME_SCORES: Record<TableThemeId, ThemeScoreDef> = {
     ],
     bassPattern: [1, 0, 1, 0,  1, 0, 1, 0,  1, 0, 3, 0,  2, 0, 3, 0],
   },
+  // 12. Crypte : marche funèbre en ré mineur, lente et glacée (58 BPM)
+  crypte: {
+    id: 'crypte',
+    bpm: 58,
+    defaultTimbre: 'WARM_TRI',
+    altTimbre: 'BELL_OCT',
+    scale: [50, 52, 53, 55, 57, 58, 60, 62, 64, 65, 67, 69, 70, 72],
+    sectionsChords: [
+      [[38, 45, 50, 53], [34, 41, 46, 50], [43, 50, 55, 58], [45, 52, 57, 61]],
+      [[38, 45, 50, 53], [41, 48, 53, 57], [43, 50, 55, 58], [38, 45, 50, 53]],
+      [[34, 41, 46, 50], [38, 45, 50, 53], [45, 52, 57, 61], [38, 45, 50, 53]],
+      [[38, 45, 50, 53], [36, 43, 48, 52], [41, 48, 53, 57], [45, 52, 57, 61]],
+      [[43, 50, 55, 58], [38, 45, 50, 53], [34, 41, 46, 50], [45, 52, 57, 61]],
+      [[38, 45, 50, 53], [34, 41, 46, 50], [41, 48, 53, 57], [38, 45, 50, 53]],
+      [[41, 48, 53, 57], [43, 50, 55, 58], [45, 52, 57, 61], [38, 45, 50, 53]],
+      [[34, 41, 46, 50], [43, 50, 55, 58], [45, 52, 57, 61], [38, 45, 50, 53]],
+    ],
+    melodies: [
+      PHRASE_INTRO,
+      PHRASE_THEME_A1,
+      PHRASE_THEME_A2,
+      PHRASE_CHORUS_B,
+      PHRASE_BRIDGE_C,
+      PHRASE_THEME_A3,
+      PHRASE_BUILD_D,
+      PHRASE_CODA,
+    ],
+    bassPattern: [1, 0, 0, 0,  1, 0, 0, 0,  3, 0, 0, 0,  2, 0, 0, 0],
+  },
 };
 
 const ARP_PATTERNS: readonly (readonly number[])[] = [

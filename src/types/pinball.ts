@@ -10,7 +10,7 @@ export type GameState = 'TABLE_SELECT' | 'PLAYING' | 'PAUSED' | 'GAME_OVER';
 
 export type ConsoleViewMode = 'CONSOLE_90' | 'SCREEN_ZOOM' | 'NATIVE_0';
 
-export type TableThemeId = 'aka_esp32' | 'space_odyssey' | 'star_galaxy' | 'solaire' | 'classique' | 'prehistoire' | 'farwest' | 'halloween' | 'candy' | 'bonbons' | 'train';
+export type TableThemeId = 'aka_esp32' | 'space_odyssey' | 'star_galaxy' | 'solaire' | 'classique' | 'prehistoire' | 'farwest' | 'halloween' | 'candy' | 'bonbons' | 'train' | 'crypte';
 
 export type BumperColorStyle = 'RED' | 'BLUE' | 'GOLD' | 'JADE';
 export type BumperIconStyle = 'GEAR' | 'STAR' | 'CREST' | 'SUN';
@@ -161,7 +161,7 @@ export interface TablePalette {
 
 /** Cible mobile propre à une table : elle change d'emplacement à chaque fois qu'on la touche. */
 export interface HuntDef {
-  kind: 'WANTED' | 'GHOST' | 'MAMMOTH' | 'LOLLIPOP' | 'LOCOMOTIVE';
+  kind: 'WANTED' | 'GHOST' | 'MAMMOTH' | 'LOLLIPOP' | 'LOCOMOTIVE' | 'ZOMBIE';
   name: string;
   slots: Vec2[];
   radius: number;

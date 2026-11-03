@@ -208,6 +208,23 @@ const Theme THEMES[DECOR_COUNT] = {
         3, 3, R, 3,  3, R, 3, 3,  R, 5, 5, R,  7, R, R, R }
       }
     },
+    // 11 crypte : re mineur, triangle, marche funebre lente
+    { 146.83f, 215, WAVE_TRIANGLE, 0.34f,
+      {
+      { // A : cortege
+        0, R, R, 0,  R, 0, R, R,  3, R, R, 3,  R, 2, R, R,
+        0, R, R, 0,  R, 0, R, R,  7, R, 5, R,  3, R, R, R },
+      { // B : lamentation
+        7, R, R, 7,  R, 7, R, R,  8, R, R, 7,  R, 5, R, R,
+        3, R, R, 5,  R, 3, R, R,  2, R, 3, R,  0, R, R, R },
+      { // C : glas aigu
+        12, R, R, 10,  R, 8, R, R,  7, R, R, 8,  R, 7, R, R,
+        5, R, R, 3,  R, 5, R, R,  3, R, 2, R,  0, R, R, R },
+      { // D : cloche grave
+        0, R, R, R,  R, R, R, R,  7, R, R, R,  R, R, R, R,
+        3, R, R, R,  R, R, R, R,  5, R, R, R,  0, R, R, R }
+      }
+    },
 };
 
 // Forme : A B A C | D B C A — 8 phrases de 32 pas, soit 256 pas (plus de 30 s avant de reboucler)

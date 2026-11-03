@@ -16,7 +16,7 @@ idf_component_register(
         .
     # Decors des plateaux (240 x 520 RGB565 par table, compresses en deflate) : decompresses en PSRAM au choix du plateau.
     EMBED_FILES
-        art/art0.z art/art1.z art/art2.z art/art3.z art/art4.z art/art5.z art/art6.z art/art7.z art/art8.z art/art9.z art/art10.z
+        art/art0.z art/art1.z art/art2.z art/art3.z art/art4.z art/art5.z art/art6.z art/art7.z art/art8.z art/art9.z art/art10.z art/art11.z
     # RAPPEL : les composants vont dans REQUIRES, PAS dans INCLUDE_DIRS.
     REQUIRES
         gamebuino aka_runtime

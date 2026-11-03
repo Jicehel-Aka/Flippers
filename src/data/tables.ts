@@ -16,6 +16,7 @@ const DEFAULT_HIGH_SCORES: Record<TableThemeId, number> = {
   candy: 380000,
   bonbons: 390000,
   train: 420000,
+  crypte: 440000,
 };
 
 export function loadHighScores(): Record<TableThemeId, number> {
@@ -38,11 +39,11 @@ export function loadHighScores(): Record<TableThemeId, number> {
       classique:
         typeof parsed.classique === 'number' ? parsed.classique : DEFAULT_HIGH_SCORES.classique,
       ...(Object.fromEntries(
-        (['prehistoire', 'farwest', 'halloween', 'candy', 'bonbons', 'train'] as TableThemeId[]).map((id) => [
+        (['prehistoire', 'farwest', 'halloween', 'candy', 'bonbons', 'train', 'crypte'] as TableThemeId[]).map((id) => [
           id,
           typeof parsed[id] === 'number' ? parsed[id] : DEFAULT_HIGH_SCORES[id],
         ])
-      ) as Record<'prehistoire' | 'farwest' | 'halloween' | 'candy' | 'bonbons' | 'train', number>),
+      ) as Record<'prehistoire' | 'farwest' | 'halloween' | 'candy' | 'bonbons' | 'train' | 'crypte', number>),
     };
   } catch {
     return { ...DEFAULT_HIGH_SCORES };

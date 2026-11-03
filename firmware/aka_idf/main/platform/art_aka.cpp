@@ -18,6 +18,7 @@ extern const uint8_t _binary_art7_z_start[];  extern const uint8_t _binary_art7_
 extern const uint8_t _binary_art8_z_start[];  extern const uint8_t _binary_art8_z_end[];
 extern const uint8_t _binary_art9_z_start[];  extern const uint8_t _binary_art9_z_end[];
 extern const uint8_t _binary_art10_z_start[]; extern const uint8_t _binary_art10_z_end[];
+extern const uint8_t _binary_art11_z_start[]; extern const uint8_t _binary_art11_z_end[];
 }
 
 namespace render {
@@ -32,7 +33,7 @@ const Embedded kArt[] = {
     {_binary_art4_z_start, _binary_art4_z_end},   {_binary_art5_z_start, _binary_art5_z_end},
     {_binary_art6_z_start, _binary_art6_z_end},   {_binary_art7_z_start, _binary_art7_z_end},
     {_binary_art8_z_start, _binary_art8_z_end},   {_binary_art9_z_start, _binary_art9_z_end},
-    {_binary_art10_z_start, _binary_art10_z_end},
+    {_binary_art10_z_start, _binary_art10_z_end}, {_binary_art11_z_start, _binary_art11_z_end},
 };
 constexpr int kArtCount = (int)(sizeof(kArt) / sizeof(kArt[0]));
 

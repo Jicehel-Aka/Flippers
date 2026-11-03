@@ -723,7 +723,7 @@ export class PinballCanvasRenderer {
   // ============================================================================
   private renderThemedDecor(
     ctx: CanvasRenderingContext2D,
-    id: 'prehistoire' | 'farwest' | 'halloween' | 'candy' | 'bonbons' | 'train',
+    id: 'prehistoire' | 'farwest' | 'halloween' | 'candy' | 'bonbons' | 'train' | 'crypte',
     mult: number,
     _clock: number
   ) {
@@ -918,7 +918,7 @@ export class PinballCanvasRenderer {
         ctx.fillRect(40 + i * 16, 346, 16, 8);
       }
       plate('BONBONS', '#052E2B', '#FB7185', '#FEF08A');
-    } else {
+    } else if (id === 'train') {
       // Train : rails avec traverses, phare de locomotive et nuages de vapeur
       ctx.strokeStyle = 'rgba(148, 163, 184, 0.55)';
       ctx.lineWidth = 1.6;
@@ -946,6 +946,50 @@ export class PinballCanvasRenderer {
       circ(45.5, 236, 4, '#DC2626', '#E2E8F0');
       circ(45.5, 246, 4, '#16A34A', '#E2E8F0');
       plate('EXPRESS', '#0B1220', '#F59E0B', '#FDE68A');
+    } else {
+      // Crypte : lune pâle, brume glacée, pierres tombales, croix, flocons et fissures de glace
+      circ(60, 86, 18, 'rgba(224, 242, 254, 0.14)');
+      circ(60, 86, 11, 'rgba(224, 242, 254, 0.22)');
+      for (const [x, y, r] of [[96, 262, 22], [140, 270, 26], [60, 320, 20], [170, 316, 22]]) circ(x, y, r, 'rgba(125, 211, 252, 0.07)');
+      ctx.strokeStyle = 'rgba(186, 230, 253, 0.38)';
+      ctx.lineWidth = 0.9;
+      for (const [cx, cy] of [[34, 200], [196, 186], [112, 300], [24, 330], [206, 346]]) {
+        for (let a = 0; a < 3; a++) {
+          const ang = (a * Math.PI) / 3;
+          ctx.beginPath();
+          ctx.moveTo(cx - 4 * Math.cos(ang), cy - 4 * Math.sin(ang));
+          ctx.lineTo(cx + 4 * Math.cos(ang), cy + 4 * Math.sin(ang));
+          ctx.stroke();
+        }
+      }
+      ctx.strokeStyle = 'rgba(224, 242, 254, 0.28)';
+      ctx.beginPath();
+      ctx.moveTo(176, 140);
+      ctx.lineTo(160, 156);
+      ctx.lineTo(166, 176);
+      ctx.lineTo(152, 192);
+      ctx.moveTo(60, 224);
+      ctx.lineTo(74, 238);
+      ctx.lineTo(66, 252);
+      ctx.stroke();
+      // Pierres tombales
+      for (const [x, y, h] of [[44, 232, 22], [182, 236, 26], [28, 250, 18]] as [number, number, number][]) {
+        ctx.fillStyle = '#334E68';
+        ctx.beginPath();
+        ctx.moveTo(x - 7, y + h);
+        ctx.lineTo(x - 7, y);
+        ctx.arc(x, y, 7, Math.PI, 0);
+        ctx.lineTo(x + 7, y + h);
+        ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = '#A5F3FC';
+        ctx.lineWidth = 0.8;
+        ctx.stroke();
+        ctx.fillStyle = '#BAE6FD';
+        ctx.fillRect(x - 1, y - 3, 2, 8);
+        ctx.fillRect(x - 3.5, y, 7, 2);
+      }
+      plate('NÉCROPOLE', '#06121F', '#38BDF8', '#BAE6FD');
     }
     ctx.restore();
   }
@@ -1409,7 +1453,7 @@ export class PinballCanvasRenderer {
       }
     } else if (
       table.id === 'prehistoire' || table.id === 'farwest' || table.id === 'halloween' ||
-      table.id === 'candy' || table.id === 'bonbons' || table.id === 'train'
+      table.id === 'candy' || table.id === 'bonbons' || table.id === 'train' || table.id === 'crypte'
     ) {
       this.renderThemedDecor(ctx, table.id, mult, sim.clock);
     } else {
@@ -1956,6 +2000,17 @@ export class PinballCanvasRenderer {
         ctx.arc(0, 0, r * 0.3, 0, Math.PI * 4 * 0.75);
         ctx.lineWidth = 1.2;
         ctx.stroke();
+        break;
+      case 'ZOMBIE':
+        ctx.beginPath();
+        ctx.arc(0, -r * 0.1, r * 0.55, 0, Math.PI * 2);
+        ctx.fillStyle = '#14532D';
+        ctx.fill();
+        ctx.fillStyle = '#F0FDF4';
+        ctx.fillRect(-r * 0.32, -r * 0.25, 2, 2.4);
+        ctx.fillRect(r * 0.12, -r * 0.25, 2, 2.4);
+        ctx.fillStyle = '#14532D';
+        ctx.fillRect(-r * 0.9, r * 0.15, r * 0.55, 2);
         break;
       case 'LOCOMOTIVE':
         ctx.fillRect(-r * 0.65, -r * 0.25, r * 1.3, r * 0.7);

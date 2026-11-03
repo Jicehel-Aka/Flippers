@@ -351,6 +351,8 @@ static void draw_art_dynamic(const Game& g, const View& v, const TableDef& t) {
                     pdisc(hx + hr * 0.25f, hy - hr * 0.1f, hr * 0.15f, ink); break;                                  // fantome
             case 3: pdisc(hx, hy, hr * 0.55f, ink); pdisc(hx + hr * 0.4f, hy + hr * 0.3f, hr * 0.25f, C3(254, 243, 199)); break;
             case 4: pdisc(hx, hy, hr * 0.6f, C3(255, 241, 242)); pdisc(hx, hy, hr * 0.3f, C(hd.color)); break;       // sucette
+            case 6: pdisc(hx, hy, hr * 0.62f, C3(20, 83, 45)); pdisc(hx - hr * 0.25f, hy - hr * 0.1f, hr * 0.15f, C3(240, 253, 244));
+                    pdisc(hx + hr * 0.25f, hy - hr * 0.1f, hr * 0.15f, C3(240, 253, 244)); break;                   // zombie
             default: pdisc(hx, hy, hr * 0.62f, ink); pdisc(hx, hy - hr * 0.4f, hr * 0.25f, C3(254, 243, 199)); break; // locomotive
         }
     }
