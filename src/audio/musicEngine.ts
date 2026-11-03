@@ -267,6 +267,35 @@ const THEME_SCORES: Record<TableThemeId, ThemeScoreDef> = {
     ],
     bassPattern: [1, 0, 0, 3,  0, 0, 1, 0,  0, 0, 2, 0,  3, 0, 0, 0],
   },
+  // 5. Flipper Classique : orgue de salle d'arcade, Do majeur joyeux (126 BPM)
+  classique: {
+    id: 'classique',
+    bpm: 126,
+    defaultTimbre: 'PULSE_CHIP',
+    altTimbre: 'BELL_OCT',
+    scale: [60, 62, 64, 65, 67, 69, 71, 72, 74, 76, 77, 79, 81, 83],
+    sectionsChords: [
+      [[48, 55, 60, 64], [53, 57, 60, 65], [55, 59, 62, 67], [48, 55, 60, 64]],
+      [[57, 60, 64, 69], [53, 57, 60, 65], [55, 59, 62, 67], [48, 55, 60, 64]],
+      [[53, 57, 60, 65], [48, 55, 60, 64], [55, 59, 62, 67], [57, 60, 64, 69]],
+      [[48, 55, 60, 64], [50, 53, 57, 62], [55, 59, 62, 67], [48, 55, 60, 64]],
+      [[53, 57, 60, 65], [55, 59, 62, 65], [48, 55, 60, 64], [57, 60, 64, 69]],
+      [[48, 55, 60, 64], [57, 60, 64, 69], [53, 57, 60, 65], [55, 59, 62, 67]],
+      [[50, 53, 57, 62], [55, 59, 62, 67], [48, 55, 60, 64], [53, 57, 60, 65]],
+      [[53, 57, 60, 65], [55, 59, 62, 67], [57, 60, 64, 69], [48, 55, 60, 64]],
+    ],
+    melodies: [
+      PHRASE_INTRO,
+      PHRASE_THEME_A1,
+      PHRASE_THEME_A2,
+      PHRASE_CHORUS_B,
+      PHRASE_BRIDGE_C,
+      PHRASE_THEME_A3,
+      PHRASE_BUILD_D,
+      PHRASE_CODA,
+    ],
+    bassPattern: [1, 0, 1, 0,  2, 0, 1, 0,  1, 0, 1, 0,  3, 0, 2, 0],
+  },
 };
 
 const ARP_PATTERNS: readonly (readonly number[])[] = [

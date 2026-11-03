@@ -377,7 +377,7 @@ static void test_containment() {
 
 static void test_music() {
     printf("[musique]\n");
-    for (int decor = 0; decor < 4; decor++) {
+    for (int decor = 0; decor < 5; decor++) {
         int notes = 0;
         float lo = 1e9f, hi = 0;
         for (uint32_t st = 0; st < MUSIC_STEPS * 2; st++) {
@@ -401,7 +401,7 @@ static void test_music() {
 static void test_sfx_patterns() {
     printf("[effets sonores]\n");
     int total = 0;
-    for (int decor = 0; decor < 4; decor++) {
+    for (int decor = 0; decor < 5; decor++) {
         for (int id = 1; id <= (int)Sfx::LockLit; id++) {
             for (int arg = 0; arg < 6; arg += 5) {
                 Pattern p;

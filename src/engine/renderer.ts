@@ -1048,6 +1048,70 @@ export class PinballCanvasRenderer {
       ctx.fillStyle = '#FFE81F';
       ctx.fillText(`×${mult}`, fx, fy + 18);
       ctx.restore();
+    } else if (table.id === 'classique') {
+      // Table mécanique classique : champ bordeaux, rayons dorés, triangle de bumpers et cartouche central
+      ctx.save();
+      ctx.translate(113, 150);
+      for (let i = 0; i < 24; i++) {
+        const a = (i * Math.PI) / 12;
+        ctx.beginPath();
+        ctx.moveTo(Math.cos(a) * 22, Math.sin(a) * 22);
+        ctx.lineTo(Math.cos(a) * 92, Math.sin(a) * 92);
+        ctx.strokeStyle = i % 2 === 0 ? 'rgba(253, 224, 71, 0.16)' : 'rgba(220, 38, 38, 0.2)';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+      }
+      ctx.restore();
+
+      ctx.save();
+      ctx.strokeStyle = 'rgba(253, 224, 71, 0.5)';
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.moveTo(78, 138);
+      ctx.lineTo(148, 138);
+      ctx.lineTo(113, 178);
+      ctx.closePath();
+      ctx.stroke();
+      for (const r of [34, 56]) {
+        ctx.beginPath();
+        ctx.arc(113, 150, r, 0, Math.PI * 2);
+        ctx.strokeStyle = r === 34 ? 'rgba(245, 158, 11, 0.4)' : 'rgba(245, 158, 11, 0.2)';
+        ctx.stroke();
+      }
+      ctx.restore();
+
+      // Cartouche central « FLIPPER » avec le multiplicateur de bonus
+      ctx.save();
+      ctx.fillStyle = '#1A0709';
+      ctx.strokeStyle = '#F59E0B';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.roundRect(78, 262, 70, 30, 4);
+      ctx.fill();
+      ctx.stroke();
+      ctx.font = '700 11px "JetBrains Mono", monospace';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = '#FDE047';
+      ctx.fillText('FLIPPER', 113, 273);
+      ctx.font = '700 8px "JetBrains Mono", monospace';
+      ctx.fillStyle = '#FEF3C7';
+      ctx.fillText(`BONUS ×${mult}`, 113, 285);
+      ctx.restore();
+
+      // Voyants dorés alignés au-dessus des slingshots
+      ctx.save();
+      for (let k = 0; k < 5; k++) {
+        const lx = 85 + k * 14;
+        ctx.beginPath();
+        ctx.arc(lx, 344, 3.2, 0, Math.PI * 2);
+        ctx.fillStyle = k <= mult - 1 ? '#FDE047' : 'rgba(253, 224, 71, 0.18)';
+        ctx.fill();
+        ctx.strokeStyle = '#F59E0B';
+        ctx.lineWidth = 0.9;
+        ctx.stroke();
+      }
+      ctx.restore();
     } else {
       // Temple Solaire: Golden Sun Calendar + Stepped Pyramid
       ctx.save();

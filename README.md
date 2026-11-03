@@ -21,7 +21,7 @@ Jeu de flipper arcade néo-pixel conçu sur mesure pour la console **Gamebuino A
 
 ---
 
-## Les 4 plateaux aux dispositions uniques
+## Les 5 plateaux aux dispositions uniques
 
 | Plateau | Architecture physique | Rampes 3D | Missions dédiées |
 | :--- | :--- | :--- | :--- |
@@ -29,6 +29,7 @@ Jeu de flipper arcade néo-pixel conçu sur mesure pour la console **Gamebuino A
 | **2. Odyssée Spatiale** | **3 flippers** (paire basse + flipper orbital gauche à mi-hauteur `y=256`), constellation centrale de 5 bumpers en diamant | Grande arche moulée **Apollo** + rail chromé croisé **Anneau de Saturne** | *Allumage Apollo*, *Champ d'Astéroïdes*, *Arrimage Station ISS* |
 | **3. Star Wars · Yavin** | **4 flippers** (paire basse + **double assaut étagé à droite** `y=154` & `y=282`), Conduit Thermique gardé par 2 turbolasers, bumpers X-Wing / Faucon Millenium / Y-Wing | Deux grandes rampes **Sabre Sith (rouge) & Sabre Jedi (bleu)** croisées en **X**, saut hyperespace | *Duel de sabres*, *Défense des turbolasers*, *Tranchée de l’Étoile Noire* ; sons de blaster et de sabre laser |
 | **4. Temple Solaire** | **4 flippers en terrasses diagonales** (terrasse jade haute-gauche `y=204` + terrasse or basse-droite `y=298`), sanctuaires séparés émeraude / solaire | Rampe sinueuse **Serpent Quetzal** en S + rail doré **Aqueduc Solaire** | *Réveil de Quetzal*, *Offrande Solaire*, *Éclipse d'Or* |
+| **5. Flipper Classique** | **2 flippers seulement**, table mécanique d'arcade : triangle de 3 bumpers sous un verrou central, cartouche « FLIPPER » et voyants dorés | Deux **rampes miroir** (ambre à gauche, rail doré à droite) | *Rampes x2*, *Triangle Or*, *Cibles* |
 
 ---
 
@@ -54,7 +55,7 @@ Jeu de flipper arcade néo-pixel conçu sur mesure pour la console **Gamebuino A
 ├── src/                        # Application Web & Simulateur Gamebuino AKA (React 19 + TS + Canvas 720Hz)
 │   ├── audio/soundEngine.ts    # Synthétiseur sonore arcade WebAudio sans fichier externe
 │   ├── components/             # Châssis interactif Gamebuino AKA 90° + panneaux compagnons
-│   ├── data/tables.ts          # Géométrie, rampes, bumpers et missions des 4 plateaux (240x520)
+│   ├── data/tables.ts          # Géométrie, rampes, bumpers et missions des 5 plateaux (240x520)
 │   ├── engine/physicsEngine.ts # Moteur physique 720Hz, Multibille x3, zoom d'arrivée & caméra
 │   └── engine/renderer.ts      # Rendu 2D haute précision, rampes Catmull-Rom & HUD 240x46
 ├── tests/engine.test.mjs       # Tests headless du moteur (node:test) : stabilité, déterminisme, framerate, pause...
@@ -111,7 +112,7 @@ Les binaires autonomes (`.exe` portable sous Windows, `.AppImage` / `.tar.gz` so
 
 ## Firmware Gamebuino AKA
 
-Le firmware (`firmware/aka_idf`) est un projet **ESP-IDF 5.5.1** pour l'ESP32-S3 de la console, construit sur les composants `gamebuino` et `aka_runtime`. C'est un **moteur simplifié** par rapport au Web/PC : les 4 plateaux (générés depuis `src/data/tables.ts`), bumpers, slingshots, flippers, rampes, puits de verrouillage, Multibille, missions et records sont présents, mais pas les spinners, les cibles ni les rollovers du Web. Les textes en jeu sont en français ; le menu système (MENU) est traduit en fr, en, de, es et it.
+Le firmware (`firmware/aka_idf`) est un projet **ESP-IDF 5.5.1** pour l'ESP32-S3 de la console, construit sur les composants `gamebuino` et `aka_runtime`. C'est un **moteur simplifié** par rapport au Web/PC : les 5 plateaux (générés depuis `src/data/tables.ts`), bumpers, slingshots, flippers, rampes, puits de verrouillage, Multibille, missions et records sont présents, mais pas les spinners, les cibles ni les rollovers du Web. Les textes en jeu sont en français ; le menu système (MENU) est traduit en fr, en, de, es et it.
 
 - **Graphismes** : le décor de chaque plateau (fond, rampes 3D, bumpers, cadre, cartouches) est **pré-rendu depuis le vrai moteur du jeu Web** (`PinballCanvasRenderer.renderTableArtwork`) et embarqué dans le firmware (`firmware/aka_idf/main/art/art<N>.bin`, 240×520 RGB565). La console y superpose les éléments animés : flippers, bille, ressort, éclats des bumpers et slingshots, puits Multibille, et les **lampes** (chevrons du couloir lanceur en chenillard, 4 rollovers du haut + 2 retours allumés par la bille, gemmes de mission). Les boutons de flippers décalent les lampes du haut ; 4 couloirs = +10 000, 2 retours = +5 000. Pour régénérer les images après une modification des plateaux ou du rendu web : `node scripts/gen-aka-art.mjs` (Chromium + Playwright requis), puis committer les `.bin`.
 - **Sons** : effets de flipper synthétisés (bumpers, slingshots, flippers, ressort, rampes, verrouillage, Multibille, tilt, fin de partie…), avec un décor sonore propre à chaque plateau. Aucun échantillon ni musique protégée.

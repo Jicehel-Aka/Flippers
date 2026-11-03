@@ -8,6 +8,7 @@ const DEFAULT_HIGH_SCORES: Record<TableThemeId, number> = {
   space_odyssey: 420000,
   star_galaxy: 510000,
   solaire: 450000,
+  classique: 390000,
 };
 
 export function loadHighScores(): Record<TableThemeId, number> {
@@ -27,6 +28,8 @@ export function loadHighScores(): Record<TableThemeId, number> {
           ? parsed.star_galaxy
           : DEFAULT_HIGH_SCORES.star_galaxy,
       solaire: typeof parsed.solaire === 'number' ? parsed.solaire : DEFAULT_HIGH_SCORES.solaire,
+      classique:
+        typeof parsed.classique === 'number' ? parsed.classique : DEFAULT_HIGH_SCORES.classique,
     };
   } catch {
     return { ...DEFAULT_HIGH_SCORES };
@@ -972,6 +975,178 @@ export const PINBALL_TABLES: PinballTableDef[] = [
         'J-A-D-E alimente la terrasse gauche et monte le Bonus ; M-A-Y-A lance l’Éclipse Multibille ; S-O-L allume les 2 boucliers sacrés.',
       multiballRule:
         'Verrouillez 2 billes dans la Crypte de l’Éclipse (haut-gauche) ou complétez M-A-Y-A pour libérer 3 billes d’or !',
+    },
+  },
+  // ==========================================================================
+  // 5. FLIPPER CLASSIQUE (table originale)
+  // Esprit des machines mécaniques à lampes : 2 flippers seulement, 3 bumpers en triangle
+  // sous un verrou central, deux rampes miroir, voyants à points et bonus de fin de bille.
+  // ==========================================================================
+  {
+    id: 'classique',
+    name: 'Flipper Classique',
+    subtitle: 'Triangle de Bumpers & Voyants Lumineux',
+    layoutBadge: '2 Flippers · Table Mécanique',
+    environmentTag: 'Salle d’Arcade · Années 70-80',
+    description:
+      'La table des salles d’arcade d’autrefois : trois bumpers en triangle sous le verrou central, deux rampes symétriques, des cibles latérales et des voyants dorés à allumer pour faire grimper le bonus.',
+    multiballName: 'MULTIBILLE JACKPOT',
+    jackpotName: 'SUPER JACKPOT',
+    skillShotLabel: 'TIR PARFAIT',
+    gravity: 320,
+    palette: {
+      bgPrimary: '#2B0D14',
+      bgSecondary: '#4A1522',
+      cabinetFrame: '#CA8A04',
+      cabinetHighlight: '#FEF3C7',
+      wallMetal: '#CBD5E1',
+      wallHighlight: '#FFFFFF',
+      accentPrimary: '#F59E0B',
+      accentSecondary: '#FDE047',
+      accentWarm: '#DC2626',
+      flipperTop: '#FFF7ED',
+      flipperSkirt: '#B91C1C',
+      slingshotMain: '#DC2626',
+      slingshotAccent: '#FDE047',
+      hudBg: '#1A0709',
+      hudBorder: '#F59E0B',
+      hudDigits: '#FDE047',
+      hudStyle: 'LED_7SEG',
+      ballTint: '#F1F5F9',
+    },
+    extraFlippers: [],
+    beveledHousings: [
+      { points: [{ x: 9, y: 210 }, { x: 19, y: 220 }, { x: 19, y: 280 }, { x: 9, y: 290 }] },
+      { points: [{ x: 217, y: 210 }, { x: 207, y: 220 }, { x: 207, y: 280 }, { x: 217, y: 290 }] },
+      { points: [{ x: 9, y: 314 }, { x: 18.5, y: 323.5 }, { x: 18.5, y: 360.5 }, { x: 9, y: 370 }] },
+      { points: [{ x: 217, y: 314 }, { x: 207.5, y: 323.5 }, { x: 207.5, y: 360.5 }, { x: 217, y: 370 }] },
+    ],
+    bumpers: [
+      { id: 'cla_b1', x: 78, y: 138, radius: 10.5, points: 2000, label: 'BUMPER ROUGE', colorStyle: 'RED', iconStyle: 'SUN' },
+      { id: 'cla_b2', x: 148, y: 138, radius: 10.5, points: 2000, label: 'BUMPER BLEU', colorStyle: 'BLUE', iconStyle: 'SUN' },
+      { id: 'cla_b3', x: 113, y: 178, radius: 11, points: 2400, label: 'BUMPER OR', colorStyle: 'GOLD', iconStyle: 'SUN' },
+    ],
+    targets: [
+      ...makeVerticalBank('cla', 'BONUS', 'MULTIPLIER', 'DROP', 19.5, 222, 14, ['B', 'O', 'N', 'S'], ['#EF4444', '#FACC15', '#22C55E', '#38BDF8'], 3500),
+      ...makeVerticalBank('cla', 'JACK', 'MULTIBALL', 'STANDUP', 206.5, 222, 14, ['J', 'A', 'C', 'K'], ['#FACC15', '#EF4444', '#38BDF8', '#22C55E'], 4500),
+      ...makeVerticalBank('cla', 'KICK', 'KICKBACK', 'DROP', 19, 325, 12.5, ['K', 'I', 'C'], ['#22C55E', '#38BDF8', '#FACC15'], 3200),
+      ...makeVerticalBank('cla', 'GOLD', 'JACKPOT_BOOST', 'STANDUP', 207, 325, 12.5, ['G', 'O', 'D'], ['#FACC15', '#EF4444', '#38BDF8'], 3500),
+    ],
+    ramps: [
+      {
+        id: 'cla_ramp_l',
+        name: 'RAMPE GAUCHE',
+        style: 'MOLDED_ACRYLIC',
+        entry: { x: 48, y: 334 },
+        entryRadius: 15,
+        entryDir: { x: -0.32, y: -0.95 },
+        path: [
+          { x: 48, y: 334 },
+          { x: 28, y: 278 },
+          { x: 26, y: 202 },
+          { x: 34, y: 134 },
+        ],
+        points: 18000,
+        chuteColor: '#F59E0B',
+        railColor: '#E2E8F0',
+      },
+      {
+        id: 'cla_ramp_r',
+        name: 'RAMPE DROITE',
+        style: 'WIREFORM_RAIL',
+        entry: { x: 178, y: 334 },
+        entryRadius: 15,
+        entryDir: { x: 0.32, y: -0.95 },
+        path: [
+          { x: 178, y: 334 },
+          { x: 198, y: 278 },
+          { x: 200, y: 202 },
+          { x: 192, y: 134 },
+        ],
+        points: 18000,
+        chuteColor: '#DC2626',
+        railColor: '#FDE047',
+      },
+    ],
+    rollovers: [
+      { id: 'cla_r1', groupId: 'TOP_LANES', x: 68, y: 52, radius: 6, letter: 'F', points: 3500 },
+      { id: 'cla_r2', groupId: 'TOP_LANES', x: 98, y: 49, radius: 6, letter: 'L', points: 3500 },
+      { id: 'cla_r3', groupId: 'TOP_LANES', x: 128, y: 49, radius: 6, letter: 'I', points: 3500 },
+      { id: 'cla_r4', groupId: 'TOP_LANES', x: 158, y: 52, radius: 6, letter: 'P', points: 3500 },
+      { id: 'cla_in_l', groupId: 'INLANES', x: 36, y: 414, radius: 5.5, letter: '★', points: 2500 },
+      { id: 'cla_in_r', groupId: 'INLANES', x: 190, y: 414, radius: 5.5, letter: '★', points: 2500 },
+    ],
+    spinners: [
+      { id: 'cla_sp1', name: 'TOURNIQUET GAUCHE', x: 56, y: 204, width: 15, angle: -0.2, pointsPerSpin: 900 },
+      { id: 'cla_sp2', name: 'TOURNIQUET DROIT', x: 170, y: 204, width: 15, angle: 0.2, pointsPerSpin: 900 },
+    ],
+    scoops: [
+      {
+        id: 'cla_lock',
+        name: 'VERROU CENTRAL',
+        kind: 'UPPER_LOCK',
+        x: 113,
+        y: 96,
+        radius: 9,
+        ejectTo: { x: 113, y: 112 },
+        ejectVelocity: { x: 0, y: 165 },
+        points: 22000,
+        color: '#FDE047',
+      },
+      {
+        id: 'cla_vuk',
+        name: 'PUITS DU BONUS',
+        kind: 'MID_VUK_TELEPORT',
+        x: 113,
+        y: 316,
+        radius: 9,
+        ejectTo: { x: 34, y: 134 },
+        ejectVelocity: { x: 48, y: 135 },
+        points: 16000,
+        color: '#F59E0B',
+      },
+    ],
+    missions: [
+      {
+        id: 'cla_m1',
+        title: 'RAMPES X2',
+        description: 'Franchir 2 rampes pour allumer les voyants',
+        targetKind: 'RAMP',
+        goal: 2,
+        rewardPoints: 45000,
+        accentColor: '#F59E0B',
+      },
+      {
+        id: 'cla_m2',
+        title: 'TRIANGLE OR',
+        description: 'Frapper 5 fois les bumpers du triangle',
+        targetKind: 'BUMPER',
+        goal: 5,
+        rewardPoints: 55000,
+        accentColor: '#DC2626',
+      },
+      {
+        id: 'cla_m3',
+        title: 'CIBLES',
+        description: 'Toucher 4 cibles ou puits pour le bonus final',
+        targetKind: 'TARGET',
+        goal: 4,
+        rewardPoints: 75000,
+        accentColor: '#FDE047',
+      },
+    ],
+    extraWalls: [],
+    extraPegs: [],
+    missionEmblemPos: { x: 113, y: 364 },
+    rulesSummary: {
+      rampsRule:
+        'Deux rampes miroir : la gauche en acrylique ambré, la droite en rail doré, qui ramènent la bille en haut des couloirs latéraux.',
+      bumpersRule:
+        'Triangle de 3 bumpers rouge, bleu et or sous le verrou central : chaque coup fait grimper le bonus.',
+      targetsRule:
+        'B-O-N-S augmente le Bonus, J-A-C-K déclenche le Multibille et K-I-C rallume les 2 Kickbacks.',
+      multiballRule:
+        'Verrouillez 2 billes dans le Verrou Central (en haut) ou complétez J-A-C-K pour libérer 3 billes !',
     },
   },
 ];

@@ -20,7 +20,7 @@ struct Theme {
     int8_t ph[4][PHRASE_STEPS];
 };
 
-const Theme THEMES[4] = {
+const Theme THEMES[5] = {
     // 0 circuit : la mineur, carre, allant
     { 220.0f, 118, WAVE_SQUARE, 0.20f,
       {
@@ -89,6 +89,23 @@ const Theme THEMES[4] = {
         15, R, R, 19, R, R, 15, R,  12, R, 10, R, 7, R, R, R }
       }
     },
+    // 4 classique : do majeur, carre, orgue de salle d'arcade, entrainant
+    { 261.63f, 112, WAVE_SQUARE, 0.19f,
+      {
+      { // A
+        0, R, 4, R,  7, R, 4, R,   9, R, 7, R,  4, R, 2, R,
+        0, R, 4, R,  7, R, 12, R,  11, 9, 7, 4,  7, R, R, R },
+      { // B
+        5, R, 9, R,  12, R, 9, R,  7, R, 11, R,  14, R, 11, R,
+        9, R, 5, R,  4, R, 7, R,   9, 7, 5, 4,  2, R, R, R },
+      { // C
+        12, R, 11, R,  9, R, 7, R,  9, R, 7, R,  4, R, R, R,
+        12, R, 14, R,  16, R, 14, R,  12, 11, 9, 7,  12, R, R, R },
+      { // D
+        0, 4, 7, 12, 7, 4, 0, R,  2, 5, 9, 14, 9, 5, 2, R,
+        4, 7, 11, 16, 11, 7, 4, R,  0, 4, 7, 12, 16, 12, 7, R }
+      }
+    },
 };
 
 // Forme : A B A C | D B C A — 8 phrases de 32 pas, soit 256 pas (plus de 30 s avant de reboucler)
@@ -97,12 +114,12 @@ constexpr uint8_t ORDER[8] = { 0, 1, 0, 2, 3, 1, 2, 0 };
 } // namespace
 
 uint16_t music_step_ms(uint8_t decor, bool intense) {
-    const Theme& t = THEMES[decor & 3];
+    const Theme& t = THEMES[decor % 5];
     return intense ? (uint16_t)(t.stepMs * 85u / 100u) : t.stepMs;
 }
 
 bool music_note(uint8_t decor, uint32_t step, MusicNote& out) {
-    const Theme& t = THEMES[decor & 3];
+    const Theme& t = THEMES[decor % 5];
     const uint32_t pos = step % MUSIC_STEPS;
     const int8_t s = t.ph[ORDER[pos / PHRASE_STEPS]][pos % PHRASE_STEPS];
     if (s == R) return false;

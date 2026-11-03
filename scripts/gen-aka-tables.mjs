@@ -60,7 +60,7 @@ const BUMPER_COLORS = {
 const ROLL_CHAR = { '★': '*', '☀': '*', '◆': '+', '◄': '<', '►': '>', '!': '!' };
 const rollChar = (l) => ROLL_CHAR[l] ?? (/^[A-Za-z0-9]$/.test(l) ? l.toUpperCase() : '*');
 const MISSION_KIND = { BUMPER: 0, RAMP: 1, TARGET: 2, SCOOP: 2 };
-const DECOR = { aka_esp32: 0, space_odyssey: 1, star_galaxy: 2, solaire: 3 };
+const DECOR = { aka_esp32: 0, space_odyssey: 1, star_galaxy: 2, solaire: 3, classique: 4 };
 
 // Rééchantillonne un chemin de rampe sur exactement 5 points (le moteur embarqué en suit 5).
 function resample5(path) {

@@ -10,9 +10,11 @@ static constexpr uint32_t kMagic = 0x504E4231;   // "PNB1"
 static void sd_load(uint32_t out[pinball::TABLE_COUNT]) {
     FILE* f = fopen(kPath, "rb");
     if (!f) return;
-    uint32_t buf[1 + pinball::TABLE_COUNT];
-    if (fread(buf, sizeof(uint32_t), 1 + pinball::TABLE_COUNT, f) == 1 + pinball::TABLE_COUNT && buf[0] == kMagic) {
-        for (int i = 0; i < pinball::TABLE_COUNT; i++) out[i] = buf[1 + i];
+    uint32_t buf[1 + pinball::TABLE_COUNT] = {};
+    // un fichier d'une version precedente (moins de tables) reste lisible : on garde ses records
+    const size_t n = fread(buf, sizeof(uint32_t), 1 + pinball::TABLE_COUNT, f);
+    if (n >= 2 && buf[0] == kMagic) {
+        for (size_t i = 1; i < n; i++) out[i - 1] = buf[i];
     }
     fclose(f);
 }
