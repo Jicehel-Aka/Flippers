@@ -186,14 +186,14 @@ test('firmware AKA music.cpp : 12 thèmes valides (6×32 pas), denses, périodiq
   );
   const themeHeaderRe =
     /\{\s*([0-9.]+)f\s*,\s*(\d+)\s*,\s*(WAVE_[A-Z]+)\s*,\s*(WAVE_[A-Z]+)\s*,\s*([0-9.]+)f\s*,\s*([0-9.]+)f\s*,\s*\{(\s*\{[\s\S]*?\})\s*\}\s*\}/g;
-  const orderMatch = cpp.match(/ORDER\[16\]\s*=\s*\{([^}]+)\}/);
-  assert.ok(orderMatch, 'Tableau ORDER[16] introuvable dans music.cpp');
+  const orderMatch = cpp.match(/ORDER\[PHRASE_SLOTS\]\s*=\s*\{([^}]+)\}/);
+  assert.ok(orderMatch, 'Tableau ORDER[PHRASE_SLOTS] introuvable dans music.cpp');
   const order = orderMatch[1]
     .trim()
     .split(/\s*,\s*/)
     .filter(Boolean)
     .map(Number);
-  assert.equal(order.length, 16);
+  assert.equal(order.length, 24);
 
   const themes = [];
   let m;
@@ -219,7 +219,7 @@ test('firmware AKA music.cpp : 12 thèmes valides (6×32 pas), denses, périodiq
 
   assert.equal(themes.length, 12, 'music.cpp doit définir exactement 12 thèmes');
 
-  const MUSIC_STEPS = 512;
+  const MUSIC_STEPS = 768;
   const akaSigs = new Set();
   themes.forEach((t, decor) => {
     assert.ok(t.vol > 0 && t.vol <= 0.5, `decor ${decor}: vol hors plage (${t.vol})`);
@@ -230,7 +230,7 @@ test('firmware AKA music.cpp : 12 thèmes valides (6×32 pas), denses, périodiq
     for (let st = 0; st < MUSIC_STEPS * 2; st++) {
       const pos = st % MUSIC_STEPS;
       const phraseId = order[Math.floor(pos / 32)];
-      const s = t.ph[phraseId][pos % 32];
+      const s = (t.ph[phraseId] ?? t.ph[phraseId - 4])[pos % 32];
       if (s === 99) continue;
       notes++;
       let freq = t.rootHz * Math.pow(2, s / 12);
@@ -240,7 +240,7 @@ test('firmware AKA music.cpp : 12 thèmes valides (6×32 pas), denses, périodiq
     }
     assert.ok(
       notes >= Math.floor((MUSIC_STEPS * 2) / 3),
-      `decor ${decor}: boucle AKA trop vide (${notes} notes sur 1024 pas)`
+      `decor ${decor}: boucle AKA trop vide (${notes} notes sur 1536 pas)`
     );
 
     const sig = t.ph[0].join(',');
