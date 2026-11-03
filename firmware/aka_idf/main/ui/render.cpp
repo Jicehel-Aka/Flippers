@@ -505,9 +505,10 @@ static void draw_playfield(const Game& g, const View& v, const TableDef& t) {
         const float h1 = h0 * 0.55f;
         ptaper(x1 + 1, y1 + 2, x2 + 1, y2 + 2, h0 + 1.0f, h1 + 1.0f, C3(2, 3, 6));              // ombre
         ptaper(x1, y1, x2, y2, h0 + 1.0f, h1 + 1.0f, darken(t.flipperCol, 55));                  // contour
-        ptaper(x1, y1, x2, y2, h0, h1, C(t.flipperCol));                                          // corps
-        ptaper(x1, y1 - 1, x2, y2 - 1, h0 * 0.45f, h1 * 0.4f, lighten(t.flipperCol, 45));         // reflet
-        pfillcircle(x2, y2, (int)(h1 + 0.5f), lighten(t.flipperCol, 20));                         // bout arrondi
+        ptaper(x1, y1, x2, y2, h0, h1, C(t.flipperCol));                                          // liseré colore
+        ptaper(x1, y1, x2, y2, h0 * 0.68f, h1 * 0.62f, lighten(t.flipperCol, 175));               // dessus blanc (chrome)
+        ptaper(x1, y1 - 1, x2, y2 - 1, h0 * 0.3f, h1 * 0.3f, C3(255, 255, 255));                  // reflet
+        pfillcircle(x2, y2, (int)(h1 * 0.68f + 0.5f), lighten(t.flipperCol, 175));                // bout arrondi
         const int pr = v.R(3.5f) < 2 ? 2 : v.R(3.5f);
         pfillcircle(x1, y1, pr + 1, C3(30, 41, 59));                                              // pivot
         pfillcircle(x1, y1, pr, C(t.accent));

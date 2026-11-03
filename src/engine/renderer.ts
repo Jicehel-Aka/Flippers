@@ -1412,7 +1412,21 @@ export class PinballCanvasRenderer {
 
       const cx = (p1[0] + p2[0] + p3[0]) / 3;
       const cy = (p1[1] + p2[1] + p3[1]) / 3;
-      this.drawStarShape(ctx, cx, cy, 4.5, 2, '#FFFFFF');
+      // biseau : triangle intérieur éclairci + arête haute brillante
+      ctx.beginPath();
+      ctx.moveTo(cx + (p1[0] - cx) * 0.62, cy + (p1[1] - cy) * 0.62);
+      ctx.lineTo(cx + (p2[0] - cx) * 0.62, cy + (p2[1] - cy) * 0.62);
+      ctx.lineTo(cx + (p3[0] - cx) * 0.62, cy + (p3[1] - cy) * 0.62);
+      ctx.closePath();
+      ctx.fillStyle = flash > 0 ? 'rgba(255, 255, 255, 0.5)' : 'rgba(255, 255, 255, 0.16)';
+      ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(p1[0], p1[1]);
+      ctx.lineTo(p3[0], p3[1]);
+      ctx.lineWidth = 0.9;
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.55)';
+      ctx.stroke();
+      this.drawStarShape(ctx, cx, cy, 5.4, 2.4, '#FFFFFF');
     };
 
     draw3DSlingshot([45, 376], [45, 416], [70, 431], sim.slingshotFlash.LEFT);
@@ -1657,9 +1671,18 @@ export class PinballCanvasRenderer {
     ctx.stroke();
 
     const capY = bmp.y + liftY;
+    // anneau chromé autour du chapeau (relief façon sprite pixel-art)
+    ctx.beginPath();
+    ctx.arc(bmp.x, capY, r + 1.1, 0, Math.PI * 2);
+    ctx.fillStyle = '#CBD5E1';
+    ctx.fill();
     ctx.beginPath();
     ctx.arc(bmp.x, capY, r, 0, Math.PI * 2);
-    ctx.fillStyle = flash ? '#FEF08A' : c.main;
+    const capGrad = ctx.createRadialGradient(bmp.x - r * 0.35, capY - r * 0.4, r * 0.1, bmp.x, capY, r);
+    capGrad.addColorStop(0, flash ? '#FFFFFF' : c.light);
+    capGrad.addColorStop(0.55, flash ? '#FEF08A' : c.main);
+    capGrad.addColorStop(1, flash ? '#FACC15' : c.dark);
+    ctx.fillStyle = capGrad;
     ctx.fill();
     ctx.lineWidth = 1.4;
     ctx.strokeStyle = '#090D16';
@@ -1715,6 +1738,11 @@ export class PinballCanvasRenderer {
       ctx.fillStyle = iconColor;
       ctx.fill();
     }
+    // reflet spéculaire
+    ctx.beginPath();
+    ctx.ellipse(bmp.x - r * 0.38, capY - r * 0.46, r * 0.26, r * 0.13, -0.6, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+    ctx.fill();
     ctx.restore();
   }
 
