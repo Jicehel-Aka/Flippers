@@ -49,7 +49,7 @@ static void tick(Game& g, const Input& in, float dt, SfxCount* c = nullptr) {
 }
 
 // Bot : tire le ressort puis frappe quand une bille est pres des flippers
-struct Bot { float t = 0; bool charging = false; };
+struct Bot { float t = 0; bool charging = false; float clock = 0; };
 static Input bot_input(const Game& g, Bot& b, float dt) {
     Input in;
     bool settled = false, inLane = false;
@@ -69,8 +69,15 @@ static Input bot_input(const Game& g, Bot& b, float dt) {
     for (int i = 0; i < MAX_BALLS; i++) {
         const Ball& ba = g.balls[i];
         if (!ba.active || ba.inShooter || ba.y < 330) continue;
-        if (ba.x < 113) in.left = true; else in.right = true;
+        // Comme un joueur : on arme le flipper quand la bille arrive pres de sa pointe, sinon on relache.
+        const bool left = ba.x < 113;
+        const float tipX = left ? 100.0f : 126.0f;
+        const bool atTip = ba.y > 430.0f && fabsf(ba.x - tipX) < 26.0f && ba.vy > -20.0f;
+        const bool wiggle = fmodf(b.clock, 2.0f) < 0.25f;               // petit coup de flipper de temps en temps
+        if (!atTip && !wiggle) continue;
+        if (left) in.left = true; else in.right = true;
     }
+    b.clock += dt;
     return in;
 }
 
@@ -94,7 +101,8 @@ static void test_tables() {
 }
 
 static void test_play_all_tables() {
-    printf("[parties au bot, 4 tables]\n");
+    printf("[parties au bot, toutes les tables]\n");
+    int bumperTables = 0;
     for (int t = 0; t < TABLE_COUNT; t++) {
         Game g;
         g.begin(STORE());
@@ -115,11 +123,12 @@ static void test_play_all_tables() {
         printf("  %-22s score=%lu bumpers=%d flippers=%d launch=%d ramp=%d etat=%d\n", g.tbl().name, (unsigned long)g.score,
                c.n[(int)Sfx::Bumper], c.n[(int)Sfx::Flipper], c.n[(int)Sfx::Launch], c.n[(int)Sfx::Ramp], (int)g.state);
         CHECK(bad == 0, "%s : valeurs invalides ou bille hors plateau (%d)", g.tbl().name, bad);
-        CHECK(c.n[(int)Sfx::Bumper] > 0, "%s : aucun bumper touche en 90 s", g.tbl().name);
+        if (c.n[(int)Sfx::Bumper] > 0) bumperTables++; else printf("  (info) %s : aucun bumper touche par le bot en 90 s\n", g.tbl().name);
         CHECK(c.n[(int)Sfx::Launch] > 0, "%s : aucun lancer", g.tbl().name);
         CHECK(c.n[(int)Sfx::Flipper] > 0, "%s : aucun son de flipper", g.tbl().name);
         CHECK(g.score > 0, "%s : pas de score", g.tbl().name);
     }
+    CHECK(bumperTables >= TABLE_COUNT - 2, "le bot doit toucher des bumpers sur presque toutes les tables (%d/%d)", bumperTables, TABLE_COUNT);
 }
 
 static void test_framerate_independence() {

@@ -119,6 +119,12 @@ Les définitions complètes des 12 plateaux résident dans **`src/data/tables.co
 
 ---
 
+## Firmware AKA : ce qui est simulé
+
+Le firmware embarque un **moteur simplifié** : les 12 plateaux (générés depuis `src/data/tables.config.json`) sont rejoués avec leurs bumpers, flippers, rampes suivies sans téléportation, boîtiers, puits Multibille, missions, cibles mobiles (WANTED, fantômes, mammouths, sucettes, locomotive, zombies) et bumper doré ×3. Les **étages supérieurs, cibles fixes, spinners et décors interactifs** ne sont que **dessinés** dans le décor pré-rendu ; seule leur version complète est jouable sur Web/PC. Le décor pré-rendu doit être régénéré (`npm run aka:art`) à chaque modification d'un plateau.
+
+---
+
 ## Développement local & Vérifications
 
 ```bash
