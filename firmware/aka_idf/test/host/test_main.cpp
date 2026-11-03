@@ -883,6 +883,29 @@ static void test_return_and_sling() {
     }
 }
 
+static void test_ramp_exit_not_drain() {
+    printf("[sortie de rampe : pas de chute directe dans les couloirs de sortie]\n");
+    int bad = 0, total = 0;
+    for (int t = 0; t < TABLE_COUNT; t++) for (int r = 0; r < 2; r++) {
+        const Vec2 ex = table(t).ramps[r].pts[RAMP_PTS - 1];
+        if (table(t).ramps[r].toUpper || ex.y < 150.0f || (ex.x > 60.0f && ex.x < 166.0f)) continue;
+        Game* g = fresh(t);
+        const Vec2 en = table(t).ramps[r].pts[0];
+        g->balls[0] = {en.x, en.y + 4.0f, 0.0f, -260.0f, true, false, 0, 0};
+        float xAt = -1; bool crossed = false;
+        for (int f = 0; f < 60 * 8 && !crossed; f++) {
+            tick(*g, Input(), 1.0f / 60.0f);
+            const Ball& b = g->balls[0];
+            if (b.ramp < 0 && b.y > 380.0f) { xAt = b.x; crossed = true; }
+            if (!b.active) break;
+        }
+        total++;
+        if (crossed && (xAt < 27.0f || xAt > 199.0f)) { bad++; printf("    table %d rampe %d : franchit y=380 en x=%.0f (couloir de sortie)\n", t, r, xAt); }
+        delete g;
+    }
+    CHECK(bad == 0, "%d/%d sorties de rampe retombent dans un couloir de sortie", bad, total);
+}
+
 int main(int argc, char** argv) {
     const char* outDir = argc > 1 ? argv[1] : nullptr;
     test_tables();
@@ -897,6 +920,7 @@ int main(int argc, char** argv) {
     test_launch_and_save();
     test_plunger_in_flight();
     test_return_and_sling();
+    test_ramp_exit_not_drain();
     test_containment();
     test_ramp_follow();
     test_hunt();

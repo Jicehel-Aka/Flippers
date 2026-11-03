@@ -11,7 +11,8 @@ namespace pinball {
 
 constexpr int DECOR_COUNT = 12;                  // un theme musical par decor (0..11)
 constexpr int PHRASE_STEPS = 32;                 // une phrase = 2 mesures de 16 doubles-croches
-constexpr int MUSIC_STEPS = PHRASE_STEPS * 16;   // une boucle longue = 16 phrases variees (512 pas)
+constexpr int PHRASE_SLOTS = 24;                 // une boucle longue = 24 phrases (8 motifs agences) ; 4 passages differents avant retour
+constexpr int MUSIC_STEPS = PHRASE_STEPS * PHRASE_SLOTS;   // 768 pas
 
 struct MusicNote {
     float freq;        // Hz

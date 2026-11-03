@@ -748,6 +748,9 @@ void Game::stepSubstep(float dt, bool leftHeld, bool rightHeld) {
                 } else {
                     b.vx = ddx / dl * 90.0f;
                     if (fabsf(b.vx) < 25.0f) b.vx = (e.x < 112.0f) ? 35.0f : -35.0f;   // jamais vx = 0 (voir plus haut)
+                    // sortie contre une paroi : la bille repart vers l'interieur du plateau (sinon elle tombe droit dans le couloir de sortie)
+                    if (e.x < 60.0f && b.vx < 80.0f) b.vx = 80.0f;
+                    else if (e.x > 166.0f && b.vx > -80.0f) b.vx = -80.0f;
                     b.vy = maxf(85.0f, ddy / dl * 140.0f);
                     b.rampCool = 0.75f;
                 }
