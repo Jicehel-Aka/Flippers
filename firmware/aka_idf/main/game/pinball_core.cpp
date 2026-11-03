@@ -118,6 +118,21 @@ void Game::buildStaticWalls() {
             if (!flushL && !flushR) addW(a.x, a.y, c.x, c.y, 0.44f, GOLD);
         }
     }
+    // murs supplementaires du plateau (editeur / JSON)
+    for (uint8_t k = 0; k < td.xwallCount; k++) {
+        const XWallDef& xw = td.xwalls[k];
+        addW(xw.x1, xw.y1, xw.x2, xw.y2, xw.bounce, STEEL);
+    }
+    // rebords fermes de l'etage superieur (les aretes ouvertes laissent retomber la bille)
+    upWallCount = 0;
+    if (td.upper.present) {
+        const UpperDeckDef& ud = td.upper;
+        for (uint8_t i = 0; i < ud.n && upWallCount < 6; i++) {
+            if (ud.openMask & (1u << i)) continue;
+            const Vec2 a = ud.b[i], c = ud.b[(i + 1) % ud.n];
+            upWalls[upWallCount++] = {a.x, a.y, c.x, c.y, 0.46f, ud.border, false};
+        }
+    }
     for (int i = 0; i < MAX_WALLS; i++) wallFlash[i] = 0.0f;
 }
 
@@ -131,8 +146,19 @@ void Game::setupFlippers() {
         if (ef.length <= 1.0f) continue;
         float r = ef.restDeg * DEG_TO_RAD_F;
         float a = ef.activeDeg * DEG_TO_RAD_F;
-        flippers[flipperCount++] = {ef.isLeft, ef.px, ef.py, ef.length, r, a, r, r};
+        flippers[flipperCount++] = {ef.isLeft, ef.px, ef.py, ef.length, r, a, r, r, 0};
     }
+    for (uint8_t i = 0; i < t.upper.flipperCount && t.upper.present; i++) {   // flipper de l'etage (couche 2)
+        const ExtraFlipperDef& ef = t.upper.flippers[i];
+        float r = ef.restDeg * DEG_TO_RAD_F;
+        float a = ef.activeDeg * DEG_TO_RAD_F;
+        flippers[flipperCount++] = {ef.isLeft, ef.px, ef.py, ef.length, r, a, r, r, 2};
+    }
+}
+
+float Game::frand() {
+    rng_ = rng_ * 1664525u + 1013904223u;
+    return (float)((rng_ >> 8) & 0xFFFFu) / 65536.0f;
 }
 
 void Game::spawnBallInShooter(int idx) {
@@ -140,9 +166,9 @@ void Game::spawnBallInShooter(int idx) {
     balls[idx] = {225.0f, PLUNGER_TOP_Y - BALL_RADIUS, 0.0f, 0.0f, true, true, 0.0f, 0.0f};
 }
 
-void Game::advanceMission(uint8_t kind) {
+void Game::advanceMission(uint8_t kind, bool joker) {
     const MissionDef& m = tbl().missions[missionIdx % 3];
-    if (m.kind != kind) return;
+    if (!joker && m.kind != kind) return;
     missionProgress++;
     touchHud();
     if (missionProgress >= m.goal) {
@@ -168,6 +194,14 @@ void Game::startNewGame(uint8_t tableIndex) {
     spawnBallInShooter(0);
     for (int i = 0; i < MAX_BUMPERS; i++) bumperFlash[i] = 0.0f;
     huntSlot = 0; huntHits = 0; huntFlash = 0.0f; litBumper = 0;
+    targetHit = 0; upTargetHit = 0; upRolloverLit = 0;
+    for (int i = 0; i < MAX_BANKS; i++) dropReset[i] = 0.0f;
+    for (int i = 0; i < MAX_TARGETS + MAX_UP_TARGETS; i++) targetFlash[i] = 0.0f;
+    for (int i = 0; i < MAX_UP_BUMPERS; i++) upBumperFlash[i] = 0.0f;
+    for (int i = 0; i < MAX_SPINNERS; i++) { spinAngle[i] = 0.0f; spinVel[i] = 0.0f; spinCount[i] = 0; }
+    toyState = ToyState{0, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f};
+    rampBoost = 1; bonusMult = 1; vukFlash = 0.0f; multiQueue = 0; multiDelay = 0.0f;
+    rng_ = 12345u + tableIdx;
     score = 0;
     ballsRemaining = 3;
     lockedBalls = 0;
@@ -197,12 +231,12 @@ void Game::startNewGame(uint8_t tableIndex) {
     touchHud();
 }
 
-void Game::collideBallSegment(Ball& b, float x1, float y1, float x2, float y2, float restitution,
+bool Game::collideBallSegment(Ball& b, float x1, float y1, float x2, float y2, float restitution,
                               float extraKick, int wallIndex, float thick) {
     float dx = x2 - x1;
     float dy = y2 - y1;
     float lenSq = dx * dx + dy * dy;
-    if (lenSq < 0.001f) return;
+    if (lenSq < 0.001f) return false;
 
     float t = ((b.x - x1) * dx + (b.y - y1) * dy) / lenSq;
     t = clampf(t, 0.0f, 1.0f);
@@ -213,7 +247,7 @@ void Game::collideBallSegment(Ball& b, float x1, float y1, float x2, float y2, f
     float ny = b.y - cy;
     float distSq = nx * nx + ny * ny;
     const float reach = BALL_RADIUS + thick;
-    if (distSq >= reach * reach || distSq < 0.0001f) return;
+    if (distSq >= reach * reach || distSq < 0.0001f) return false;
 
     float dist = sqrtf(distSq);
     nx /= dist;
@@ -235,7 +269,332 @@ void Game::collideBallSegment(Ball& b, float x1, float y1, float x2, float y2, f
             emit(Sfx::Sling);
             touchHud();
         }
+        return true;
     }
+    return false;
+}
+
+static bool pointInPoly(float x, float y, const Vec2* p, int n) {
+    bool inside = false;
+    for (int i = 0, j = n - 1; i < n; j = i++) {
+        const bool cross = ((p[i].y > y) != (p[j].y > y)) &&
+                           (x < (p[j].x - p[i].x) * (y - p[i].y) / (p[j].y - p[i].y) + p[i].x);
+        if (cross) inside = !inside;
+    }
+    return inside;
+}
+
+// Contact bille / disque plein (meme loi que le moteur Web) : renvoie vrai au contact ; `kick` impose une vitesse de sortie minimale.
+bool Game::circleHit(Ball& b, float cx, float cy, float r, float rest, float kick) {
+    float dx = b.x - cx, dy = b.y - cy;
+    const float minD = BALL_RADIUS + r;
+    const float d2 = dx * dx + dy * dy;
+    if (d2 >= minD * minD || d2 < 1e-6f) return false;
+    const float d = sqrtf(d2);
+    const float nx = dx / d, ny = dy / d;
+    b.x = cx + nx * minD;
+    b.y = cy + ny * minD;
+    const float vn = b.vx * nx + b.vy * ny;
+    if (vn < 0.0f || kick > 0.0f) {
+        if (vn < 0.0f) { b.vx -= (1.0f + rest) * vn * nx; b.vy -= (1.0f + rest) * vn * ny; }
+        if (kick > 0.0f) {
+            const float cur = b.vx * nx + b.vy * ny;
+            const float boost = maxf(kick, cur);
+            b.vx += (boost - cur) * nx;
+            b.vy += (boost - cur) * ny;
+        }
+        return true;
+    }
+    return false;
+}
+
+void Game::startMultiball() {
+    score += 40000;
+    multiballActive = true;
+    lockedBalls = 0;
+    ballSaveTimer = maxf(ballSaveTimer, 16.0f);
+    int act = 0;
+    for (int i = 0; i < MAX_BALLS; i++) if (balls[i].active) act++;
+    const int need = act >= 3 ? 0 : 3 - act;
+    multiQueue = (uint8_t)(multiQueue + need > 2 ? 2 : multiQueue + need);
+    multiDelay = 0.2f;
+    showBanner(tbl().multiballName, 2.2f);
+    emit(Sfx::Multiball);
+    touchHud();
+}
+
+// Cible touchee (plateau ou etage) : points, banque, recompenses selon le role de la banque.
+void Game::onTargetHit(uint8_t idx, bool upper) {
+    const TableDef& t = tbl();
+    const TargetDef* list = upper ? t.upper.targets : t.targets;
+    const uint8_t count = upper ? t.upper.targetCount : t.targetCount;
+    const TargetDef& tg = list[idx];
+    uint16_t m = upper ? (uint16_t)upTargetHit : targetHit;
+    const bool already = (m >> idx) & 1u;
+    m = (uint16_t)(m | (1u << idx));
+    targetFlash[idx + (upper ? MAX_TARGETS : 0)] = 0.3f;
+    if (!already) advanceMission(2);
+    bool complete = true;
+    for (uint8_t j = 0; j < count; j++) if (list[j].bank == tg.bank && !((m >> j) & 1u)) complete = false;
+    if (complete) {
+        if (tg.drop) {
+            dropReset[tg.bank] = upper ? 0.65f : 0.6f;     // les cibles escamotees remontent apres un court delai
+        } else {
+            for (uint8_t j = 0; j < count; j++) if (list[j].bank == tg.bank) m = (uint16_t)(m & ~(1u << j));
+        }
+        if (upper) {
+            score += 28000;
+            bannerf(1.6f, "%s COMPLET !", t.upper.name);
+            emit(Sfx::Mission, 1);
+        } else if (tg.role == 0) {
+            if (bonusMult < 8) bonusMult++;
+            score += 20000;
+            bannerf(1.6f, "BANQUE COMPLETE BONUS X%u", (unsigned)bonusMult);
+            emit(Sfx::Mission, 1);
+        } else if (tg.role == 1) {
+            startMultiball();
+        } else if (tg.role == 2) {
+            kickLeftLit = kickRightLit = true;
+            score += 18000;
+            showBanner("DOUBLES BOUCLIERS ACTIFS !", 1.6f);
+            emit(Sfx::Mission, 1);
+        } else {
+            if (rampBoost < 3) rampBoost++;
+            score += 20000;
+            bannerf(1.6f, "RAMPES X%u !", (unsigned)rampBoost);
+            emit(Sfx::Mission, 1);
+        }
+    } else {
+        score += upper ? (uint32_t)tg.points * 2u : (already ? tg.points / 2u : tg.points);
+        emit(Sfx::Bumper, (uint8_t)(1 + idx));
+    }
+    if (upper) upTargetHit = (uint8_t)m; else targetHit = m;
+    touchHud();
+}
+
+// Jouet interactif : une bille contre le jouet (les minuteries avancent une fois par pas, dans stepSubstep).
+void Game::stepToy(Ball& b, float dt) {
+    const ToyDef& toy = tbl().toy;
+    ToyState& st = toyState;
+    const uint8_t req = toy.hitsRequired ? toy.hitsRequired : 1;
+    switch (toy.kind) {
+    case 0: {   // BASH : bumper geant, suractive tous les `req` coups
+        const float kick = isTilted ? 0.0f : (st.activeTimer > 0.0f ? 335.0f : 255.0f);
+        if (circleHit(b, toy.x, toy.y, toy.r, 0.84f, kick) && !isTilted && st.cooldown <= 0.0f) {
+            st.cooldown = 0.12f; st.hits++; st.flash = 0.35f; st.openRatio = 1.0f;
+            emit(Sfx::Bumper, 0);
+            advanceMission(2);
+            if (st.hits % req == 0) {
+                st.activeTimer = 4.0f;
+                score += toy.reward;
+                bannerf(1.8f, "%s SURACTIVE !", toy.name);
+                emit(Sfx::Mission, 2);
+            } else {
+                score += toy.points;
+            }
+            touchHud();
+        }
+        break;
+    }
+    case 1: {   // portes battantes : deux montants, passage traversable
+        circleHit(b, toy.x - toy.r - 2.0f, toy.y, 2.5f, 0.55f, 0.0f);
+        circleHit(b, toy.x + toy.r + 2.0f, toy.y, 2.5f, 0.55f, 0.0f);
+        if (!isTilted && st.cooldown <= 0.0f && fabsf(b.x - toy.x) <= toy.r && fabsf(b.y - toy.y) <= 6.5f && fabsf(b.vy) > 35.0f) {
+            st.cooldown = 0.3f; st.hits++; st.flash = 0.35f;
+            const float dir = b.vy < 0.0f ? 1.0f : -1.0f;
+            st.openRatio = dir * 0.95f;
+            st.spinVel = dir * 13.0f;
+            b.vx *= 0.95f; b.vy *= 0.92f;
+            emit(Sfx::Bumper, 1);
+            advanceMission(1);
+            if (st.hits % req == 0) { score += toy.reward; bannerf(1.6f, "%s ENTREE FRACASSANTE", toy.name); emit(Sfx::Mission, 2); }
+            else score += toy.points;
+            touchHud();
+        }
+        break;
+    }
+    case 2: {   // plateau tournant : entraine la bille, ejection centrifuge tous les `req` passages
+        const float dx = b.x - toy.x, dy = b.y - toy.y;
+        const float dist = sqrtf(dx * dx + dy * dy);
+        if (dist < toy.r + BALL_RADIUS && dist > 0.5f) {
+            const float nx = dx / dist, ny = dy / dist;
+            const float sign = st.spinVel >= 0.0f ? 1.0f : -1.0f;
+            const float swirl = 210.0f + minf(220.0f, fabsf(st.spinVel) * 18.0f);
+            b.vx += -ny * sign * swirl * dt;
+            b.vy += nx * sign * swirl * dt;
+            if (!isTilted && st.cooldown <= 0.0f && dist < toy.r) {
+                st.cooldown = 0.28f; st.hits++; st.flash = 0.3f;
+                const float cross = dx * b.vy - dy * b.vx;
+                st.spinVel = (cross >= 0.0f ? 1.0f : -1.0f) * 15.0f;
+                emit(Sfx::MenuMove, 2);
+                advanceMission(0);
+                if (st.hits % req == 0) {
+                    b.vx += nx * 165.0f; b.vy += ny * 165.0f;
+                    score += toy.reward;
+                    bannerf(1.6f, "TURBO %s !", toy.name);
+                    emit(Sfx::Mission, 2);
+                } else {
+                    score += toy.points;
+                }
+                touchHud();
+            }
+        }
+        break;
+    }
+    case 3: {   // puits gravitationnel : aspire, puis fronde la bille
+        const float dx = toy.x - b.x, dy = toy.y - b.y;
+        const float dist = sqrtf(dx * dx + dy * dy);
+        const float reach = toy.r * 1.55f;
+        if (dist < reach && dist > 2.0f) {
+            const float ux = dx / dist, uy = dy / dist;
+            const float pull = 195.0f * (1.0f - dist / reach);
+            b.vx += (ux * pull - uy * 125.0f) * dt;
+            b.vy += (uy * pull + ux * 125.0f) * dt;
+            const float cur = sqrtf(b.vx * b.vx + b.vy * b.vy);
+            if (cur < 135.0f) { b.vx += -uy * 95.0f * dt; b.vy += ux * 95.0f * dt; }
+            if (!isTilted && st.cooldown <= 0.0f && dist < toy.r * 0.72f) {
+                st.cooldown = 0.68f; st.hits++; st.flash = 0.38f; st.spinVel = 16.0f;
+                const float sp = maxf(295.0f, cur * 1.18f);
+                const float ang = atan2f(-uy, -ux) + 0.45f;
+                b.vx = cosf(ang) * sp;
+                b.vy = sinf(ang) * sp;
+                emit(Sfx::Ramp, 2);
+                advanceMission(1);
+                if (st.hits % req == 0) { score += toy.reward; bannerf(1.6f, "FRONDE %s !", toy.name); emit(Sfx::Mission, 2); }
+                else score += toy.points;
+                touchHud();
+            }
+        }
+        break;
+    }
+    case 4: {   // sarcophage coulissant : scelle, puis ouvert (la bille y est tiree vers le haut)
+        if (st.activeTimer > 0.0f) {
+            const float dx = b.x - toy.x, dy = b.y - toy.y;
+            const float rr = toy.r * 0.9f;
+            if (!isTilted && st.cooldown <= 0.0f && dx * dx + dy * dy <= rr * rr) {
+                st.cooldown = 0.45f; st.flash = 0.45f;
+                b.vx = (frand() - 0.5f) * 90.0f;
+                b.vy = -430.0f;
+                advanceMission(2, true);
+                score += toy.reward;
+                bannerf(1.8f, "TRESOR %s !", toy.name);
+                emit(Sfx::Multiball);
+                touchHud();
+            }
+        } else if (circleHit(b, toy.x, toy.y, toy.r, 0.78f, isTilted ? 0.0f : 225.0f) && !isTilted && st.cooldown <= 0.0f) {
+            st.cooldown = 0.15f; st.hits++; st.flash = 0.35f;
+            const uint8_t step = (uint8_t)(st.hits % req);
+            if (step == 0) {
+                st.activeTimer = 7.5f; st.openRatio = 1.0f;
+                score += (uint32_t)toy.points * 2u;
+                bannerf(1.8f, "%s OUVERT ! TIREZ DEDANS !", toy.name);
+                emit(Sfx::Mission, 1);
+            } else {
+                st.openRatio = (float)step / (float)req;
+                score += toy.points;
+                bannerf(1.0f, "SCEAU %u/%u", (unsigned)step, (unsigned)req);
+                emit(Sfx::Bumper, 2);
+            }
+            advanceMission(2);
+            touchHud();
+        }
+        break;
+    }
+    default: {  // ROTO-CIBLE : points x1..x3, prime tous les `req` coups
+        if (circleHit(b, toy.x, toy.y, toy.r, 0.82f, isTilted ? 0.0f : 240.0f) && !isTilted && st.cooldown <= 0.0f) {
+            st.cooldown = 0.14f; st.hits++; st.flash = 0.35f; st.spinVel = 22.0f;
+            const uint32_t mult = 1u + (st.hits % 3u);
+            advanceMission(2);
+            if (st.hits % req == 0) { score += toy.reward; bannerf(1.6f, "ROTO SPECIAL +%luK !", (unsigned long)(toy.reward / 1000)); emit(Sfx::Mission, 2); }
+            else { score += toy.points * mult; emit(Sfx::Bumper, 3); }
+            touchHud();
+        }
+        break;
+    }
+    }
+}
+
+// Bille sur l'etage superieur (couche 2) : rebords fermes, plots, bumpers, cibles, couloirs et flipper de l'etage.
+void Game::stepUpper(Ball& b, float dt, bool leftHeld, bool rightHeld) {
+    const TableDef& t = tbl();
+    const UpperDeckDef& up = t.upper;
+    b.vy += t.gravity * dt;
+    b.vx *= 1.0f - 0.05f * dt;
+    b.vy *= 1.0f - 0.03f * dt;
+    b.x += b.vx * dt;
+    b.y += b.vy * dt;
+
+    for (uint8_t k = 0; k < upWallCount; k++)
+        collideBallSegment(b, upWalls[k].x1, upWalls[k].y1, upWalls[k].x2, upWalls[k].y2, upWalls[k].bounce, 0.0f, -1);
+    // garde-fou contre les parois du meuble
+    if (b.x - BALL_RADIUS < 10.0f) { b.x = 10.0f + BALL_RADIUS; if (b.vx < 0.0f) b.vx = -b.vx * 0.48f; }
+    else if (b.x + BALL_RADIUS > 215.0f) { b.x = 215.0f - BALL_RADIUS; if (b.vx > 0.0f) b.vx = -b.vx * 0.48f; }
+    if (b.y - BALL_RADIUS < 22.0f) { b.y = 22.0f + BALL_RADIUS; if (b.vy < 0.0f) b.vy = -b.vy * 0.48f; }
+    for (uint8_t k = 0; k < up.n; k++) circleHit(b, up.b[k].x, up.b[k].y, 2.2f, 0.52f, 0.0f);
+
+    for (uint8_t k = 0; k < up.targetCount; k++) {
+        const TargetDef& tg = up.targets[k];
+        if (tg.drop && ((upTargetHit >> k) & 1u)) continue;
+        if (collideBallSegment(b, tg.x1, tg.y1, tg.x2, tg.y2, 0.72f, 0.0f, -1) && !isTilted) onTargetHit(k, true);
+    }
+    for (uint8_t k = 0; k < up.bumperCount; k++) {
+        const BumperDef& bm = up.bumpers[k];
+        if (circleHit(b, bm.x, bm.y, bm.r, 0.86f, isTilted ? 0.0f : 250.0f) && !isTilted) {
+            upBumperFlash[k] = 0.2f;
+            score += (uint32_t)bm.points * 2u;
+            advanceMission(0);
+            emit(Sfx::Bumper, (uint8_t)(4 + k));
+            touchHud();
+        }
+    }
+    if (!isTilted) {
+        for (uint8_t k = 0; k < up.rolloverCount; k++) {
+            const RolloverDef& ro = up.rollovers[k];
+            if (upRolloverLit & (1u << k)) continue;
+            const float dx = b.x - ro.x, dy = b.y - ro.y, rr = ro.r + 1.5f;
+            if (dx * dx + dy * dy >= rr * rr) continue;
+            upRolloverLit |= (uint8_t)(1u << k);
+            score += (uint32_t)ro.points * 2u;
+            emit(Sfx::MenuMove, 1);
+            if (upRolloverLit == (uint8_t)((1u << up.rolloverCount) - 1u)) {
+                upRolloverLit = 0;
+                score += 6000;
+                showBanner("PASSAGES ETAGE +6000", 1.4f);
+                emit(Sfx::Mission, 0);
+            }
+            touchHud();
+        }
+    }
+    for (uint8_t f = 0; f < flipperCount; f++) {
+        const FlipperRuntime& fl = flippers[f];
+        if (fl.layer != 2) continue;
+        const float ex = fl.px + cosf(fl.angleRad) * fl.length;
+        const float ey = fl.py + sinf(fl.angleRad) * fl.length;
+        const float angVel = fabsf(fl.angleRad - fl.prevAngleRad) / dt;
+        collideBallSegment(b, fl.px, fl.py, ex, ey, 0.58f, angVel > 1.5f ? 235.0f : 0.0f, -1, 3.8f);
+    }
+    // la bille franchit un rebord ouvert : elle retombe sur le plateau
+    if (!pointInPoly(b.x, b.y, up.b, up.n)) {
+        b.layer = 0;
+        b.rampCool = 0.22f;
+        b.stuckTime = 0.0f;
+        return;
+    }
+    bool cradled = false;
+    for (uint8_t f = 0; f < flipperCount; f++) {
+        if (flippers[f].layer != 2) continue;
+        const bool active = flippers[f].isLeft ? leftHeld : rightHeld;
+        const float cdx = b.x - flippers[f].px, cdy = b.y - flippers[f].py, reach = flippers[f].length + 12.0f;
+        if (active && cdx * cdx + cdy * cdy < reach * reach) cradled = true;
+    }
+    if (!cradled && b.vx * b.vx + b.vy * b.vy < 144.0f) {
+        b.stuckTime += dt;
+        if (b.stuckTime > 0.6f) { b.vy = 145.0f; b.vx = (b.x < 113.0f ? 1.0f : -1.0f) * 75.0f; b.stuckTime = 0.0f; }
+    } else {
+        b.stuckTime = 0.0f;
+    }
+    const float spd = sqrtf(b.vx * b.vx + b.vy * b.vy);
+    if (spd > 560.0f) { b.vx = b.vx / spd * 560.0f; b.vy = b.vy / spd * 560.0f; }
 }
 
 void Game::stepSubstep(float dt, bool leftHeld, bool rightHeld) {
@@ -253,43 +612,146 @@ void Game::stepSubstep(float dt, bool leftHeld, bool rightHeld) {
         else fl.angleRad += (diff > 0 ? maxStep : -maxStep);
     }
 
+    // --- minuteries des mecaniques (une fois par pas) -----------------------------------
+    for (int k = 0; k < MAX_TARGETS + MAX_UP_TARGETS; k++) if (targetFlash[k] > 0.0f) targetFlash[k] = maxf(0.0f, targetFlash[k] - dt);
+    for (int k = 0; k < MAX_UP_BUMPERS; k++) if (upBumperFlash[k] > 0.0f) upBumperFlash[k] = maxf(0.0f, upBumperFlash[k] - dt);
+    if (vukFlash > 0.0f) vukFlash = maxf(0.0f, vukFlash - dt);
+    for (int bk = 0; bk < MAX_BANKS; bk++) {   // les cibles escamotables d'une banque complete remontent
+        if (dropReset[bk] <= 0.0f) continue;
+        dropReset[bk] -= dt;
+        if (dropReset[bk] > 0.0f) continue;
+        dropReset[bk] = 0.0f;
+        if (bk == 2) {
+            for (uint8_t j = 0; j < t.upper.targetCount; j++) if (t.upper.targets[j].bank == 2) upTargetHit = (uint8_t)(upTargetHit & ~(1u << j));
+        } else {
+            for (uint8_t j = 0; j < t.targetCount; j++) if (t.targets[j].bank == bk) targetHit = (uint16_t)(targetHit & ~(1u << j));
+        }
+    }
+    for (uint8_t k = 0; k < t.spinnerCount; k++) {   // spinners : chaque demi-tour rapporte des points
+        if (fabsf(spinVel[k]) > 0.5f) {
+            spinAngle[k] += fabsf(spinVel[k]) * dt;
+            spinVel[k] *= expf(-1.6094379f * dt);
+            while (spinAngle[k] >= 3.14159265f) {
+                spinAngle[k] -= 3.14159265f;
+                score += t.spinners[k].points;
+                if ((++spinCount[k] & 3u) == 0u) advanceMission(0);
+                emit(Sfx::MenuMove, 3);
+                touchHud();
+            }
+        } else {
+            spinVel[k] = 0.0f;
+        }
+    }
+    if (t.toy.present) {
+        ToyState& ts = toyState;
+        if (ts.flash > 0.0f) ts.flash = maxf(0.0f, ts.flash - dt);
+        if (ts.cooldown > 0.0f) ts.cooldown = maxf(0.0f, ts.cooldown - dt);
+        if (ts.activeTimer > 0.0f) {
+            ts.activeTimer = maxf(0.0f, ts.activeTimer - dt);
+            if (ts.activeTimer == 0.0f && t.toy.kind == 4) ts.openRatio = 0.0f;
+        }
+        if (t.toy.kind == 2 || t.toy.kind == 5) {
+            ts.angle = fmodf(ts.angle + ((t.toy.kind == 2 ? 1.1f : 0.0f) + ts.spinVel) * dt, 6.2831853f);
+            ts.spinVel *= expf(-2.2f * dt);
+        } else if (t.toy.kind == 3) {
+            ts.angle = fmodf(ts.angle + (2.4f + ts.spinVel) * dt, 6.2831853f);
+            ts.spinVel *= expf(-2.5f * dt);
+        } else if (t.toy.kind == 1) {
+            ts.openRatio += ts.spinVel * dt;
+            ts.spinVel += (-18.0f * ts.openRatio - 5.5f * ts.spinVel) * dt;
+            ts.openRatio = clampf(ts.openRatio, -1.25f, 1.25f);
+        } else if (t.toy.kind == 0) {
+            ts.openRatio *= expf(-10.0f * dt);
+        }
+    }
+    if (multiQueue > 0) {   // multibille declenchee par une banque : les billes sortent une par une dans le lanceur
+        multiDelay -= dt;
+        if (multiDelay <= 0.0f) {
+            bool busy = false;
+            int freeSlot = -1;
+            for (int k = 0; k < MAX_BALLS; k++) {
+                if (balls[k].active && balls[k].inShooter) busy = true;
+                if (!balls[k].active && freeSlot < 0) freeSlot = k;
+            }
+            if (!busy && freeSlot >= 0) {
+                spawnBallInShooter(freeSlot);
+                multiQueue--;
+                multiDelay = 0.55f;
+            } else if (freeSlot < 0) {
+                multiQueue = 0;
+            }
+        }
+    }
+
     for (int i = 0; i < MAX_BALLS; i++) {
         Ball& b = balls[i];
         if (!b.active) continue;
 
-        if (b.ramp >= 0) {   // sur une rampe : trajectoire guidee le long des 5 points, sans collisions du plateau
-            const RampDef& rp = t.ramps[b.ramp];
+        if (b.held) {   // captee dans l'ejecteur : attiree vers le centre, puis envoyee dans le conduit
+            b.x += (t.vuk.x - b.x) * (1.0f - expf(-28.0f * dt));
+            b.y += (t.vuk.y - b.y) * (1.0f - expf(-28.0f * dt));
+            b.holdTimer -= dt;
+            if (b.holdTimer <= 0.0f) {
+                b.held = false;
+                b.ramp = 2; b.rampDist = 0.0f; b.rampSpeed = 335.0f;
+                b.vx = 0.0f; b.vy = 0.0f;
+            }
+            continue;
+        }
+
+        if (b.ramp >= 0) {   // sur une rampe ou dans le conduit du VUK : trajectoire guidee le long des 5 points
+            const int rampIdx = b.ramp;
+            const bool tube = (rampIdx == 2);
+            const Vec2* P = tube ? t.vuk.pts : t.ramps[b.ramp].pts;
             float total = 0.0f, segLen[4];
             for (int k = 0; k < 4; k++) {
-                const float sx = rp.pts[k + 1].x - rp.pts[k].x, sy = rp.pts[k + 1].y - rp.pts[k].y;
+                const float sx = P[k + 1].x - P[k].x, sy = P[k + 1].y - P[k].y;
                 segLen[k] = sqrtf(sx * sx + sy * sy);
                 total += segLen[k];
             }
-            b.rampSpeed = maxf(120.0f, b.rampSpeed - 40.0f * dt);   // la bille ralentit un peu en montant
+            if (!tube) b.rampSpeed = maxf(120.0f, b.rampSpeed - 40.0f * dt);   // la bille ralentit un peu en montant
             b.rampDist += b.rampSpeed * dt;
             if (b.rampDist >= total) {
-                const Vec2 a = rp.pts[3], e = rp.pts[4];
+                const Vec2 a = P[3], e = P[4];
                 float ddx = e.x - a.x, ddy = e.y - a.y;
                 const float dl = maxf(1.0f, sqrtf(ddx * ddx + ddy * ddy));
                 b.x = e.x; b.y = e.y;
-                b.vx = ddx / dl * 90.0f;
-                if (fabsf(b.vx) < 25.0f) b.vx = (e.x < 112.0f) ? 35.0f : -35.0f;   // jamais vx = 0 (voir plus haut)
-                b.vy = maxf(85.0f, ddy / dl * 140.0f);
                 b.ramp = -1;
-                b.rampCool = 0.75f;
                 b.stuckTime = 0.0f;
+                if (tube) {                                   // sortie du conduit : ejection a la vitesse du VUK
+                    b.vx = t.vuk.evx; b.vy = t.vuk.evy;
+                    b.rampCool = 0.22f;
+                    vukFlash = 0.3f;
+                } else if (t.ramps[rampIdx].toUpper) {   // la rampe depose la bille sur l'etage
+                    const float sp = clampf(b.rampSpeed * 0.78f, 155.0f, 340.0f);
+                    b.layer = 2;
+                    b.vx = ddx / dl * sp; b.vy = ddy / dl * sp;
+                    b.rampCool = 0.24f;
+                    bannerf(1.4f, "ETAGE : %s", t.upper.name);
+                    emit(Sfx::Lock);
+                } else {
+                    b.vx = ddx / dl * 90.0f;
+                    if (fabsf(b.vx) < 25.0f) b.vx = (e.x < 112.0f) ? 35.0f : -35.0f;   // jamais vx = 0 (voir plus haut)
+                    b.vy = maxf(85.0f, ddy / dl * 140.0f);
+                    b.rampCool = 0.75f;
+                }
                 continue;
             }
             float d = b.rampDist;
             for (int k = 0; k < 4; k++) {
                 if (d <= segLen[k] || k == 3) {
                     const float u = segLen[k] > 0.0f ? d / segLen[k] : 0.0f;
-                    b.x = rp.pts[k].x + (rp.pts[k + 1].x - rp.pts[k].x) * u;
-                    b.y = rp.pts[k].y + (rp.pts[k + 1].y - rp.pts[k].y) * u;
+                    b.x = P[k].x + (P[k + 1].x - P[k].x) * u;
+                    b.y = P[k].y + (P[k + 1].y - P[k].y) * u;
                     break;
                 }
                 d -= segLen[k];
             }
+            continue;
+        }
+
+        if (b.layer == 2) {   // etage superieur : physique propre, ne touche pas au plateau
+            stepUpper(b, dt, leftHeld, rightHeld);
             continue;
         }
 
@@ -332,11 +794,37 @@ void Game::stepSubstep(float dt, bool leftHeld, bool rightHeld) {
 
         for (uint8_t f = 0; f < flipperCount; f++) {
             const FlipperRuntime& fl = flippers[f];
+            if (fl.layer != 0) continue;
             float ex = fl.px + cosf(fl.angleRad) * fl.length;
             float ey = fl.py + sinf(fl.angleRad) * fl.length;
             float angVel = fabsf(fl.angleRad - fl.prevAngleRad) / dt;
             float kick = (angVel > 1.5f) ? 235.0f : 0.0f;
             collideBallSegment(b, fl.px, fl.py, ex, ey, 0.58f, kick, -1, f < 2 ? 4.2f : 3.7f);
+        }
+
+        // Plots (coins des boitiers + plots supplementaires), cibles, spinners
+        for (uint8_t h = 0; h < t.housingCount; h++) {
+            const HousingDef& hd = t.housings[h];
+            for (uint8_t i = 0; i < hd.n; i++)
+                if (hd.p[i].x > 10.5f && hd.p[i].x < 215.5f) circleHit(b, hd.p[i].x, hd.p[i].y, 2.0f, 0.5f, 0.0f);
+        }
+        for (uint8_t k = 0; k < t.pegCount; k++) circleHit(b, t.pegs[k].x, t.pegs[k].y, t.pegs[k].r, t.pegs[k].bounce, 0.0f);
+        if (!b.inShooter) {
+            for (uint8_t k = 0; k < t.targetCount; k++) {
+                const TargetDef& tg = t.targets[k];
+                if (tg.drop && ((targetHit >> k) & 1u)) continue;   // cible escamotee
+                if (collideBallSegment(b, tg.x1, tg.y1, tg.x2, tg.y2, 0.68f, 0.0f, -1) && !isTilted) onTargetHit(k, false);
+            }
+            if (!isTilted) {
+                for (uint8_t k = 0; k < t.spinnerCount; k++) {
+                    const SpinnerDef& sp = t.spinners[k];
+                    const float dx = b.x - sp.x, dy = b.y - sp.y, rr = sp.width * 0.65f;
+                    if (dx * dx + dy * dy >= rr * rr) continue;
+                    const float spd = sqrtf(b.vx * b.vx + b.vy * b.vy);
+                    if (spd > 65.0f) spinVel[k] = maxf(spinVel[k], spd * 0.15f) * (1.0f + dt);
+                }
+            }
+            if (t.toy.present) stepToy(b, dt);
         }
 
         // Bumpers
@@ -448,13 +936,30 @@ void Game::stepSubstep(float dt, bool leftHeld, bool rightHeld) {
                     b.vy = 0.0f;
                     (void)exitP;
                     b.rampCool = 0.75f;
-                    score += t.ramps[r].points;
+                    score += t.ramps[r].points * rampBoost;
                     advanceMission(1);
                     bannerf(1.3f, "%s +%lu", t.ramps[r].name, (unsigned long)t.ramps[r].points);
                     emit(Sfx::Ramp, r);
                     touchHud();
                     break;
                 }
+            }
+        }
+
+        // Ejecteur (VUK) : capte la bille puis la renvoie par un conduit aerien (aucune teleportation)
+        if (t.vuk.present && !b.inShooter && !isTilted && b.rampCool <= 0.0f && b.layer == 0) {
+            const float dx = b.x - t.vuk.x, dy = b.y - t.vuk.y;
+            if (dx * dx + dy * dy <= t.vuk.r * t.vuk.r) {
+                b.held = true;
+                b.holdTimer = 0.24f;
+                b.vx = 0.0f; b.vy = 0.0f;
+                vukFlash = 0.45f;
+                score += t.vuk.points;
+                advanceMission(2, true);
+                bannerf(1.2f, "%s +%u", t.vuk.name, (unsigned)t.vuk.points);
+                emit(Sfx::Ramp, 2);
+                touchHud();
+                continue;
             }
         }
 
@@ -638,7 +1143,7 @@ void Game::updatePlaying(float dt, const Input& in, bool nudgePressed, bool flip
 
     int activeCount = 0;
     for (int i = 0; i < MAX_BALLS; i++) if (balls[i].active) activeCount++;
-    if (multiballActive && activeCount <= 1) {
+    if (multiballActive && activeCount <= 1 && multiQueue == 0) {
         multiballActive = false;
         touchHud();
     }
@@ -655,6 +1160,12 @@ void Game::updatePlaying(float dt, const Input& in, bool nudgePressed, bool flip
             updateCamera(dt);
             return;
         }
+        if (!isTilted && bonusMult > 1) {   // bonus de fin de bille : multiplicateur des banques
+            score += 10000u * bonusMult;
+            bannerf(1.4f, "BONUS X%u +%uK", (unsigned)bonusMult, (unsigned)(10u * bonusMult));
+        }
+        bonusMult = 1;
+        multiQueue = 0;
         emit(Sfx::Drain);
         if (ballsRemaining > 1) {
             ballsRemaining--;

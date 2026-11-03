@@ -546,6 +546,16 @@ static void test_render(const char* outDir) {
             if (outDir) { snprintf(path, sizeof(path), "%s/t%d_lamps_top.ppm", outDir, t); vid::dump_ppm(path); }
             g.cameraY = MAX_CAM_Y; render::draw(g);
             if (outDir) { snprintf(path, sizeof(path), "%s/t%d_lamps_bot.ppm", outDir, t); vid::dump_ppm(path); }
+            {   // mecaniques : cibles touchees / escamotees, spinner en rotation, jouet actif, bille a l'etage
+                const uint16_t th = g.targetHit; const uint8_t uh = g.upTargetHit; const Ball sb = g.balls[0];
+                g.targetHit = 0x2B; g.upTargetHit = 0x01; g.targetFlash[1] = 0.2f; g.targetFlash[MAX_TARGETS + 1] = 0.2f;
+                g.spinVel[0] = 30.0f; g.spinAngle[0] = 0.7f; g.toyState.flash = 0.3f; g.toyState.angle = 1.0f; g.toyState.activeTimer = 2.0f; g.toyState.openRatio = 0.6f;
+                g.upBumperFlash[0] = 0.1f; g.upRolloverLit = 1; g.vukFlash = 0.3f;
+                if (g.tbl().upper.present) { g.balls[0] = {g.tbl().upper.bumpers[0].x - 14.0f, g.tbl().upper.bumpers[0].y + 6.0f, 0, 0, true, false, 0, 0}; g.balls[0].layer = 2; }
+                g.cameraY = 96.0f; g.nowMs += 130; render::draw(g);
+                if (outDir) { snprintf(path, sizeof(path), "%s/t%d_mech.ppm", outDir, t); vid::dump_ppm(path); }
+                g.targetHit = th; g.upTargetHit = uh; g.balls[0] = sb; g.spinVel[0] = 0; g.toyState.flash = 0; g.toyState.activeTimer = 0; g.toyState.openRatio = 0; g.upBumperFlash[0] = 0; g.upRolloverLit = 0; g.vukFlash = 0;
+            }
             g.rolloverLit = sl; g.missionIdx = sm; g.cameraZoom = sz; g.cameraY = sc;
         }
 
@@ -560,6 +570,262 @@ static void test_render(const char* outDir) {
     }
     // HUD : la bande gauche (sx < 46) ne doit pas etre une couleur unie
     printf("  ok (raw_* n'a recu aucune coordonnee hors ecran)\n");
+}
+
+static bool pointInPolyTest(const UpperDeckDef& u, float x, float y) {
+    bool in = false;
+    for (int i = 0, j = u.n - 1; i < u.n; j = i++)
+        if (((u.b[i].y > y) != (u.b[j].y > y)) && (x < (u.b[j].x - u.b[i].x) * (y - u.b[i].y) / (u.b[j].y - u.b[i].y) + u.b[i].x)) in = !in;
+    return in;
+}
+
+// --- Mecaniques portees du moteur Web : cibles, spinners, jouets, ejecteur, etage -------------------
+static Game* fresh(int t) {
+    Game* g = new Game(); g->begin(STORE()); g->startNewGame((uint8_t)t);
+    g->introTimer = 0.0f; g->ballSaveUsed = true; g->ballSaveTimer = 0.0f;
+    return g;
+}
+static void run(Game& g, float sec, const Input& in = Input()) {
+    for (int f = 0; f < (int)(sec * 60.0f); f++) tick(g, in, 1.0f / 60.0f);
+}
+
+static void test_wall_budget() {
+    printf("[budget de murs et donnees des mecaniques]\n");
+    for (int t = 0; t < TABLE_COUNT; t++) {
+        Game* g = fresh(t);
+        CHECK(g->wallCount < MAX_WALLS, "table %d : %d murs (max %d : des murs seraient ignores)", t, g->wallCount, MAX_WALLS);
+        const TableDef& d = table(t);
+        CHECK(d.targetCount >= 5 && d.spinnerCount == 2 && d.toy.present, "table %d : cibles/spinners/jouet manquants", t);
+        for (int k = 0; k < d.targetCount; k++)
+            CHECK(d.targets[k].x1 > 5 && d.targets[k].x1 < 235 && d.targets[k].y1 > 20 && d.targets[k].y1 < 480, "table %d cible %d hors plateau", t, k);
+        if (d.upper.present) {
+            CHECK(d.upper.flipperCount == 1 && g->flipperCount >= 3 && g->flippers[g->flipperCount - 1].layer == 2, "table %d : flipper d'etage", t);
+            CHECK(g->upWallCount == d.upper.n - 1, "table %d : %d rebords fermes", t, g->upWallCount);
+            bool toUp = d.ramps[0].toUpper || d.ramps[1].toUpper;
+            CHECK(toUp, "table %d : aucune rampe n'amene a l'etage", t);
+        }
+        delete g;
+    }
+}
+
+// Tire une bille vers le milieu d'un segment de cible, en essayant les deux cotes ; renvoie vrai si `done()` devient vrai.
+template <typename F>
+static bool shoot_segment(Game& g, float x1, float y1, float x2, float y2, uint8_t layer, F done) {
+    const float mx = (x1 + x2) * 0.5f, my = (y1 + y2) * 0.5f;
+    float nx = -(y2 - y1), ny = x2 - x1; const float nl = hypotf(nx, ny); nx /= nl; ny /= nl;
+    for (int side = 0; side < 2; side++) {
+        const float sx = side ? -nx : nx, sy = side ? -ny : ny;
+        g.balls[0] = {mx + sx * 12.0f, my + sy * 12.0f, -sx * 150.0f, -sy * 150.0f, true, false, 0.0f, 0.0f};
+        g.balls[0].layer = layer;
+        for (int f = 0; f < 60; f++) {
+            tick(g, Input(), 1.0f / 120.0f);
+            if (done()) return true;
+        }
+    }
+    return false;
+}
+
+static void test_targets_banks() {
+    printf("[cibles fixes / escamotables, banques]\n");
+    int dropBanks = 0, standBanks = 0, roles[4] = {0, 0, 0, 0};
+    for (int t = 0; t < TABLE_COUNT; t++) {
+        const TableDef& d = table(t);
+        for (int bank = 0; bank < 2; bank++) {
+            Game* g = fresh(t);
+            int n = 0; bool drop = false; uint8_t role = 0;
+            for (int k = 0; k < d.targetCount; k++) if (d.targets[k].bank == bank) { n++; drop = d.targets[k].drop; role = d.targets[k].role; }
+            CHECK(n >= 2, "table %d banque %d : %d cibles", t, bank, n);
+            const uint32_t sc0 = g->score;
+            int done = 0;
+            for (int k = 0; k < d.targetCount; k++) {
+                if (d.targets[k].bank != bank) continue;
+                const TargetDef& tg = d.targets[k];
+                if (shoot_segment(*g, tg.x1, tg.y1, tg.x2, tg.y2, 0, [&]() { return g->targetFlash[k] > 0.0f; })) done++;
+                else printf("    (table %d cible %d '%c' sans reaction)\n", t, k, tg.letter);
+            }
+            g->balls[0].active = false;
+            CHECK(done == n, "table %d banque %d : %d/%d cibles reagissent", t, bank, done, n);
+            CHECK(g->score > sc0, "table %d banque %d : aucun point", t, bank);
+            if (drop) {
+                dropBanks++;
+                CHECK(g->dropReset[bank] > 0.0f, "table %d banque %d : delai de retour des cibles escamotables", t, bank);
+                g->balls[0] = {225.0f, PLUNGER_TOP_Y - BALL_RADIUS, 0, 0, true, true, 0, 0};
+                run(*g, 1.0f);
+                bool back = true;
+                for (int k = 0; k < d.targetCount; k++) if (d.targets[k].bank == bank && ((g->targetHit >> k) & 1u)) back = false;
+                CHECK(back, "table %d banque %d : les cibles escamotees remontent (mask=%04x)", t, bank, g->targetHit);
+            } else {
+                standBanks++;
+                bool clear = true;
+                for (int k = 0; k < d.targetCount; k++) if (d.targets[k].bank == bank && ((g->targetHit >> k) & 1u)) clear = false;
+                CHECK(clear, "table %d banque %d : cibles fixes rearmees (mask=%04x)", t, bank, g->targetHit);
+            }
+            roles[role & 3]++;
+            delete g;
+        }
+    }
+    CHECK(dropBanks >= 10 && standBanks >= 10, "banques escamotables %d / fixes %d", dropBanks, standBanks);
+    printf("  %d banques escamotables, %d fixes ; roles : %d bonus, %d multibille, %d boucliers, %d rampes\n", dropBanks, standBanks, roles[0], roles[1], roles[2], roles[3]);
+    {   // role multibille (Star Wars) : la banque arme l'envoi de 2 billes supplementaires
+        Game* g = fresh(2);
+        const TableDef& d = table(2);
+        int bank = -1;
+        for (int k = 0; k < d.targetCount; k++) if (d.targets[k].role == 1) bank = d.targets[k].bank;
+        CHECK(bank >= 0, "Star Wars : banque multibille");
+        for (int k = 0; k < d.targetCount; k++) {
+            if (d.targets[k].bank != bank) continue;
+            const TargetDef& tg = d.targets[k];
+            shoot_segment(*g, tg.x1, tg.y1, tg.x2, tg.y2, 0, [&]() { return g->targetFlash[k] > 0.0f; });
+        }
+        CHECK(g->multiballActive && g->multiQueue > 0, "banque multibille armee (queue=%d)", g->multiQueue);
+        g->balls[0] = {225.0f, 300.0f, 0, 0, false, false, 0, 0};   // plus de bille en jeu : seules celles de la file arrivent
+        g->balls[0].active = false;
+        g->balls[1].active = g->balls[2].active = false;
+        g->balls[0] = {113.0f, 300.0f, 0, 0, true, false, 0, 0};
+        run(*g, 3.0f);
+        int inLane = 0;
+        for (int i = 0; i < MAX_BALLS; i++) if (g->balls[i].active && g->balls[i].inShooter) inLane++;
+        CHECK(inLane >= 1, "les billes de la banque multibille sortent dans le lanceur (%d)", inLane);
+        delete g;
+    }
+}
+
+static void test_spinners_toys() {
+    printf("[spinners et jouets interactifs]\n");
+    int toyKinds[6] = {0, 0, 0, 0, 0, 0};
+    for (int t = 0; t < TABLE_COUNT; t++) {
+        const TableDef& d = table(t);
+        {   // spinner : la bille le traverse vite, le compteur de demi-tours rapporte des points
+            Game* g = fresh(t);
+            const SpinnerDef& sp = d.spinners[0];
+            g->balls[0] = {sp.x - 6.0f, sp.y, 260.0f, 0.0f, true, false, 0, 0};
+            uint32_t sc0 = g->score; bool spun = false;
+            for (int f = 0; f < 60 * 3; f++) { tick(*g, Input(), 1.0f / 60.0f); if (fabsf(g->spinVel[0]) > 1.0f) spun = true; if (!g->balls[0].active) g->balls[0] = {sp.x - 6.0f, sp.y, 260.0f, 0.0f, true, false, 0, 0}; }
+            CHECK(spun && g->score >= sc0 + sp.points, "table %d : spinner (spun=%d, +%u pts)", t, spun, g->score - sc0);
+            delete g;
+        }
+        {   // jouet : impacts repetes (essai de plusieurs directions d'arrivee) -> compteur, recompense
+            Game* g = fresh(t);
+            const ToyDef& ty = d.toy;
+            toyKinds[ty.kind]++;
+            const uint32_t sc0 = g->score;
+            for (int shot = 0; shot < 40 && g->toyState.hits < ty.hitsRequired * 2u; shot++) {
+                const float an = (float)(shot % 8) * 0.7853982f + (shot / 8) * 0.3f;
+                const float dist = ty.r + 14.0f;
+                if (ty.kind == 1) g->balls[0] = {ty.x + (float)((shot % 3) - 1) * 4.0f, ty.y + 22.0f, 0.0f, -230.0f, true, false, 0, 0};
+                else g->balls[0] = {ty.x + cosf(an) * dist, ty.y + sinf(an) * dist, -cosf(an) * 210.0f, -sinf(an) * 210.0f, true, false, 0, 0};
+                for (int f = 0; f < 70; f++) tick(*g, Input(), 1.0f / 120.0f);
+                if (ty.kind == 4 && g->toyState.activeTimer > 0.0f) {   // sarcophage ouvert : la bille y est tiree vers le haut
+                    g->balls[0] = {ty.x, ty.y + 2.0f, 0.0f, 0.0f, true, false, 0, 0};
+                    for (int f = 0; f < 20; f++) tick(*g, Input(), 1.0f / 120.0f);
+                    break;
+                }
+            }
+            CHECK(g->toyState.hits >= (ty.kind == 4 ? 1 : ty.hitsRequired), "table %d jouet %s (kind %d) : %d impacts (%d requis)", t, ty.name, ty.kind, g->toyState.hits, ty.hitsRequired);
+            CHECK(g->score > sc0, "table %d jouet %s : aucun point", t, ty.name);
+            delete g;
+        }
+    }
+    printf("  jouets : %d bash, %d portes, %d plateaux, %d puits, %d sarcophage, %d roto-cible\n", toyKinds[0], toyKinds[1], toyKinds[2], toyKinds[3], toyKinds[4], toyKinds[5]);
+}
+
+static void test_vuk_tube() {
+    printf("[ejecteur VUK : conduit sans teleportation]\n");
+    int n = 0;
+    for (int t = 0; t < TABLE_COUNT; t++) {
+        const TableDef& d = table(t);
+        if (!d.vuk.present) continue;
+        Game* g = fresh(t);
+        g->balls[0] = {d.vuk.x + 2.0f, d.vuk.y - 3.0f, 0.0f, 40.0f, true, false, 0, 0};
+        float px = g->balls[0].x, py = g->balls[0].y, maxJump = 0.0f;
+        bool held = false, inTube = false, out = false;
+        uint32_t sc0 = g->score;
+        for (int f = 0; f < 60 * 3 && !out; f++) {
+            tick(*g, Input(), 1.0f / 60.0f);
+            const Ball& b = g->balls[0];
+            if (b.held) held = true;
+            if (b.ramp == 2) inTube = true;
+            const float dd = hypotf(b.x - px, b.y - py);
+            if (inTube && b.ramp == 2 && dd > maxJump) maxJump = dd;
+            if (inTube && b.ramp < 0) out = true;
+            px = b.x; py = b.y;
+        }
+        CHECK(held && inTube && out, "table %d : capture %d / conduit %d / sortie %d", t, held, inTube, out);
+        CHECK(maxJump < 8.0f, "table %d : saut de %.1f px dans le conduit", t, maxJump);
+        CHECK(g->score >= sc0 + d.vuk.points, "table %d : points de l'ejecteur", t);
+        CHECK(hypotf(g->balls[0].x - d.vuk.pts[4].x, g->balls[0].y - d.vuk.pts[4].y) < 12.0f, "table %d : la bille ressort a la sortie du conduit", t);
+        delete g; n++;
+    }
+    CHECK(n >= 2, "au moins 2 tables avec ejecteur (%d)", n);
+    printf("  %d ejecteurs verifies\n", n);
+}
+
+static void test_upper_deck() {
+    printf("[etage superieur : acces par rampe, jeu a l'etage, retour au plateau]\n");
+    int decks = 0;
+    for (int t = 0; t < TABLE_COUNT; t++) {
+        const TableDef& d = table(t);
+        if (!d.upper.present) continue;
+        decks++;
+        int r = d.ramps[0].toUpper ? 0 : 1;
+        Game* g = fresh(t);
+        const Vec2 en = d.ramps[r].pts[0];
+        g->balls[0] = {en.x, en.y + 4.0f, 0.0f, -260.0f, true, false, 0, 0};
+        bool reached = false; float jump = 0, px = en.x, py = en.y;
+        for (int f = 0; f < 60 * 6 && !reached; f++) {
+            tick(*g, Input(), 1.0f / 60.0f);
+            const Ball& b = g->balls[0];
+            const float dd = hypotf(b.x - px, b.y - py); if (b.ramp >= 0 && dd > jump) jump = dd;
+            px = b.x; py = b.y;
+            if (b.layer == 2) reached = true;
+        }
+        CHECK(reached, "table %d : la rampe %d doit deposer la bille a l'etage", t, r);
+        CHECK(jump < 8.0f, "table %d : saut de %.1f px sur la rampe d'etage", t, jump);
+        CHECK(pointInPolyTest(d.upper, g->balls[0].x, g->balls[0].y), "table %d : la bille arrive dans le polygone de l'etage (%.0f,%.0f)", t, g->balls[0].x, g->balls[0].y);
+        // jeu a l'etage : plusieurs essais avec des rythmes de flipper differents ; la bille doit marquer et ressortir
+        int scoring = 0, returned = 0; bool leak = false; int upperTicks = 0;
+        for (int trial = 0; trial < 6; trial++) {
+            Game* u = fresh(t);
+            u->balls[0] = {en.x, en.y + 4.0f, 0.0f, -260.0f, true, false, 0, 0};
+            uint32_t sc0 = 0; bool inUp = false, back = false;
+            Input in;
+            for (int f = 0; f < 60 * 30 && !back; f++) {
+                in.left = in.right = ((f / (5 + trial * 2)) & 1);
+                tick(*u, in, 1.0f / 60.0f);
+                const Ball& b = u->balls[0];
+                if (b.layer == 2) {
+                    if (!inUp) { inUp = true; sc0 = u->score; }
+                    upperTicks++;
+                    if (b.x < 9 || b.x > 216 || b.y < 20) leak = true;
+                } else if (inUp) back = true;
+            }
+            if (u->score > sc0 + 1000 && inUp) scoring++;
+            if (back) returned++;
+            delete u;
+        }
+        CHECK(!leak, "table %d : la bille sort du meuble depuis l'etage", t);
+        CHECK(upperTicks > 120, "table %d : bille restee %d images a l'etage", t, upperTicks);
+        CHECK(returned >= 5, "table %d : la bille redescend par le rebord ouvert (%d/6)", t, returned);
+        CHECK(scoring >= 1, "table %d : l'etage rapporte des points (%d/6 essais)", t, scoring);
+        // bumpers et cibles de l'etage reagissent
+        Game* h = fresh(t);
+        for (int k = 0; k < d.upper.bumperCount; k++) {
+            const BumperDef& bm = d.upper.bumpers[k];
+            h->balls[0] = {bm.x - bm.r - 9.0f, bm.y, 170.0f, 0.0f, true, false, 0, 0}; h->balls[0].layer = 2;
+            uint32_t s1 = h->score;
+            for (int f = 0; f < 40 && h->score == s1; f++) tick(*h, Input(), 1.0f / 120.0f);
+            CHECK(h->score >= s1 + bm.points * 2, "table %d : bumper d'etage %d (+%u)", t, k, h->score - s1);
+        }
+        for (int k = 0; k < d.upper.targetCount; k++) {
+            const TargetDef& tg = d.upper.targets[k];
+            const bool ok = shoot_segment(*h, tg.x1, tg.y1, tg.x2, tg.y2, 2, [&]() { return h->targetFlash[MAX_TARGETS + k] > 0.0f; });
+            CHECK(ok, "table %d : cible d'etage %d '%c'", t, k, tg.letter);
+        }
+        CHECK(h->score > 0, "table %d : points des cibles d'etage", t);
+        delete h;
+    }
+    CHECK(decks == 4, "4 tables avec etage attendues (%d)", decks);
+    printf("  %d etages jouables (rampe -> bumpers/cibles/flipper -> retour)\n", decks);
 }
 
 int main(int argc, char** argv) {
@@ -577,6 +843,11 @@ int main(int argc, char** argv) {
     test_containment();
     test_ramp_follow();
     test_hunt();
+    test_wall_budget();
+    test_targets_banks();
+    test_spinners_toys();
+    test_vuk_tube();
+    test_upper_deck();
     test_music();
     test_render(outDir);
     if (g_fail) { printf("\n%d ECHEC(S)\n", g_fail); return 1; }
