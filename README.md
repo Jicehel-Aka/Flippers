@@ -40,7 +40,7 @@ Jeu de flipper arcade néo-pixel conçu sur mesure pour la console **Gamebuino A
 
 ### Mécaniques propres aux plateaux thématiques
 
-Chaque plateau thématique a son **puits Multibille sur un côté** (gauche ou droite selon le décor) et une règle qui lui est propre :
+Chaque plateau thématique a son **puits Multibille** placé selon le décor (gauche, droite ou centre) et une règle qui lui est propre :
 
 | Plateau | Mécanique |
 | :--- | :--- |
@@ -50,6 +50,7 @@ Chaque plateau thématique a son **puits Multibille sur un côté** (gauche ou d
 | **Candy Pop** | **Bumper doré ×3** : un seul bumper vaut triple, et il change à chaque touche |
 | **Bonbons** | **Sucettes** : la sucette saute de place quand on la croque, 4 touches = prime de 40 000 |
 | **Train** | **Locomotive** : elle avance d'une gare à chaque arrêt (ordre fixe), 4 arrêts = prime de 45 000 |
+| **Crypte** *(nécropole glacée)* | **Zombies** : ils sortent de terre sur les tombes et ressortent ailleurs quand on les renvoie, 4 touches = prime de 50 000 ; marche funèbre lente en ré mineur |
 
 Les touches de cible comptent aussi pour la mission « cibles ». Ces mécaniques existent sur le Web/PC et sur la console.
 
