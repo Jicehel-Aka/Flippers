@@ -544,7 +544,7 @@ static void draw_playfield(const Game& g, const View& v, const TableDef& t) {
         const RampDef& rp = t.ramps[r];
         int hw = v.R(rp.wireform ? 4.5f : 6.5f);
         if (hw < 2) hw = 2;
-        for (int sgm = 0; sgm < 4; sgm++) {
+        for (int sgm = 0; sgm < RAMP_PTS - 1; sgm++) {
             int x1 = v.X(rp.pts[sgm].x), y1 = v.Y(rp.pts[sgm].y);
             int x2 = v.X(rp.pts[sgm + 1].x), y2 = v.Y(rp.pts[sgm + 1].y);
             if (!rp.wireform) pthick(x1, y1, x2, y2, (float)hw, darken(rp.color, 72));            // dessous de la rampe
@@ -661,10 +661,29 @@ static void draw_playfield(const Game& g, const View& v, const TableDef& t) {
         const int bx = v.X(g.balls[i].x), by = v.Y(g.balls[i].y);
         const int br = v.R(BALL_RADIUS) < 2 ? 2 : v.R(BALL_RADIUS);
         if (by + br >= HUD_H) {
-            pfillcircle(bx + 2, by + 2, br, C3(2, 3, 6));                                         // ombre
-            pfillcircle(bx, by, br, C3(100, 116, 139));
-            pfillcircle(bx - 1, by - 1, br > 2 ? br - 1 : br, C3(203, 213, 225));
-            pfillcircle(bx - br / 3, by - br / 3, br / 3 > 0 ? br / 3 : 1, C3(255, 255, 255));    // reflet
+            const Ball& bl = g.balls[i];
+            bool under = false;   // bille au niveau du plateau, sous l'etage : assombrie
+            if (t.upper.present && bl.layer == 0 && bl.ramp < 0) {
+                bool in = false;
+                for (int a = 0, c = t.upper.n - 1; a < t.upper.n; c = a++) {
+                    const Vec2 &pa = t.upper.b[a], &pc = t.upper.b[c];
+                    if (((pa.y > bl.y) != (pc.y > bl.y)) && (bl.x < (pc.x - pa.x) * (bl.y - pa.y) / (pc.y - pa.y) + pa.x)) in = !in;
+                }
+                under = in;
+            }
+            const bool high = bl.layer == 2 || bl.ramp >= 0;   // a l'etage ou sur une rampe : surelevee
+            if (under) {
+                pfillcircle(bx, by, br, C3(40, 48, 64));
+                pfillcircle(bx - 1, by - 1, br > 2 ? br - 1 : br, C3(88, 99, 120));
+                pcircle(bx, by, br + 1, C3(15, 20, 32));
+            } else {
+                const int off = high ? 4 : 2;
+                pfillcircle(bx + off, by + off, br, C3(2, 3, 6));                                 // ombre (plus decalee en altitude)
+                pfillcircle(bx, by, br, C3(100, 116, 139));
+                pfillcircle(bx - 1, by - 1, br > 2 ? br - 1 : br, C3(203, 213, 225));
+                pfillcircle(bx - br / 3, by - br / 3, br / 3 > 0 ? br / 3 : 1, C3(255, 255, 255)); // reflet
+                if (bl.layer == 2) pcircle(bx, by, br + 2, t.upper.border ? C(t.upper.border) : C3(250, 250, 120));   // halo d'etage
+            }
         } else {
             ptri(bx, HUD_H + 3, bx - 4, HUD_H + 10, bx + 4, HUD_H + 10, C(t.accent));
         }

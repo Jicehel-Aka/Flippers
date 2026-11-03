@@ -17,6 +17,7 @@ unsigned count_non_background(uint16_t bg);
 }
 
 using namespace pinball;
+static float clampf(float v, float lo, float hi) { return v < lo ? lo : (v > hi ? hi : v); }
 
 static int g_fail = 0;
 #define CHECK(cond, ...)                                  \
@@ -474,8 +475,15 @@ static void test_music() {
         }
         CHECK(notes >= MUSIC_STEPS * 2 / 3, "decor %d : boucle trop vide (%d notes)", decor, notes);
         CHECK(music_step_ms((uint8_t)decor, true) < music_step_ms((uint8_t)decor, false), "decor %d : multibille pas plus rapide", decor);
-        MusicNote a, b;   // la boucle se repete a l'identique
-        CHECK(music_note((uint8_t)decor, 0, a) && music_note((uint8_t)decor, MUSIC_STEPS, b) && a.freq == b.freq, "decor %d : boucle non periodique", decor);
+        MusicNote a, b;   // le cycle complet (4 passages differents) se repete a l'identique ; deux passages consecutifs different
+        CHECK(music_note((uint8_t)decor, 0, a) && music_note((uint8_t)decor, MUSIC_STEPS * 4, b) && a.freq == b.freq, "decor %d : cycle non periodique", decor);
+        int diff = 0;
+        for (uint32_t st = 0; st < MUSIC_STEPS; st++) {
+            MusicNote x, y;
+            const bool hx = music_note((uint8_t)decor, st, x), hy = music_note((uint8_t)decor, st + MUSIC_STEPS, y);
+            if (hx != hy || (hx && x.freq != y.freq)) diff++;
+        }
+        CHECK(diff > MUSIC_STEPS / 3, "decor %d : le 2e passage doit differer du 1er (%d pas)", decor, diff);
         printf("  decor %d : %d notes sur 2 boucles, %.0f..%.0f Hz, pas %u ms\n", decor, notes, lo, hi, music_step_ms((uint8_t)decor, false));
     }
 }
@@ -546,6 +554,14 @@ static void test_render(const char* outDir) {
             if (outDir) { snprintf(path, sizeof(path), "%s/t%d_lamps_top.ppm", outDir, t); vid::dump_ppm(path); }
             g.cameraY = MAX_CAM_Y; render::draw(g);
             if (outDir) { snprintf(path, sizeof(path), "%s/t%d_lamps_bot.ppm", outDir, t); vid::dump_ppm(path); }
+            if (outDir && (t == 0 || t == 1)) {   // bille en pleine rampe (controle visuel : elle doit rester dans le rail du decor)
+                const Ball sb = g.balls[0]; const Vec2 en = g.tbl().ramps[1].pts[0];
+                g.balls[0] = {en.x, en.y + 4.0f, 0.0f, -260.0f, true, false, 0, 0};
+                for (int f = 0; f < 40; f++) tick(g, Input(), 1.0f / 60.0f);
+                g.cameraZoom = 1.0f; g.cameraY = clampf(g.balls[0].y - 120.0f, 0.0f, MAX_CAM_Y); render::draw(g);
+                snprintf(path, sizeof(path), "%s/t%d_ramp.ppm", outDir, t); vid::dump_ppm(path);
+                g.balls[0] = sb;
+            }
             {   // mecaniques : cibles touchees / escamotees, spinner en rotation, jouet actif, bille a l'etage
                 const uint16_t th = g.targetHit; const uint8_t uh = g.upTargetHit; const Ball sb = g.balls[0];
                 g.targetHit = 0x2B; g.upTargetHit = 0x01; g.targetFlash[1] = 0.2f; g.targetFlash[MAX_TARGETS + 1] = 0.2f;
@@ -753,7 +769,7 @@ static void test_vuk_tube() {
         CHECK(held && inTube && out, "table %d : capture %d / conduit %d / sortie %d", t, held, inTube, out);
         CHECK(maxJump < 8.0f, "table %d : saut de %.1f px dans le conduit", t, maxJump);
         CHECK(g->score >= sc0 + d.vuk.points, "table %d : points de l'ejecteur", t);
-        CHECK(hypotf(g->balls[0].x - d.vuk.pts[4].x, g->balls[0].y - d.vuk.pts[4].y) < 12.0f, "table %d : la bille ressort a la sortie du conduit", t);
+        CHECK(hypotf(g->balls[0].x - d.vuk.pts[RAMP_PTS - 1].x, g->balls[0].y - d.vuk.pts[RAMP_PTS - 1].y) < 12.0f, "table %d : la bille ressort a la sortie du conduit", t);
         delete g; n++;
     }
     CHECK(n >= 2, "au moins 2 tables avec ejecteur (%d)", n);
@@ -828,6 +844,68 @@ static void test_upper_deck() {
     printf("  %d etages jouables (rampe -> bumpers/cibles/flipper -> retour)\n", decks);
 }
 
+static void test_plunger_in_flight() {
+    printf("[ressort : pas de tir a vide]\n");
+    Game g; g.begin(STORE()); g.startNewGame(0); g.introTimer = 0.0f;
+    Input in;
+    in.plunger = true; for (int f = 0; f < 40; f++) tick(g, in, 1.0f / 60.0f);
+    CHECK(g.plungerCharge > 0.3f, "le ressort se tend avec la bille dessus (%.2f)", g.plungerCharge);
+    in.plunger = false; tick(g, in, 1.0f / 60.0f);
+    for (int f = 0; f < 3; f++) tick(g, in, 1.0f / 60.0f);
+    CHECK(g.balls[0].vy < -200.0f && g.balls[0].inShooter, "bille lancee dans le couloir (vy=%.0f)", g.balls[0].vy);
+    in.plunger = true;
+    float maxCharge = 0.0f;
+    for (int f = 0; f < 8 && g.balls[0].inShooter; f++) { tick(g, in, 1.0f / 60.0f); if (g.plungerCharge > maxCharge) maxCharge = g.plungerCharge; }
+    CHECK(maxCharge < 0.05f, "pas de tension tant que la bille ne touche pas le ressort (%.2f)", maxCharge);
+    in.plunger = false; tick(g, in, 1.0f / 60.0f);
+    CHECK(g.balls[0].vy < 0.0f || !g.balls[0].inShooter, "un relachement en vol ne relance pas la bille");
+}
+
+static void test_return_and_sling() {
+    printf("[retour a la selection, triangle de rebond]\n");
+    Game g; g.begin(STORE()); g.startNewGame(8); g.introTimer = 0.0f; g.score = 4242;
+    g.returnToSelection();
+    CHECK(g.state == State::Menu && g.tableIdx == 8, "le menu systeme ramene a la selection de table");
+    CHECK(g.highScores[8] >= 4242, "la partie interrompue est enregistree");
+    for (int t = 0; t < TABLE_COUNT; t++) {   // une bille renvoyee par un triangle ne prend pas la rampe voisine pendant 0,4 s
+        Game* h = fresh(t);
+        h->balls[0] = {50.0f, 395.0f, 200.0f, -20.0f, true, false, 0.0f, 0.0f};
+        bool entered = false; bool slung = false;
+        for (int f = 0; f < 120; f++) {
+            tick(*h, Input(), 1.0f / 120.0f);
+            if (h->wallFlash[0] >= 0.0f) {}
+            for (int w = 0; w < h->wallCount; w++) if (h->walls[w].scoring && h->wallFlash[w] > 0.0f) slung = true;
+            if (slung && h->balls[0].rampCool <= 0.0f) break;
+            if (slung && h->balls[0].ramp >= 0) entered = true;
+        }
+        CHECK(!entered, "table %d : la bille renvoyee par le triangle s'engouffre dans la rampe", t);
+        delete h;
+    }
+}
+
+static void test_ramp_exit_not_drain() {
+    printf("[sortie de rampe : pas de chute directe dans les couloirs de sortie]\n");
+    int bad = 0, total = 0;
+    for (int t = 0; t < TABLE_COUNT; t++) for (int r = 0; r < 2; r++) {
+        const Vec2 ex = table(t).ramps[r].pts[RAMP_PTS - 1];
+        if (table(t).ramps[r].toUpper || ex.y < 150.0f || (ex.x > 60.0f && ex.x < 166.0f)) continue;
+        Game* g = fresh(t);
+        const Vec2 en = table(t).ramps[r].pts[0];
+        g->balls[0] = {en.x, en.y + 4.0f, 0.0f, -260.0f, true, false, 0, 0};
+        float xAt = -1; bool crossed = false;
+        for (int f = 0; f < 60 * 8 && !crossed; f++) {
+            tick(*g, Input(), 1.0f / 60.0f);
+            const Ball& b = g->balls[0];
+            if (b.ramp < 0 && b.y > 380.0f) { xAt = b.x; crossed = true; }
+            if (!b.active) break;
+        }
+        total++;
+        if (crossed && (xAt < 27.0f || xAt > 199.0f)) { bad++; printf("    table %d rampe %d : franchit y=380 en x=%.0f (couloir de sortie)\n", t, r, xAt); }
+        delete g;
+    }
+    CHECK(bad == 0, "%d/%d sorties de rampe retombent dans un couloir de sortie", bad, total);
+}
+
 int main(int argc, char** argv) {
     const char* outDir = argc > 1 ? argv[1] : nullptr;
     test_tables();
@@ -840,6 +918,9 @@ int main(int argc, char** argv) {
     test_art();
     test_art_alignment();
     test_launch_and_save();
+    test_plunger_in_flight();
+    test_return_and_sling();
+    test_ramp_exit_not_drain();
     test_containment();
     test_ramp_follow();
     test_hunt();

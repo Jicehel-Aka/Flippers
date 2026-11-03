@@ -231,13 +231,34 @@ const Theme THEMES[DECOR_COUNT] = {
     },
 };
 
-// Grande arche de 16 phrases (512 pas) : A B A C | D B E C | F D A E | B F C A
-constexpr uint8_t ORDER[16] = {
-    0, 1, 0, 2,
-    3, 1, 4, 2,
-    5, 3, 0, 4,
-    1, 5, 2, 0
+// Grande arche de 24 phrases (768 pas) : 8 motifs A..H
+constexpr uint8_t ORDER[PHRASE_SLOTS] = {
+    0, 1, 0, 2,   3, 1, 4, 2,   5, 3, 0, 4,   1, 5, 2, 0,
+    6, 7, 0, 6,   4, 7, 3, 6
 };
+
+// Motifs G et H propres au Far West (6) et au Train (10) ; les autres themes les derivent (retrogrades des motifs C et D)
+const int8_t EXTRA_WEST[2][PHRASE_STEPS] = {
+    { 0, 4, 7, 4,  0, 4, 7, 12,  9, 7, 4, 7,  9, 12, 9, 7,   5, 9, 12, 9,  5, 9, 12, 14,  12, 9, 7, 4,  2, 4, 0, R },
+    { 0, R, 0, R,  7, R, 7, R,   5, R, 5, R,  7, 9, 7, R,    0, R, 4, R,   7, R, 9, 7,    4, R, 2, R,   0, -5, 0, R }
+};
+const int8_t EXTRA_TRAIN[2][PHRASE_STEPS] = {
+    { 0, 0, R, 0,  0, 0, R, 7,   0, 0, R, 0,  10, 9, 7, R,   5, 5, R, 5,   5, 5, R, 12,    9, 9, R, 9,   7, 4, 2, R },
+    { 12, R, 12, R, 14, R, 14, 12, 10, R, 10, R, 12, 9, 7, R,  7, 7, 9, 10, 12, 12, 14, 15, 14, 12, 10, 9, 7, R, 0, R }
+};
+
+// Rupture de rythme par phrase de la grande arche (evite la boucle monotone) :
+// 0 normal ; 1 demi-temps (une note sur deux) ; 2 pause rythmique (seulement les temps forts) ; 3 syncope (notes voisines permutees)
+constexpr uint8_t FEEL_RHYTHMIC[PHRASE_SLOTS] = {0, 0, 0, 3,   0, 1, 0, 2,   0, 3, 1, 0,   3, 1, 0, 2,   0, 3, 0, 1,   0, 2, 1, 0};
+constexpr uint8_t FEEL_LYRICAL[PHRASE_SLOTS]  = {0, 0, 0, 0,   0, 0, 0, 2,   0, 0, 3, 0,   0, 0, 0, 2,   0, 0, 0, 0,   0, 0, 3, 2};
+
+int8_t phrase_note(uint8_t d, const Theme& t, uint8_t id, uint32_t idx) {
+    if (id < 6) return t.ph[id][idx];
+    const int k = id - 6;
+    if (d == 6) return EXTRA_WEST[k][idx];
+    if (d == 10) return EXTRA_TRAIN[k][idx];
+    return t.ph[k == 0 ? 2 : 3][PHRASE_STEPS - 1 - idx];   // retrograde
+}
 
 } // namespace
 
@@ -253,13 +274,29 @@ bool music_note(uint8_t decor, uint32_t step, MusicNote& out) {
     const Theme& t = THEMES[d];
     const uint32_t pos = step % MUSIC_STEPS;
     const uint32_t phraseSlot = pos / PHRASE_STEPS;
-    const uint8_t phraseId = ORDER[phraseSlot];
-    const int8_t s = t.ph[phraseId][pos % PHRASE_STEPS];
+    // quatre passages differents avant de retomber sur le meme : l'ordre des phrases tourne et la tonalite change
+    const uint32_t pass = (step / MUSIC_STEPS) & 3u;
+    const uint8_t phraseId = ORDER[(phraseSlot + pass * 5u) % PHRASE_SLOTS];
+    const uint32_t inPhrase = pos % PHRASE_STEPS;
+    const bool lyrical = (d == 1 || d == 2 || d == 3 || d == 9 || d == 11);
+    const uint8_t feel = lyrical ? FEEL_LYRICAL[phraseSlot] : FEEL_RHYTHMIC[phraseSlot];
+    // le dernier tiers de la derniere phrase reste normal pour que la boucle reparte proprement
+    const bool tail = (phraseSlot == PHRASE_SLOTS - 1 && inPhrase >= 24);
+    uint32_t idx = inPhrase;
+    if (!tail) {
+        if (feel == 1 && (inPhrase & 1u)) return false;
+        if (feel == 2 && (inPhrase & 3u)) return false;
+        if (feel == 3) idx = inPhrase ^ 1u;
+    }
+    const int8_t s = phrase_note(d, t, phraseId, idx);
     if (s == R) return false;
 
-    float freq = t.rootHz * powf(2.0f, (float)s / 12.0f);
+    static const int8_t SHIFT[4] = {0, 5, 0, 7};
+    static const int8_t SHIFT_LYR[4] = {0, 2, 0, -2};
+    const int semis = s + (lyrical ? SHIFT_LYR[pass] : SHIFT[pass]);
+    float freq = t.rootHz * powf(2.0f, (float)semis / 12.0f);
     // Contraste de timbre et de tenue sur les phrases de pont / apogee (E et F)
-    const bool useAlt = (phraseId == 4 || phraseId == 5);
+    const bool useAlt = (phraseId == 4 || phraseId == 5 || phraseId == 7);
     if (freq > 1950.0f) freq *= 0.5f;
     if (freq < 85.0f) freq *= 2.0f;
 

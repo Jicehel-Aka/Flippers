@@ -200,6 +200,7 @@ void Game::startNewGame(uint8_t tableIndex) {
     for (int i = 0; i < MAX_UP_BUMPERS; i++) upBumperFlash[i] = 0.0f;
     for (int i = 0; i < MAX_SPINNERS; i++) { spinAngle[i] = 0.0f; spinVel[i] = 0.0f; spinCount[i] = 0; }
     toyState = ToyState{0, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f};
+    bumperStreak = 0; bumperStreakTimer = 0.0f;
     rampBoost = 1; bonusMult = 1; vukFlash = 0.0f; multiQueue = 0; multiDelay = 0.0f;
     rng_ = 12345u + tableIdx;
     score = 0;
@@ -265,6 +266,7 @@ bool Game::collideBallSegment(Ball& b, float x1, float y1, float x2, float y2, f
         if (wallIndex >= 0 && walls[wallIndex].scoring) {
             score += 500;
             wallFlash[wallIndex] = 0.12f;
+            b.rampCool = maxf(b.rampCool, 0.45f);   // une bille renvoyee par le triangle ne s'engouffre pas dans la rampe voisine
             advanceMission(2);
             emit(Sfx::Sling);
             touchHud();
@@ -587,9 +589,22 @@ void Game::stepUpper(Ball& b, float dt, bool leftHeld, bool rightHeld) {
         const float cdx = b.x - flippers[f].px, cdy = b.y - flippers[f].py, reach = flippers[f].length + 12.0f;
         if (active && cdx * cdx + cdy * cdy < reach * reach) cradled = true;
     }
-    if (!cradled && b.vx * b.vx + b.vy * b.vy < 144.0f) {
+    if (!cradled && b.vx * b.vx + b.vy * b.vy < 900.0f) {
         b.stuckTime += dt;
-        if (b.stuckTime > 0.6f) { b.vy = 145.0f; b.vx = (b.x < 113.0f ? 1.0f : -1.0f) * 75.0f; b.stuckTime = 0.0f; }
+        if (b.stuckTime > 0.22f) {   // bille posee sur un rebord : petit saut en direction du rebord ouvert (ou du centre)
+            float tx = 113.0f, ty = 200.0f;
+            for (uint8_t i = 0; i < up.n; i++) {
+                if (!(up.openMask & (1u << i))) continue;
+                tx = (up.b[i].x + up.b[(i + 1) % up.n].x) * 0.5f;
+                ty = (up.b[i].y + up.b[(i + 1) % up.n].y) * 0.5f;
+                break;
+            }
+            float dx = tx - b.x, dy = ty - b.y;
+            const float dl = maxf(1.0f, sqrtf(dx * dx + dy * dy));
+            b.vx = dx / dl * 130.0f;
+            b.vy = dy / dl * 130.0f - 70.0f;
+            b.stuckTime = 0.0f;
+        }
     } else {
         b.stuckTime = 0.0f;
     }
@@ -616,6 +631,7 @@ void Game::stepSubstep(float dt, bool leftHeld, bool rightHeld) {
     for (int k = 0; k < MAX_TARGETS + MAX_UP_TARGETS; k++) if (targetFlash[k] > 0.0f) targetFlash[k] = maxf(0.0f, targetFlash[k] - dt);
     for (int k = 0; k < MAX_UP_BUMPERS; k++) if (upBumperFlash[k] > 0.0f) upBumperFlash[k] = maxf(0.0f, upBumperFlash[k] - dt);
     if (vukFlash > 0.0f) vukFlash = maxf(0.0f, vukFlash - dt);
+    if (bumperStreakTimer > 0.0f) bumperStreakTimer = maxf(0.0f, bumperStreakTimer - dt);
     for (int bk = 0; bk < MAX_BANKS; bk++) {   // les cibles escamotables d'une banque complete remontent
         if (dropReset[bk] <= 0.0f) continue;
         dropReset[bk] -= dt;
@@ -703,8 +719,8 @@ void Game::stepSubstep(float dt, bool leftHeld, bool rightHeld) {
             const int rampIdx = b.ramp;
             const bool tube = (rampIdx == 2);
             const Vec2* P = tube ? t.vuk.pts : t.ramps[b.ramp].pts;
-            float total = 0.0f, segLen[4];
-            for (int k = 0; k < 4; k++) {
+            float total = 0.0f, segLen[RAMP_PTS - 1];
+            for (int k = 0; k < RAMP_PTS - 1; k++) {
                 const float sx = P[k + 1].x - P[k].x, sy = P[k + 1].y - P[k].y;
                 segLen[k] = sqrtf(sx * sx + sy * sy);
                 total += segLen[k];
@@ -712,7 +728,7 @@ void Game::stepSubstep(float dt, bool leftHeld, bool rightHeld) {
             if (!tube) b.rampSpeed = maxf(120.0f, b.rampSpeed - 40.0f * dt);   // la bille ralentit un peu en montant
             b.rampDist += b.rampSpeed * dt;
             if (b.rampDist >= total) {
-                const Vec2 a = P[3], e = P[4];
+                const Vec2 a = P[RAMP_PTS - 2], e = P[RAMP_PTS - 1];
                 float ddx = e.x - a.x, ddy = e.y - a.y;
                 const float dl = maxf(1.0f, sqrtf(ddx * ddx + ddy * ddy));
                 b.x = e.x; b.y = e.y;
@@ -732,14 +748,17 @@ void Game::stepSubstep(float dt, bool leftHeld, bool rightHeld) {
                 } else {
                     b.vx = ddx / dl * 90.0f;
                     if (fabsf(b.vx) < 25.0f) b.vx = (e.x < 112.0f) ? 35.0f : -35.0f;   // jamais vx = 0 (voir plus haut)
+                    // sortie contre une paroi : la bille repart vers l'interieur du plateau (sinon elle tombe droit dans le couloir de sortie)
+                    if (e.x < 60.0f && b.vx < 80.0f) b.vx = 80.0f;
+                    else if (e.x > 166.0f && b.vx > -80.0f) b.vx = -80.0f;
                     b.vy = maxf(85.0f, ddy / dl * 140.0f);
                     b.rampCool = 0.75f;
                 }
                 continue;
             }
             float d = b.rampDist;
-            for (int k = 0; k < 4; k++) {
-                if (d <= segLen[k] || k == 3) {
+            for (int k = 0; k < RAMP_PTS - 1; k++) {
+                if (d <= segLen[k] || k == RAMP_PTS - 2) {
                     const float u = segLen[k] > 0.0f ? d / segLen[k] : 0.0f;
                     b.x = P[k].x + (P[k + 1].x - P[k].x) * u;
                     b.y = P[k].y + (P[k + 1].y - P[k].y) * u;
@@ -840,8 +859,20 @@ void Game::stepSubstep(float dt, bool leftHeld, bool rightHeld) {
                 dy /= d;
                 b.x = bmp.x + dx * minD;
                 b.y = bmp.y + dy * minD;
-                b.vx = dx * 235.0f;
-                b.vy = dy * 235.0f;
+                {   // le renvoi est legerement devie (pseudo-aleatoire) et une serie de touches trop rapprochees est cassee
+                    const float jit = (frand() - 0.5f) * 0.45f;
+                    const float cj = cosf(jit), sj = sinf(jit);
+                    const float rx = dx * cj - dy * sj, ry = dx * sj + dy * cj;
+                    b.vx = rx * 235.0f;
+                    b.vy = ry * 235.0f;
+                    bumperStreak = bumperStreakTimer > 0.0f ? (uint8_t)(bumperStreak + 1) : 1;
+                    bumperStreakTimer = 1.1f;
+                    if (bumperStreak >= 6) {
+                        b.vy = maxf(b.vy, 170.0f);
+                        b.vx += (b.x < 112.0f ? 70.0f : -70.0f);
+                        bumperStreak = 0;
+                    }
+                }
                 bool golden = t.rotateBumper && k == litBumper % t.bumperCount;
                 score += golden ? bmp.points * 3 : bmp.points;
                 if (golden) litBumper = (uint8_t)((litBumper + 1 + (huntHits++ % 2)) % t.bumperCount);
@@ -923,7 +954,7 @@ void Game::stepSubstep(float dt, bool leftHeld, bool rightHeld) {
         if (b.rampCool <= 0.0f && b.vy < -55.0f) {
             for (uint8_t r = 0; r < 2; r++) {
                 Vec2 entry = t.ramps[r].pts[0];
-                Vec2 exitP = t.ramps[r].pts[4];
+                Vec2 exitP = t.ramps[r].pts[RAMP_PTS - 1];
                 float dx = b.x - entry.x;
                 float dy = b.y - entry.y;
                 float rad = t.ramps[r].entryRadius;
@@ -1098,18 +1129,24 @@ void Game::updatePlaying(float dt, const Input& in, bool nudgePressed, bool flip
     if (ballSaveTimer > 0.0f) ballSaveTimer = maxf(0.0f, ballSaveTimer - dt);
 
     bool anyInShooter = false;
+    bool onSpring = false;   // une bille repose sur la tete du ressort (seule situation ou on peut le tendre / tirer)
     for (int i = 0; i < MAX_BALLS; i++) {
-        if (balls[i].active && balls[i].inShooter) anyInShooter = true;
+        if (balls[i].active && balls[i].inShooter) {
+            anyInShooter = true;
+            const float headY = PLUNGER_TOP_Y + plungerCharge * 22.0f;
+            if (balls[i].y + BALL_RADIUS >= headY - 3.0f && fabsf(balls[i].vy) < 60.0f) onSpring = true;
+        }
         if (balls[i].active && balls[i].rampCool > 0.0f) balls[i].rampCool = maxf(0.0f, balls[i].rampCool - dt);
     }
+    (void)anyInShooter;
 
-    // Ressort du lance-bille
-    if (in.plunger && anyInShooter) {
+    // Ressort du lance-bille : inactif tant qu'aucune bille ne repose dessus (bille deja lancee, en vol dans le couloir)
+    if (in.plunger && onSpring) {
         plungerCharge = minf(1.0f, plungerCharge + dt * 1.15f);
-    } else if (prevPlunger_ && !in.plunger && anyInShooter) {
+    } else if (prevPlunger_ && !in.plunger && onSpring && plungerCharge > 0.03f) {
         float launchVy = -(360.0f + plungerCharge * 220.0f);
         for (int i = 0; i < MAX_BALLS; i++) {
-            if (balls[i].active && balls[i].inShooter) {
+            if (balls[i].active && balls[i].inShooter && balls[i].y + BALL_RADIUS >= PLUNGER_TOP_Y + plungerCharge * 22.0f - 3.0f && fabsf(balls[i].vy) < 60.0f) {
                 balls[i].vy = launchVy;
                 balls[i].vx = -18.0f;
             }
@@ -1118,7 +1155,7 @@ void Game::updatePlaying(float dt, const Input& in, bool nudgePressed, bool flip
         plungerCharge = 0.0f;
         introTimer = 0.0f;   // passe immediatement en zoom jeu au tir
     } else {
-        plungerCharge = maxf(0.0f, plungerCharge - dt * 3.0f);
+        plungerCharge = maxf(0.0f, plungerCharge - dt * (in.plunger ? 6.0f : 3.0f));
     }
 
     // Secousse (Nudge) et jauge de TILT
@@ -1203,6 +1240,15 @@ void Game::requestConfirm(uint8_t action) {
         confirmUntilMs = nowMs + 2500;
         emit(Sfx::Confirm);
     }
+}
+
+void Game::returnToSelection() {
+    if (state == State::Playing || state == State::Paused) commitScore();
+    confirmAction = 0;
+    state = State::Menu;
+    setupFlippers();
+    touchHud();
+    emit(Sfx::MenuOk);
 }
 
 void Game::syncInput(const Input& in) {
