@@ -96,7 +96,7 @@ function sampleSmoothRampSpline(pts: Vec2[], subdivisionsPerSeg: number = 7): Sp
   return samples;
 }
 
-const PLATE_DY: Record<string, number> = { prehistoire: -188, candy: -186, crypte: -192, bonbons: 0, train: 0 };
+const PLATE_DY: Record<string, number> = { candy: -186, crypte: -192 };
 
 export class PinballCanvasRenderer {
   private artImages: Map<string, HTMLImageElement> = new Map();
@@ -783,18 +783,18 @@ export class PinballCanvasRenderer {
 
     ctx.save();
     if (id === 'prehistoire') {
-      // Volcan fumant et coulées de lave
-      poly([[48, 232], [96, 112], [130, 112], [178, 232]], 'rgba(69, 39, 16, 0.75)', '#A8A29E', 1.2);
-      poly([[96, 112], [104, 104], [122, 104], [130, 112]], '#F97316', '#FDE68A', 1);
+      // Volcan fumant (compact, en haut du plateau) et coulées de lave
+      poly([[82, 126], [100, 70], [126, 70], [144, 126]], 'rgba(69, 39, 16, 0.75)', '#A8A29E', 1.2);
+      poly([[100, 70], [106, 64], [120, 64], [126, 70]], '#F97316', '#FDE68A', 1);
       ctx.strokeStyle = '#F97316';
-      ctx.lineWidth = 2.2;
-      for (const x of [104, 113, 122]) {
+      ctx.lineWidth = 2;
+      for (const x of [106, 113, 120]) {
         ctx.beginPath();
-        ctx.moveTo(x, 108);
-        ctx.quadraticCurveTo(x + (x - 113) * 1.6, 160, x + (x - 113) * 3, 226);
+        ctx.moveTo(x, 68);
+        ctx.quadraticCurveTo(x + (x - 113) * 1.2, 98, x + (x - 113) * 2.4, 124);
         ctx.stroke();
       }
-      for (let i = 0; i < 4; i++) circ(100 + i * 9, 92 - i * 6 + (i % 2) * 4, 5 + i, 'rgba(231, 229, 228, 0.18)');
+      for (let i = 0; i < 3; i++) circ(104 + i * 11, 54 - i * 2, 4 + i, 'rgba(231, 229, 228, 0.2)');
       // Empreintes de dinosaure
       for (const [x, y] of [[44, 248], [54, 262], [40, 276]]) {
         poly([[x, y], [x + 4, y - 7], [x + 8, y]], '#78350F');
@@ -813,9 +813,9 @@ export class PinballCanvasRenderer {
       plate('ÂGE DE PIERRE', '#2A1A0E', '#F97316', '#FDBA74');
     } else if (id === 'farwest') {
       // Soleil couchant, cactus et étoile de shérif
-      circ(113, 250, 28, 'rgba(245, 158, 11, 0.22)');
-      circ(113, 250, 19, 'rgba(253, 230, 138, 0.25)');
-      for (const x of [46, 180]) {
+      circ(113, 84, 22, 'rgba(245, 158, 11, 0.22)');
+      circ(113, 84, 15, 'rgba(253, 230, 138, 0.25)');
+      for (const x of [36, 190]) {
         ctx.fillStyle = '#15803D';
         ctx.fillRect(x - 3, 232, 6, 36);
         ctx.fillRect(x - 11, 242, 6, 4);
@@ -823,7 +823,7 @@ export class PinballCanvasRenderer {
         ctx.fillRect(x + 5, 248, 6, 4);
         ctx.fillRect(x + 8, 240, 4, 12);
       }
-      this.drawStarShape(ctx, 113, 250, 13, 6, '#FACC15');
+      this.drawStarShape(ctx, 113, 84, 11, 5, '#FACC15');
       ctx.strokeStyle = '#7C2D12';
       ctx.lineWidth = 1;
       ctx.stroke();
@@ -836,8 +836,8 @@ export class PinballCanvasRenderer {
       plate('SALOON', '#3B1D0A', '#FDE68A', '#FDE68A');
     } else if (id === 'halloween') {
       // Pleine lune, toiles d'araignée, chauves-souris et citrouille
-      circ(113, 150, 30, 'rgba(254, 249, 195, 0.2)');
-      circ(113, 150, 22, 'rgba(254, 249, 195, 0.2)');
+      circ(113, 138, 18, 'rgba(254, 249, 195, 0.2)');
+      circ(113, 138, 12, 'rgba(254, 249, 195, 0.2)');
       ctx.strokeStyle = 'rgba(233, 213, 255, 0.35)';
       ctx.lineWidth = 0.8;
       for (const [cx, cy, dir] of [[14, 74, 1], [212, 74, -1]] as [number, number, number][]) {
@@ -854,7 +854,7 @@ export class PinballCanvasRenderer {
         }
       }
       ctx.fillStyle = '#1E1B4B';
-      for (const [x, y] of [[98, 84], [134, 92]]) {
+      for (const [x, y] of [[92, 66], [138, 70]]) {
         ctx.beginPath();
         ctx.moveTo(x, y);
         ctx.quadraticCurveTo(x - 8, y - 8, x - 14, y);
@@ -873,13 +873,13 @@ export class PinballCanvasRenderer {
       for (const [x, y, r, c] of [[44, 120, 7, '#FBCFE8'], [182, 120, 7, '#FBCFE8'], [60, 240, 5, '#FDE047'], [166, 240, 5, '#FFFFFF'], [44, 360, 5, '#FBCFE8'], [182, 356, 6, '#FDE047']] as [number, number, number, string][]) {
         heart(x, y, r, c);
       }
-      this.drawStarShape(ctx, 113, 98, 7, 3, '#FDE047');
+      this.drawStarShape(ctx, 172, 62, 7, 3, '#FDE047');
       this.drawStarShape(ctx, 50, 176, 5, 2.2, '#FFFFFF');
       this.drawStarShape(ctx, 176, 176, 5, 2.2, '#FFFFFF');
       // Nœud de ruban
-      poly([[113, 236], [90, 222], [90, 250]], '#FBCFE8', '#DB2777', 1);
-      poly([[113, 236], [136, 222], [136, 250]], '#FBCFE8', '#DB2777', 1);
-      circ(113, 236, 5, '#EC4899', '#FFFFFF');
+      poly([[113, 172], [99, 164], [99, 180]], '#FBCFE8', '#DB2777', 1);
+      poly([[113, 172], [127, 164], [127, 180]], '#FBCFE8', '#DB2777', 1);
+      circ(113, 172, 3.5, '#EC4899', '#FFFFFF');
       plate('CANDY POP', '#3B0A2C', '#F9A8D4', '#FDE047');
     } else if (id === 'bonbons') {
       // Bonbons emballés, sucette et rayures de comptoir
@@ -900,8 +900,6 @@ export class PinballCanvasRenderer {
       };
       wrapped(56, 104, -0.4, '#FB7185');
       wrapped(170, 104, 0.4, '#FACC15');
-      wrapped(60, 250, 0.3, '#A78BFA');
-      wrapped(166, 250, -0.3, '#FB7185');
       // Sucette spirale
       circ(113, 236, 15, '#FFF1F2', '#E11D48');
       ctx.strokeStyle = '#E11D48';
@@ -922,27 +920,27 @@ export class PinballCanvasRenderer {
       }
       plate('BONBONS', '#052E2B', '#FB7185', '#FEF08A');
     } else if (id === 'train') {
-      // Train : rails avec traverses, phare de locomotive et nuages de vapeur
+      // Train : rails avec traverses en bas du plateau, phare de locomotive en haut et nuages de vapeur
       ctx.strokeStyle = 'rgba(148, 163, 184, 0.55)';
       ctx.lineWidth = 1.6;
       for (const dx of [-8, 8]) {
         ctx.beginPath();
-        ctx.moveTo(113 + dx * 0.35, 232);
+        ctx.moveTo(113 + dx * 0.35, 300);
         ctx.lineTo(113 + dx * 2.2, 372);
         ctx.stroke();
       }
       ctx.strokeStyle = 'rgba(161, 98, 7, 0.55)';
       ctx.lineWidth = 2;
-      for (let y = 240; y < 372; y += 14) {
-        const w = 8 + ((y - 232) / 140) * 14;
+      for (let y = 304; y < 372; y += 12) {
+        const w = 8 + ((y - 300) / 72) * 14;
         ctx.beginPath();
         ctx.moveTo(113 - w, y);
         ctx.lineTo(113 + w, y);
         ctx.stroke();
       }
-      circ(113, 112, 20, 'rgba(253, 230, 138, 0.16)');
-      circ(113, 112, 12, 'rgba(253, 230, 138, 0.2)');
-      for (const [x, y, r] of [[56, 100, 9], [68, 90, 7], [160, 92, 8], [172, 104, 10]]) circ(x, y, r, 'rgba(226, 232, 240, 0.14)');
+      circ(113, 80, 16, 'rgba(253, 230, 138, 0.16)');
+      circ(113, 80, 9, 'rgba(253, 230, 138, 0.22)');
+      for (const [x, y, r] of [[56, 96, 9], [68, 86, 7], [160, 88, 8], [172, 100, 10]]) circ(x, y, r, 'rgba(226, 232, 240, 0.14)');
       // Signal ferroviaire
       ctx.fillStyle = '#334155';
       ctx.fillRect(44, 236, 3, 26);
@@ -975,23 +973,6 @@ export class PinballCanvasRenderer {
       ctx.lineTo(74, 238);
       ctx.lineTo(66, 252);
       ctx.stroke();
-      // Pierres tombales
-      for (const [x, y, h] of [[44, 232, 22], [182, 236, 26], [28, 250, 18]] as [number, number, number][]) {
-        ctx.fillStyle = '#334E68';
-        ctx.beginPath();
-        ctx.moveTo(x - 7, y + h);
-        ctx.lineTo(x - 7, y);
-        ctx.arc(x, y, 7, Math.PI, 0);
-        ctx.lineTo(x + 7, y + h);
-        ctx.closePath();
-        ctx.fill();
-        ctx.strokeStyle = '#A5F3FC';
-        ctx.lineWidth = 0.8;
-        ctx.stroke();
-        ctx.fillStyle = '#BAE6FD';
-        ctx.fillRect(x - 1, y - 3, 2, 8);
-        ctx.fillRect(x - 3.5, y, 7, 2);
-      }
       plate('NÉCROPOLE', '#06121F', '#38BDF8', '#BAE6FD');
     }
     ctx.restore();
