@@ -20,7 +20,7 @@ struct Theme {
     int8_t ph[4][PHRASE_STEPS];
 };
 
-const Theme THEMES[5] = {
+const Theme THEMES[DECOR_COUNT] = {
     // 0 circuit : la mineur, carre, allant
     { 220.0f, 118, WAVE_SQUARE, 0.20f,
       {
@@ -106,6 +106,108 @@ const Theme THEMES[5] = {
         4, 7, 11, 16, 11, 7, 4, R,  0, 4, 7, 12, 16, 12, 7, R }
       }
     },
+    // 5 prehistoire : mi mineur pentatonique, triangle, tambours de pierre
+    { 164.81f, 150, WAVE_TRIANGLE, 0.36f,
+      {
+      { // A
+        0, R, R, 0,  3, R, 0, R,  7, R, R, 5,  3, R, 0, R,
+        0, R, R, 0,  3, R, 7, R,  10, 7, 5, 3,  0, R, R, R },
+      { // B
+        7, R, 10, R,  12, R, 10, R,  7, R, 5, R,  3, R, R, R,
+        0, R, 3, R,  5, R, 7, R,  5, 3, 0, R,  0, R, R, R },
+      { // C
+        12, R, R, 10,  R, R, 7, R,  5, R, R, 7,  R, R, 3, R,
+        12, R, R, 10,  R, R, 15, R,  12, 10, 7, 5,  3, R, R, R },
+      { // D
+        0, 0, R, 0,  R, 0, R, R,  3, 3, R, 3,  R, 3, R, R,
+        5, 5, R, 5,  R, 5, R, R,  7, 5, 3, 0,  R, R, R, R }
+      }
+    },
+    // 6 farwest : re majeur, carre, cavalcade de banjo
+    { 146.83f, 104, WAVE_SQUARE, 0.2f,
+      {
+      { // A
+        0, R, 4, R,  7, R, 9, 7,  4, R, 7, R,  4, 2, 0, R,
+        0, R, 4, R,  7, R, 12, R,  11, 9, 7, 4,  7, R, R, R },
+      { // B
+        9, R, 7, R,  4, R, 7, R,  9, R, 12, R,  9, 7, 4, R,
+        2, R, 5, R,  9, R, 11, R,  12, 11, 9, 7,  4, R, R, R },
+      { // C
+        0, 4, 7, 4, 0, 4, 7, R,  5, 9, 12, 9, 5, 9, 12, R,
+        7, 11, 14, 11, 7, 11, 14, R,  12, 9, 7, 4, 0, R, R, R },
+      { // D
+        0, R, 0, 0,  R, 0, 4, R,  7, R, 7, 7,  R, 7, 9, R,
+        7, R, 4, R,  2, R, 0, R,  0, R, R, R,  R, R, R, R }
+      }
+    },
+    // 7 halloween : do mineur, carre, orgue sinistre
+    { 130.81f, 128, WAVE_SQUARE, 0.18f,
+      {
+      { // A
+        0, R, R, 3,  R, R, 7, R,  6, R, R, 5,  R, R, 3, R,
+        0, R, R, 3,  R, R, 8, R,  7, 6, 5, 3,  R, R, R, R },
+      { // B
+        12, R, 11, R,  8, R, 7, R,  6, R, 7, R,  3, R, R, R,
+        0, R, 3, R,  6, R, 7, R,  8, 7, 6, 3,  0, R, R, R },
+      { // C
+        0, 3, 6, 3, 0, 3, 6, R,  1, 4, 7, 4, 1, 4, 7, R,
+        0, 3, 7, 10, 7, 3, 0, R,  -1, 2, 6, 11, 6, 2, -1, R },
+      { // D
+        7, R, 6, R,  5, R, 3, R,  1, R, 0, R,  R, R, R, R,
+        12, R, 11, R,  8, R, 7, R,  6, 5, 3, 1,  0, R, R, R }
+      }
+    },
+    // 8 candy : sol majeur, triangle, pop sautillante
+    { 392.0f, 106, WAVE_TRIANGLE, 0.34f,
+      {
+      { // A
+        12, R, 7, R,  9, R, 12, R,  14, R, 12, R,  9, 7, R, R,
+        12, R, 7, R,  9, R, 16, R,  14, 12, 9, 7,  12, R, R, R },
+      { // B
+        0, 4, 7, 4, 0, 4, 9, 7,  2, 5, 9, 5, 2, 5, 11, 9,
+        4, 7, 11, 7, 4, 7, 12, 11,  9, 7, 4, 2, 0, R, R, R },
+      { // C
+        19, R, 16, R,  14, R, 12, R,  14, R, 16, R,  19, R, R, R,
+        21, R, 19, R,  16, R, 14, R,  12, 14, 16, 19,  24, R, R, R },
+      { // D
+        7, 9, 12, 16, 12, 9, 7, R,  9, 12, 16, 19, 16, 12, 9, R,
+        11, 14, 17, 21, 17, 14, 11, R,  12, 16, 19, 24, 19, 16, 12, R }
+      }
+    },
+    // 9 bonbons : fa majeur, sinus, boite a musique
+    { 349.23f, 170, WAVE_SINE, 0.38f,
+      {
+      { // A
+        12, R, 16, R,  19, R, 16, R,  17, R, 14, R,  12, R, R, R,
+        12, R, 16, R,  19, R, 24, R,  23, 21, 19, 16,  12, R, R, R },
+      { // B
+        7, R, 12, R,  16, R, 12, R,  9, R, 14, R,  17, R, 14, R,
+        7, R, 11, R,  14, R, 17, R,  16, 14, 12, 11,  7, R, R, R },
+      { // C
+        0, R, 4, R,  7, R, 12, R,  9, R, 5, R,  2, R, R, R,
+        0, R, 4, R,  7, R, 9, R,  11, 12, 14, 16,  19, R, R, R },
+      { // D
+        24, R, R, 19,  R, R, 16, R,  17, R, R, 14,  R, R, 12, R,
+        24, R, R, 19,  R, R, 21, R,  19, 16, 12, 7,  R, R, R, R }
+      }
+    },
+    // 10 train : la mineur, carre, pulsation de vapeur
+    { 220.0f, 100, WAVE_SQUARE, 0.2f,
+      {
+      { // A
+        0, R, 0, R,  3, R, 0, R,  5, R, 3, R,  0, R, R, R,
+        0, R, 0, R,  3, R, 7, R,  8, 7, 5, 3,  0, R, R, R },
+      { // B
+        7, R, 7, R,  10, R, 7, R,  12, R, 10, R,  7, R, R, R,
+        5, R, 5, R,  8, R, 5, R,  7, 5, 3, 1,  0, R, R, R },
+      { // C
+        12, R, 10, R,  7, R, 10, R,  12, R, 15, R,  12, R, R, R,
+        14, R, 12, R,  10, R, 12, R,  15, 14, 12, 10,  7, R, R, R },
+      { // D
+        0, 0, R, 0,  0, R, 0, 0,  R, 0, 0, R,  0, R, R, R,
+        3, 3, R, 3,  3, R, 3, 3,  R, 5, 5, R,  7, R, R, R }
+      }
+    },
 };
 
 // Forme : A B A C | D B C A — 8 phrases de 32 pas, soit 256 pas (plus de 30 s avant de reboucler)
@@ -114,12 +216,12 @@ constexpr uint8_t ORDER[8] = { 0, 1, 0, 2, 3, 1, 2, 0 };
 } // namespace
 
 uint16_t music_step_ms(uint8_t decor, bool intense) {
-    const Theme& t = THEMES[decor % 5];
+    const Theme& t = THEMES[decor % DECOR_COUNT];
     return intense ? (uint16_t)(t.stepMs * 85u / 100u) : t.stepMs;
 }
 
 bool music_note(uint8_t decor, uint32_t step, MusicNote& out) {
-    const Theme& t = THEMES[decor % 5];
+    const Theme& t = THEMES[decor % DECOR_COUNT];
     const uint32_t pos = step % MUSIC_STEPS;
     const int8_t s = t.ph[ORDER[pos / PHRASE_STEPS]][pos % PHRASE_STEPS];
     if (s == R) return false;

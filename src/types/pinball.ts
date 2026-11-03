@@ -10,7 +10,7 @@ export type GameState = 'TABLE_SELECT' | 'PLAYING' | 'PAUSED' | 'GAME_OVER';
 
 export type ConsoleViewMode = 'CONSOLE_90' | 'SCREEN_ZOOM' | 'NATIVE_0';
 
-export type TableThemeId = 'aka_esp32' | 'space_odyssey' | 'star_galaxy' | 'solaire' | 'classique';
+export type TableThemeId = 'aka_esp32' | 'space_odyssey' | 'star_galaxy' | 'solaire' | 'classique' | 'prehistoire' | 'farwest' | 'halloween' | 'candy' | 'bonbons' | 'train';
 
 export type BumperColorStyle = 'RED' | 'BLUE' | 'GOLD' | 'JADE';
 export type BumperIconStyle = 'GEAR' | 'STAR' | 'CREST' | 'SUN';

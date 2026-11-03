@@ -702,6 +702,238 @@ export class PinballCanvasRenderer {
   // ============================================================================
   // 3-GEM MISSION PROGRESS CREST ON PLAYFIELD
   // ============================================================================
+  // ============================================================================
+  // Décors originaux des 6 tables thématiques (Préhistoire, Far West, Halloween, Candy Pop, Bonbons, Train)
+  // ============================================================================
+  private renderThemedDecor(
+    ctx: CanvasRenderingContext2D,
+    id: 'prehistoire' | 'farwest' | 'halloween' | 'candy' | 'bonbons' | 'train',
+    mult: number,
+    _clock: number
+  ) {
+    const plate = (title: string, bg: string, border: string, fg: string) => {
+      ctx.save();
+      ctx.fillStyle = bg;
+      ctx.strokeStyle = border;
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.roundRect(74, 262, 78, 32, 5);
+      ctx.fill();
+      ctx.stroke();
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = fg;
+      ctx.font = '700 10px "JetBrains Mono", monospace';
+      ctx.fillText(title, 113, 273);
+      ctx.font = '700 8px "JetBrains Mono", monospace';
+      ctx.fillText(`BONUS ×${mult}`, 113, 285.5);
+      ctx.restore();
+    };
+    const poly = (pts: number[][], fill: string, stroke?: string, lw = 1) => {
+      ctx.beginPath();
+      ctx.moveTo(pts[0][0], pts[0][1]);
+      for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0], pts[i][1]);
+      ctx.closePath();
+      ctx.fillStyle = fill;
+      ctx.fill();
+      if (stroke) {
+        ctx.lineWidth = lw;
+        ctx.strokeStyle = stroke;
+        ctx.stroke();
+      }
+    };
+    const heart = (x: number, y: number, r: number, fill: string) => {
+      ctx.beginPath();
+      ctx.moveTo(x, y + r * 0.9);
+      ctx.bezierCurveTo(x - r * 1.6, y - r * 0.1, x - r * 0.7, y - r * 1.2, x, y - r * 0.4);
+      ctx.bezierCurveTo(x + r * 0.7, y - r * 1.2, x + r * 1.6, y - r * 0.1, x, y + r * 0.9);
+      ctx.fillStyle = fill;
+      ctx.fill();
+    };
+    const circ = (x: number, y: number, r: number, fill: string, stroke?: string) => {
+      ctx.beginPath();
+      ctx.arc(x, y, r, 0, Math.PI * 2);
+      ctx.fillStyle = fill;
+      ctx.fill();
+      if (stroke) {
+        ctx.lineWidth = 1;
+        ctx.strokeStyle = stroke;
+        ctx.stroke();
+      }
+    };
+
+    ctx.save();
+    if (id === 'prehistoire') {
+      // Volcan fumant et coulées de lave
+      poly([[48, 232], [96, 112], [130, 112], [178, 232]], 'rgba(69, 39, 16, 0.75)', '#A8A29E', 1.2);
+      poly([[96, 112], [104, 104], [122, 104], [130, 112]], '#F97316', '#FDE68A', 1);
+      ctx.strokeStyle = '#F97316';
+      ctx.lineWidth = 2.2;
+      for (const x of [104, 113, 122]) {
+        ctx.beginPath();
+        ctx.moveTo(x, 108);
+        ctx.quadraticCurveTo(x + (x - 113) * 1.6, 160, x + (x - 113) * 3, 226);
+        ctx.stroke();
+      }
+      for (let i = 0; i < 4; i++) circ(100 + i * 9, 92 - i * 6 + (i % 2) * 4, 5 + i, 'rgba(231, 229, 228, 0.18)');
+      // Empreintes de dinosaure
+      for (const [x, y] of [[44, 248], [54, 262], [40, 276]]) {
+        poly([[x, y], [x + 4, y - 7], [x + 8, y]], '#78350F');
+        poly([[x + 2, y + 1], [x + 6, y + 8], [x + 10, y + 1]], '#78350F');
+      }
+      // Os croisés au pied du plateau
+      ctx.strokeStyle = '#E7E5E4';
+      ctx.lineWidth = 3;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(84, 338);
+      ctx.lineTo(142, 354);
+      ctx.moveTo(142, 338);
+      ctx.lineTo(84, 354);
+      ctx.stroke();
+      plate('ÂGE DE PIERRE', '#2A1A0E', '#F97316', '#FDBA74');
+    } else if (id === 'farwest') {
+      // Soleil couchant, cactus et étoile de shérif
+      circ(113, 238, 30, 'rgba(245, 158, 11, 0.22)');
+      circ(113, 238, 20, 'rgba(253, 230, 138, 0.25)');
+      for (const x of [46, 180]) {
+        ctx.fillStyle = '#15803D';
+        ctx.fillRect(x - 3, 232, 6, 36);
+        ctx.fillRect(x - 11, 242, 6, 4);
+        ctx.fillRect(x - 11, 236, 4, 10);
+        ctx.fillRect(x + 5, 248, 6, 4);
+        ctx.fillRect(x + 8, 240, 4, 12);
+      }
+      this.drawStarShape(ctx, 113, 220, 16, 7, '#FACC15');
+      ctx.strokeStyle = '#7C2D12';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      // Fer à cheval
+      ctx.strokeStyle = '#E2E8F0';
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.arc(113, 344, 11, Math.PI * 0.15, Math.PI * 0.85, true);
+      ctx.stroke();
+      plate('SALOON', '#3B1D0A', '#FDE68A', '#FDE68A');
+    } else if (id === 'halloween') {
+      // Pleine lune, toiles d'araignée, chauves-souris et citrouille
+      circ(113, 150, 30, 'rgba(254, 249, 195, 0.2)');
+      circ(113, 150, 22, 'rgba(254, 249, 195, 0.2)');
+      ctx.strokeStyle = 'rgba(233, 213, 255, 0.35)';
+      ctx.lineWidth = 0.8;
+      for (const [cx, cy, dir] of [[14, 74, 1], [212, 74, -1]] as [number, number, number][]) {
+        for (let i = 0; i < 5; i++) {
+          ctx.beginPath();
+          ctx.moveTo(cx, cy);
+          ctx.lineTo(cx + dir * 36 * Math.cos((i * Math.PI) / 8), cy + 36 * Math.sin((i * Math.PI) / 8));
+          ctx.stroke();
+        }
+        for (const r of [12, 24, 34]) {
+          ctx.beginPath();
+          ctx.arc(cx, cy, r, dir > 0 ? 0 : Math.PI / 2, dir > 0 ? Math.PI / 2 : Math.PI);
+          ctx.stroke();
+        }
+      }
+      ctx.fillStyle = '#1E1B4B';
+      for (const [x, y] of [[62, 104], [166, 108]]) {
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.quadraticCurveTo(x - 8, y - 8, x - 14, y);
+        ctx.quadraticCurveTo(x - 8, y - 2, x, y + 5);
+        ctx.quadraticCurveTo(x + 8, y - 2, x + 14, y);
+        ctx.quadraticCurveTo(x + 8, y - 8, x, y);
+        ctx.fill();
+      }
+      circ(113, 332, 15, '#F97316', '#7C2D12');
+      poly([[104, 326], [108, 321], [112, 326]], '#1C1917');
+      poly([[114, 326], [118, 321], [122, 326]], '#1C1917');
+      poly([[104, 336], [109, 340], [113, 336], [117, 340], [122, 336], [113, 345]], '#1C1917');
+      plate('SORCIÈRE', '#12081F', '#F97316', '#A3E635');
+    } else if (id === 'candy') {
+      // Cœurs, étoiles et nœud de ruban
+      for (const [x, y, r, c] of [[44, 120, 7, '#FBCFE8'], [182, 120, 7, '#FBCFE8'], [60, 240, 5, '#FDE047'], [166, 240, 5, '#FFFFFF'], [44, 360, 5, '#FBCFE8'], [182, 356, 6, '#FDE047']] as [number, number, number, string][]) {
+        heart(x, y, r, c);
+      }
+      this.drawStarShape(ctx, 113, 98, 7, 3, '#FDE047');
+      this.drawStarShape(ctx, 50, 176, 5, 2.2, '#FFFFFF');
+      this.drawStarShape(ctx, 176, 176, 5, 2.2, '#FFFFFF');
+      // Nœud de ruban
+      poly([[113, 236], [90, 222], [90, 250]], '#FBCFE8', '#DB2777', 1);
+      poly([[113, 236], [136, 222], [136, 250]], '#FBCFE8', '#DB2777', 1);
+      circ(113, 236, 5, '#EC4899', '#FFFFFF');
+      plate('CANDY POP', '#3B0A2C', '#F9A8D4', '#FDE047');
+    } else if (id === 'bonbons') {
+      // Bonbons emballés, sucette et rayures de comptoir
+      const wrapped = (x: number, y: number, rot: number, c: string) => {
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate(rot);
+        poly([[-14, 0], [-22, -6], [-22, 6]], '#FFF1F2', c, 0.8);
+        poly([[14, 0], [22, -6], [22, 6]], '#FFF1F2', c, 0.8);
+        ctx.beginPath();
+        ctx.ellipse(0, 0, 14, 8, 0, 0, Math.PI * 2);
+        ctx.fillStyle = c;
+        ctx.fill();
+        ctx.strokeStyle = '#FFFFFF';
+        ctx.lineWidth = 1.2;
+        ctx.stroke();
+        ctx.restore();
+      };
+      wrapped(56, 104, -0.4, '#FB7185');
+      wrapped(170, 104, 0.4, '#FACC15');
+      wrapped(60, 250, 0.3, '#A78BFA');
+      wrapped(166, 250, -0.3, '#FB7185');
+      // Sucette spirale
+      circ(113, 236, 15, '#FFF1F2', '#E11D48');
+      ctx.strokeStyle = '#E11D48';
+      ctx.lineWidth = 2.2;
+      ctx.beginPath();
+      for (let a = 0; a < 12; a += 0.2) {
+        const rr = 1.2 * a;
+        const px = 113 + Math.cos(a) * rr;
+        const py = 236 + Math.sin(a) * rr;
+        if (a === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+      }
+      ctx.stroke();
+      // Rayures du comptoir
+      for (let i = 0; i < 9; i++) {
+        ctx.fillStyle = i % 2 === 0 ? 'rgba(251, 113, 133, 0.35)' : 'rgba(255, 255, 255, 0.28)';
+        ctx.fillRect(40 + i * 16, 346, 16, 8);
+      }
+      plate('BONBONS', '#052E2B', '#FB7185', '#FEF08A');
+    } else {
+      // Train : rails avec traverses, phare de locomotive et nuages de vapeur
+      ctx.strokeStyle = 'rgba(148, 163, 184, 0.55)';
+      ctx.lineWidth = 1.6;
+      for (const dx of [-8, 8]) {
+        ctx.beginPath();
+        ctx.moveTo(113 + dx * 0.35, 232);
+        ctx.lineTo(113 + dx * 2.2, 372);
+        ctx.stroke();
+      }
+      ctx.strokeStyle = 'rgba(161, 98, 7, 0.55)';
+      ctx.lineWidth = 2;
+      for (let y = 240; y < 372; y += 14) {
+        const w = 8 + ((y - 232) / 140) * 14;
+        ctx.beginPath();
+        ctx.moveTo(113 - w, y);
+        ctx.lineTo(113 + w, y);
+        ctx.stroke();
+      }
+      circ(113, 112, 20, 'rgba(253, 230, 138, 0.16)');
+      circ(113, 112, 12, 'rgba(253, 230, 138, 0.2)');
+      for (const [x, y, r] of [[56, 100, 9], [68, 90, 7], [160, 92, 8], [172, 104, 10]]) circ(x, y, r, 'rgba(226, 232, 240, 0.14)');
+      // Signal ferroviaire
+      ctx.fillStyle = '#334155';
+      ctx.fillRect(44, 236, 3, 26);
+      circ(45.5, 236, 4, '#DC2626', '#E2E8F0');
+      circ(45.5, 246, 4, '#16A34A', '#E2E8F0');
+      plate('EXPRESS', '#0B1220', '#F59E0B', '#FDE68A');
+    }
+    ctx.restore();
+  }
+
   private renderMissionPlayfieldCrest(
     ctx: CanvasRenderingContext2D,
     sim: PinballSimulation,
@@ -1159,6 +1391,11 @@ export class PinballCanvasRenderer {
         const lit = k <= mult - 1;
         oval(81 + k * 16, 346, 4, 8, 0, lit ? '#FDE047' : '#FEF3C7', '#7C2D12');
       }
+    } else if (
+      table.id === 'prehistoire' || table.id === 'farwest' || table.id === 'halloween' ||
+      table.id === 'candy' || table.id === 'bonbons' || table.id === 'train'
+    ) {
+      this.renderThemedDecor(ctx, table.id, mult, sim.clock);
     } else {
       // Temple Solaire: Golden Sun Calendar + Stepped Pyramid
       ctx.save();
@@ -2205,7 +2442,7 @@ export class PinballCanvasRenderer {
 
     PINBALL_TABLES.forEach((_t, idx) => {
       ctx.fillStyle = idx === sim.selectedTableIndex ? '#FACC15' : '#334155';
-      ctx.fillRect(SCREEN_WIDTH - 48 + idx * 10, 26, 7, 3.5);
+      ctx.fillRect(SCREEN_WIDTH - 52 + idx * 4.4, 26, 3.4, 3.5);
     });
 
     const cardX = 14;

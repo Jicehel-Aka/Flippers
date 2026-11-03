@@ -130,7 +130,7 @@ void audio_init() {
 
 void audio_music(uint8_t decor, bool intense) {
     g_music_intense = intense;
-    g_music_want = (decor < 5) ? decor : 255;
+    g_music_want = (decor < pinball::DECOR_COUNT) ? decor : 255;
 }
 
 void audio_silence() {

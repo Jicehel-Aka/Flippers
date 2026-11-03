@@ -3,7 +3,7 @@
   gen-aka-art.mjs — Images de décor du firmware AKA, générées depuis le VRAI moteur de rendu du jeu Web
   (src/engine/renderer.ts, méthode renderTableArtwork : sans flippers, billes ni ressort).
 
-  Sortie : firmware/aka_idf/main/art/art<N>.bin (N = ordre de PINBALL_TABLES)
+  Sortie : firmware/aka_idf/main/art/art<N>.z (N = ordre de PINBALL_TABLES ; flux deflate brut de l'image decrite ci-dessous)
     - 240 lignes ECRAN (la console est tournée de 90°) de 520 pixels RGB565 little-endian ;
     - ligne r = colonne x = 239 - r du plateau, pixels dans l'ordre y = 0..519 ;
     - format pixel = celui du pilote AKA : R sur les bits 0-4, V sur 5-10, B sur 11-15.
@@ -18,6 +18,7 @@ import { execSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
+import zlib from 'node:zlib';
 import { fileURLToPath } from 'node:url';
 
 // Playwright : local au dépôt, sinon installation globale npm.
@@ -59,13 +60,14 @@ for (let i = 0; i < ids.length; i++) {
       buf.writeUInt16LE(v, (r * 520 + y) * 2);
     }
   }
-  fs.writeFileSync(path.join(outDir, `art${i}.bin`), buf);
+  const z = zlib.deflateRawSync(buf, { level: 9 });
+  fs.writeFileSync(path.join(outDir, `art${i}.z`), z);
   if (previewDir) {   // portrait RGB brut (PPM) pour contrôle visuel
     const ppm = Buffer.alloc(240 * 520 * 3);
     for (let p = 0; p < 240 * 520; p++) { ppm[p * 3] = rgba[p * 4]; ppm[p * 3 + 1] = rgba[p * 4 + 1]; ppm[p * 3 + 2] = rgba[p * 4 + 2]; }
     fs.writeFileSync(path.join(previewDir, `art${i}.ppm`), Buffer.concat([Buffer.from('P6\n240 520\n255\n'), ppm]));
   }
-  console.log(`art${i}.bin  ${ids[i]}  ${buf.length} octets`);
+  console.log(`art${i}.z  ${ids[i]}  ${buf.length} -> ${z.length} octets`);
 }
 await browser.close();
 fs.rmSync(tmp, { recursive: true, force: true });

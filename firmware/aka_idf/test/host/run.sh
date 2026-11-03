@@ -9,7 +9,7 @@ trap 'rm -rf "$out"' EXIT
 g++ -std=gnu++17 -DART_DIR=\"$root/main/art\" -funsigned-char -O1 -fno-exceptions -fno-rtti -Wall -Wextra -Werror -Wno-unused-parameter -Wno-sign-compare \
     -o "$out/host_test" \
     "$here/test_main.cpp" "$here/host_backend.cpp" \
-    "$root/main/game/pinball_core.cpp" "$root/main/game/sfx_patterns.cpp" "$root/main/game/music.cpp" "$root/main/ui/gfx_prims.cpp" "$root/main/ui/render.cpp" \
+    "$root/main/game/pinball_core.cpp" "$root/main/game/sfx_patterns.cpp" "$root/main/game/music.cpp" "$root/main/game/inflate.cpp" "$root/main/ui/gfx_prims.cpp" "$root/main/ui/render.cpp" \
     -lm
 if [ "${1:-}" != "" ]; then mkdir -p "$1"; fi
 "$out/host_test" "${1:-}"

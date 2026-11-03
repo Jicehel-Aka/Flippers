@@ -28,7 +28,7 @@ constexpr float BALL_RADIUS   = 5.2f;
 constexpr float PLUNGER_TOP_Y = 478.0f;   // sommet du ressort au repos (identique au moteur Web)
 constexpr float BALL_SAVE_SEC = 20.0f;    // duree de la protection contre la chute directe, apres la sortie du couloir
 
-constexpr int TABLE_COUNT  = 5;
+constexpr int TABLE_COUNT  = 11;
 constexpr int MAX_BALLS    = 3;
 constexpr int MAX_BUMPERS  = 6;
 constexpr int MAX_WALLS    = 112;
@@ -89,7 +89,7 @@ struct TableDef {
     const char* name;
     const char* subName;
     const char* multiballName;
-    uint8_t decor;            // 0 circuit, 1 espace, 2 Star Wars, 3 temple, 4 classique
+    uint8_t decor;            // 0 circuit, 1 espace, 2 Star Wars, 3 temple, 4 classique, 5 prehistoire, 6 far west, 7 halloween, 8 candy, 9 bonbons, 10 train
     uint32_t bgTop, bgBot, accent, rail, flipperCol;
     float gravity;
     uint8_t bumperCount;

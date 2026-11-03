@@ -9,6 +9,7 @@
 
 namespace pinball {
 
+constexpr int DECOR_COUNT = 11;                  // un theme musical par decor (0..10)
 constexpr int PHRASE_STEPS = 32;                 // une phrase = 2 mesures de 16 doubles-croches
 constexpr int MUSIC_STEPS = PHRASE_STEPS * 8;    // une boucle = 8 phrases (A B A C D B C A)
 

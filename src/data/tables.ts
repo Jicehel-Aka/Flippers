@@ -1,5 +1,6 @@
 import solaireArt from '../assets/images/pinball_solaire_art_1793554422501.jpg';
 import { PinballTableDef, TableThemeId, TargetDef } from '../types/pinball';
+import { EXTRA_TABLES } from './extraTables';
 
 const HIGH_SCORE_STORAGE_KEY = 'gamebuino_aka_pinball_highscores_v4';
 
@@ -9,6 +10,12 @@ const DEFAULT_HIGH_SCORES: Record<TableThemeId, number> = {
   star_galaxy: 510000,
   solaire: 450000,
   classique: 390000,
+  prehistoire: 400000,
+  farwest: 410000,
+  halloween: 430000,
+  candy: 380000,
+  bonbons: 390000,
+  train: 420000,
 };
 
 export function loadHighScores(): Record<TableThemeId, number> {
@@ -30,6 +37,12 @@ export function loadHighScores(): Record<TableThemeId, number> {
       solaire: typeof parsed.solaire === 'number' ? parsed.solaire : DEFAULT_HIGH_SCORES.solaire,
       classique:
         typeof parsed.classique === 'number' ? parsed.classique : DEFAULT_HIGH_SCORES.classique,
+      ...(Object.fromEntries(
+        (['prehistoire', 'farwest', 'halloween', 'candy', 'bonbons', 'train'] as TableThemeId[]).map((id) => [
+          id,
+          typeof parsed[id] === 'number' ? parsed[id] : DEFAULT_HIGH_SCORES[id],
+        ])
+      ) as Record<'prehistoire' | 'farwest' | 'halloween' | 'candy' | 'bonbons' | 'train', number>),
     };
   } catch {
     return { ...DEFAULT_HIGH_SCORES };
@@ -1149,4 +1162,5 @@ export const PINBALL_TABLES: PinballTableDef[] = [
         'Verrouillez 2 billes dans le Verrou Central (en haut) ou complétez J-A-C-K pour libérer 3 billes !',
     },
   },
+  ...EXTRA_TABLES,
 ];
