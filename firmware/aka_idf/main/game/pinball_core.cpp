@@ -361,6 +361,18 @@ void Game::startMultiball() {
 }
 
 // Cible touchee (plateau ou etage) : points, banque, recompenses selon le role de la banque.
+// Combo : rampes et nouvelles cibles touchees dans la fenetre RAMP_COMBO_SEC. +50 % des points de base par maillon, plafonne a x5.
+void Game::chainCombo(uint32_t basePoints, bool announce) {
+    rampCombo = rampComboTimer > 0.0f ? (uint8_t)minf(9.0f, rampCombo + 1.0f) : 1;
+    rampComboTimer = RAMP_COMBO_SEC;
+    if (rampCombo < 2) return;
+    const uint32_t k = rampCombo > 5 ? 4u : (uint32_t)rampCombo - 1u;
+    score += basePoints * k / 2u;
+    if (announce) bannerf(1.5f, "COMBO X%u !", (unsigned)rampCombo);
+    emit(Sfx::Combo, rampCombo);
+    touchHud();
+}
+
 void Game::onTargetHit(uint8_t idx, bool upper) {
     const TableDef& t = tbl();
     const TargetDef* list = upper ? t.upper.targets : t.targets;
@@ -373,6 +385,7 @@ void Game::onTargetHit(uint8_t idx, bool upper) {
     if (!already) advanceMission(2);
     bool complete = true;
     for (uint8_t j = 0; j < count; j++) if (list[j].bank == tg.bank && !((m >> j) & 1u)) complete = false;
+    if (!already) chainCombo(tg.points, !complete);
     if (complete) {
         if (tg.drop) {
             dropReset[tg.bank] = upper ? 0.65f : 0.6f;     // les cibles escamotees remontent apres un court delai
@@ -817,7 +830,8 @@ void Game::stepSubstep(float dt, bool leftHeld, bool rightHeld) {
         const bool wasInShooter = b.inShooter;
         b.inShooter = (b.x > 217.0f && b.y > 90.0f);
         if (wasInShooter && !b.inShooter && ballSaveTimer <= 0.0f && !ballSaveUsed && !multiballActive && !isTilted) {
-            ballSaveTimer = assistOn ? ASSIST_SAVE_SEC : BALL_SAVE_SEC;   // protection contre la chute directe : la bille est rendue si elle tombe tout de suite
+            ballSaveMax = assistOn ? ASSIST_SAVE_SEC : BALL_SAVE_SEC;
+            ballSaveTimer = ballSaveMax;   // protection contre la chute directe : la bille est rendue si elle tombe tout de suite
         }
         // boucliers des sorties laterales : renvoient la bille vers le haut (une fois chacun par bille)
         if (!isTilted && !b.inShooter && b.y > 438.0f && b.y < 462.0f && b.vy > 0.0f) {
@@ -1005,16 +1019,9 @@ void Game::stepSubstep(float dt, bool leftHeld, bool rightHeld) {
                     b.rampCool = 0.75f;
                     score += t.ramps[r].points * rampBoost;
                     advanceMission(1);
-                    rampCombo = rampComboTimer > 0.0f ? (uint8_t)minf(9.0f, rampCombo + 1.0f) : 1;
-                    rampComboTimer = RAMP_COMBO_SEC;
-                    if (rampCombo >= 2) {   // combo : +50 % des points de rampe par maillon, plafonne a x5
-                        const uint32_t k = rampCombo > 5 ? 4u : (uint32_t)rampCombo - 1u;
-                        score += t.ramps[r].points * k / 2u;
-                        bannerf(1.5f, "COMBO RAMPES X%u !", (unsigned)rampCombo);
-                        emit(Sfx::Combo, rampCombo);
-                    } else {
-                        bannerf(1.3f, "%s +%lu", t.ramps[r].name, (unsigned long)t.ramps[r].points);
-                    }
+                    chainCombo(t.ramps[r].points * rampBoost, false);
+                    if (rampCombo >= 2) bannerf(1.5f, "COMBO RAMPES X%u !", (unsigned)rampCombo);
+                    else bannerf(1.3f, "%s +%lu", t.ramps[r].name, (unsigned long)t.ramps[r].points);
                     emit(Sfx::Ramp, r);
                     touchHud();
                     break;
@@ -1159,6 +1166,7 @@ void Game::updateCamera(float dt) {
 }
 
 void Game::commitScore() {
+    if (demo) return;
     if (score > highScores[tableIdx]) {
         highScores[tableIdx] = score;
         if (store_.save) store_.save(highScores);
@@ -1324,9 +1332,74 @@ void Game::syncInput(const Input& in) {
     prevPause_ = in.pause;
 }
 
-void Game::update(float dtRaw, const Input& in, uint32_t now) {
+// --- Mode demonstration : un joueur automatique (niveau "arcade") joue la table choisie, la moindre touche rend la main ---
+Input Game::demoInput(float dt) {
+    Input o;
+    bool inLane = false, settled = false;
+    for (int i = 0; i < MAX_BALLS; i++) {
+        const Ball& b = balls[i];
+        if (!b.active || !b.inShooter) continue;
+        inLane = true;
+        if (b.y > 470.0f && fabsf(b.vy) < 8.0f) settled = true;
+    }
+    if (!inLane) demoCharging_ = false;
+    if (settled && !demoCharging_) { demoCharging_ = true; demoCharge_ = 0.0f; }
+    if (demoCharging_) {
+        demoCharge_ += dt;
+        o.plunger = demoCharge_ < 0.8f;
+        if (demoCharge_ > 1.5f) demoCharging_ = false;
+    }
+    for (int i = 0; i < MAX_BALLS; i++) {
+        const Ball& b = balls[i];
+        if (!b.active || b.inShooter || b.ramp >= 0 || b.layer != 0 || b.y < 330.0f) continue;
+        const bool left = b.x < 113.0f;
+        const float tipX = left ? 100.0f : 126.0f;
+        if (b.y > 430.0f && fabsf(b.x - tipX) < 26.0f && b.vy > -20.0f) { if (left) o.left = true; else o.right = true; }
+    }
+    // l'etage a ses propres flippers : on les agite de temps en temps
+    if (fmodf(demoClock_, 1.6f) < 0.2f) { o.left = true; o.right = true; }
+    demoClock_ += dt;
+    return o;
+}
+
+void Game::startDemo() {
+    const uint8_t keep = gamesThisSession_;
+    startNewGame(tableIdx);
+    gamesThisSession_ = keep;
+    demo = true; hintStage = 2; introTimer = 0.0f; demoClock_ = 0.0f; demoCharging_ = false; demoEndWait_ = 0.0f;
+    bannerTimer = 0.0f;
+}
+
+void Game::stopDemo() {
+    demo = false;
+    state = State::Menu;
+    menuIdle_ = 0.0f;
+    tableIdx = (uint8_t)((tableIdx + 1) % TABLE_COUNT);   // la prochaine demo montrera une autre table
+    setupFlippers();
+    touchHud();
+}
+
+void Game::update(float dtRaw, const Input& inReal, uint32_t now) {
     nowMs = now;
     float dt = dtRaw > MAX_FRAME_DT ? MAX_FRAME_DT : (dtRaw < 0.0f ? 0.0f : dtRaw);
+
+    const bool realAny = inReal.left || inReal.right || inReal.plunger || inReal.nudge || inReal.pause;
+    if (demo) {
+        if (realAny) {   // la moindre touche coupe la demo et revient au menu (le bouton est consomme)
+            stopDemo();
+            emit(Sfx::MenuOk);
+            prevLeft_ = inReal.left; prevRight_ = inReal.right; prevPlunger_ = inReal.plunger; prevNudge_ = inReal.nudge; prevPause_ = inReal.pause;
+            return;
+        }
+        if (state == State::GameOver) {
+            demoEndWait_ += dt;
+            if (demoEndWait_ > 3.0f) { stopDemo(); return; }
+        }
+    } else if (state == State::Menu && attractEnabled) {
+        menuIdle_ = realAny ? 0.0f : menuIdle_ + dt;
+        if (menuIdle_ >= DEMO_IDLE_SEC) { menuIdle_ = 0.0f; startDemo(); }
+    }
+    const Input in = (demo && state == State::Playing) ? demoInput(dt) : inReal;
 
     const bool leftEdge    = in.left    && !prevLeft_;
     const bool rightEdge   = in.right   && !prevRight_;

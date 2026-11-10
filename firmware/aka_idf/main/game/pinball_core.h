@@ -26,6 +26,7 @@ constexpr float MAX_CAM_Y     = (float)(WORLD_H - VIEW_H);
 constexpr float OVERVIEW_ZOOM = (float)VIEW_H / (float)WORLD_H;
 constexpr float BALL_RADIUS   = 5.2f;
 constexpr float PLUNGER_TOP_Y = 478.0f;   // sommet du ressort au repos (identique au moteur Web)
+constexpr float DEMO_IDLE_SEC = 20.0f;      // inactivite dans le menu avant la demonstration automatique
 constexpr float RAMP_COMBO_SEC = 12.0f;   // fenetre pour enchainer des rampes (combo)
 constexpr float QUICK_DRAIN_SEC = 12.0f;  // une bille perdue plus vite que ca compte comme "chute rapide"
 constexpr float ASSIST_SAVE_SEC = 40.0f;  // protection etendue offerte apres deux chutes rapides
@@ -315,6 +316,9 @@ public:
     float ballLifeSec = 0.0f;            // duree de la bille en jeu (hors lanceur)
     uint8_t quickDrains = 0;             // billes perdues en moins de QUICK_DRAIN_SEC d'affilee : declenche l'aide
     bool assistOn = false;               // aide debutant : protection anti-chute etendue sur la bille suivante
+    float ballSaveMax = BALL_SAVE_SEC;   // duree totale de la protection en cours (pour la jauge)
+    bool demo = false;                   // demonstration automatique (aucun record enregistre)
+    bool attractEnabled = true;          // les tests peuvent la couper
     uint8_t hintStage = 0;               // coaching de la premiere bille (0 ressort, 1 flippers, 2 termine)
     uint8_t bumperStreak = 0;            // touches de bumpers rapprochees (anti-boucle)
     float bumperStreakTimer = 0.0f;
@@ -354,9 +358,15 @@ public:
     // Utilises par les tests pour piloter la physique directement
     void startNewGame(uint8_t tableIndex);
     void stepPhysics(float dt, const Input& in);
+    void onTargetHit(uint8_t idx, bool upper);   // public : les tests declenchent une cible sans la viser
 
 private:
     HighScoreStore store_;
+    float menuIdle_ = 0.0f, demoClock_ = 0.0f, demoCharge_ = 0.0f, demoEndWait_ = 0.0f; bool demoCharging_ = false;
+    Input demoInput(float dt);
+    void startDemo();
+    void stopDemo();
+    void chainCombo(uint32_t basePoints, bool announce);
     uint8_t gamesThisSession_ = 0;   // le coaching ne s'affiche que pour les deux premieres parties de la session
     float physicsAccum_ = 0.0f;
     uint32_t stateLockUntilMs_ = 0;
@@ -374,7 +384,6 @@ private:
     void advanceMission(uint8_t kind, bool joker = false);
     void stepUpper(Ball& b, float dt, bool leftHeld, bool rightHeld);
     void stepToy(Ball& b, float dt);
-    void onTargetHit(uint8_t idx, bool upper);
     float frand();
     uint32_t rng_ = 12345u;
     void startMultiball();

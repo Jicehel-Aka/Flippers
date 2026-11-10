@@ -967,6 +967,56 @@ static void test_sprint1() {
     }
 }
 
+// --- Sprint 3 : mode demo, combo etendu aux cibles, jauge ----------------------------------------------
+static void test_sprint3() {
+    printf("[sprint 3 : demo automatique, combo cibles, jauge]\n");
+    {   // la demo demarre apres l'inactivite, joue seule, n'enregistre aucun record et rend la main a la moindre touche
+        Game g; g.begin(STORE());
+        const uint32_t rec = g.highScores[0];
+        run(g, DEMO_IDLE_SEC - 2.0f);
+        CHECK(g.state == State::Menu && !g.demo, "pas de demo avant l'inactivite");
+        run(g, 4.0f);
+        CHECK(g.demo && g.state == State::Playing, "la demo doit demarrer apres %.0f s d'inactivite", DEMO_IDLE_SEC);
+        run(g, 60.0f);
+        CHECK(g.score > 0, "la demo doit marquer des points seule (%lu)", (unsigned long)g.score);
+        CHECK(g.highScores[0] == rec, "la demo n'enregistre jamais de record");
+        const uint8_t before = g.tableIdx; (void)before;
+        Input press; press.left = true;
+        tick(g, press, 1.0f / 60.0f);
+        CHECK(!g.demo && g.state == State::Menu, "une touche coupe la demo et revient au menu");
+        Input none; run(g, 0.5f, none);
+        CHECK(g.state == State::Menu, "la touche est consommee : on reste au menu");
+    }
+    {   // la demo qui va au bout revient d'elle-meme au menu
+        Game g; g.begin(STORE());
+        run(g, DEMO_IDLE_SEC + 1.0f);
+        bool back = false;
+        for (int i = 0; i < 60 * 900 && !back; i++) { tick(g, Input(), 1.0f / 60.0f); if (!g.demo && g.state == State::Menu) back = true; }
+        CHECK(back, "la demo doit se terminer et revenir au menu");
+    }
+    {   // combo : une rampe puis une cible rapprochees
+        Game* g = fresh(1);
+        g->attractEnabled = false;
+        const Vec2 en = table(1).ramps[0].pts[0];
+        g->balls[0] = {en.x, en.y + 4.0f, 0.0f, -260.0f, true, false, 0.0f, 0.0f};
+        run(*g, 0.3f);
+        CHECK(g->rampCombo == 1, "rampe : combo 1");
+        g->onTargetHit(0, false);
+        CHECK(g->rampCombo == 2, "une cible touchee dans la fenetre prolonge le combo (%d)", (int)g->rampCombo);
+        delete g;
+    }
+    {   // jauge : la duree de protection est connue du rendu
+        Game* g = fresh(0);
+        g->ballSaveUsed = false;
+        const Ball sh = g->balls[0];
+        (void)sh;
+        g->balls[0] = {200.0f, 450.0f, 0.0f, -300.0f, true, true, 0.0f, 0.0f};
+        run(*g, 0.5f);
+        CHECK(g->ballSaveTimer <= g->ballSaveMax + 0.01f && g->ballSaveMax >= BALL_SAVE_SEC - 0.01f, "ballSaveMax coherent (%.1f/%.1f)", g->ballSaveTimer, g->ballSaveMax);
+        delete g;
+    }
+}
+
 int main(int argc, char** argv) {
     const char* outDir = argc > 1 ? argv[1] : nullptr;
     test_tables();
@@ -983,6 +1033,7 @@ int main(int argc, char** argv) {
     test_return_and_sling();
     test_ramp_exit_not_drain();
     test_sprint1();
+    test_sprint3();
     test_containment();
     test_ramp_follow();
     test_hunt();

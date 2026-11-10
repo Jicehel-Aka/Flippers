@@ -730,6 +730,12 @@ static void draw_overlays(const Game& g, const TableDef& t) {
         }
         ptext_center(120, y0 + 76, "R1/B: REJOUER", green);
         ptext_center(120, y0 + 90, "A/D: TABLES", green);
+    } else if (g.demo && g.bannerTimer <= 0.0f) {
+        if ((g.nowMs / 600u) & 1u) {
+            pfill(14, HUD_H + 6, 212, 20, C3(15, 23, 42));
+            prect(14, HUD_H + 6, 212, 20, C3(250, 204, 21));
+            ptext_center(120, HUD_H + 12, "DEMO - UNE TOUCHE : MENU", C3(250, 204, 21));
+        }
     } else if (g.bannerTimer > 0.0f) {
         pfill(14, HUD_H + 6, 212, 20, C3(15, 23, 42));
         prect(14, HUD_H + 6, 212, 20, C(t.accent));
@@ -755,6 +761,11 @@ static void draw_hud(const Game& g, const TableDef& t) {
     snprintf(buf, sizeof(buf), "BILLE %u/3", g.ballsRemaining);
     ptext(168, 5, buf, C3(255, 255, 255));
     if (g.assistOn) ptext(138, 5, "AIDE", C3(56, 189, 248));
+    if (g.ballSaveTimer > 0.0f && !g.isTilted && g.ballSaveMax > 0.0f) {   // jauge de protection anti-chute
+        const int w = (int)(90.0f * g.ballSaveTimer / g.ballSaveMax);
+        const bool low = g.ballSaveTimer < 3.0f;
+        if (!low || ((g.nowMs / 150u) & 1u)) pfill(146, HUD_H - 6, w < 1 ? 1 : w, 3, low ? C3(239, 68, 68) : C3(56, 189, 248));
+    }
 
     snprintf(buf, sizeof(buf), "%08lu", (unsigned long)g.score);
     ptext(6, 22, buf, C3(255, 255, 255), 2);
