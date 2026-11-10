@@ -1011,6 +1011,7 @@ void Game::stepSubstep(float dt, bool leftHeld, bool rightHeld) {
                         const uint32_t k = rampCombo > 5 ? 4u : (uint32_t)rampCombo - 1u;
                         score += t.ramps[r].points * k / 2u;
                         bannerf(1.5f, "COMBO RAMPES X%u !", (unsigned)rampCombo);
+                        emit(Sfx::Combo, rampCombo);
                     } else {
                         bannerf(1.3f, "%s +%lu", t.ramps[r].name, (unsigned long)t.ramps[r].points);
                     }
@@ -1191,7 +1192,7 @@ void Game::updatePlaying(float dt, const Input& in, bool nudgePressed, bool flip
         if (inPlay) ballLifeSec += dt;
         // coaching de la premiere bille : on explique le ressort, puis les flippers (une fois, parties 1 et 2 de la session)
         if (hintStage < 2 && introTimer <= 0.0f) {
-            if (hintStage == 0 && anyInShooter && !inPlay) { showBanner("RESSORT: MAINTIENS PUIS RELACHE", 3.2f); hintStage = 1; }
+            if (hintStage == 0 && anyInShooter && !inPlay) { showBanner("RESSORT: TIENS PUIS LACHE", 3.2f); hintStage = 1; }
             else if (hintStage == 1 && inPlay) { showBanner("FLIPPERS: GAUCHE / DROITE", 3.0f); hintStage = 2; }
         }
     }
@@ -1262,7 +1263,9 @@ void Game::updatePlaying(float dt, const Input& in, bool nudgePressed, bool flip
         emit(Sfx::Drain);
         // aide debutant : deux chutes rapides d'affilee -> protection etendue sur la bille suivante ; une belle bille la retire
         if (ballLifeSec < QUICK_DRAIN_SEC) { if (quickDrains < 9) quickDrains++; } else { quickDrains = 0; assistOn = false; }
+        const bool assistWas = assistOn;
         if (quickDrains >= 2) assistOn = true;
+        if (assistOn && !assistWas) emit(Sfx::Assist);
         ballLifeSec = 0.0f; rampCombo = 0; rampComboTimer = 0.0f;
         if (ballsRemaining > 1) {
             ballsRemaining--;

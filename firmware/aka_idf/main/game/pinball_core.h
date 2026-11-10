@@ -253,7 +253,7 @@ enum class Sfx : uint8_t {
     None = 0,
     MenuMove, MenuOk, Pause, Resume, Confirm,
     Flipper, Launch, Bumper, Sling, Ramp, Lock, Multiball,
-    Mission, Finale, Nudge, Tilt, Drain, NewBall, GameOver, NewRecord, LockLit,
+    Mission, Finale, Nudge, Tilt, Drain, NewBall, GameOver, NewRecord, LockLit, Combo, Assist,
 };
 
 struct SfxEvent {

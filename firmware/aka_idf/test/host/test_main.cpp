@@ -492,7 +492,7 @@ static void test_sfx_patterns() {
     printf("[effets sonores]\n");
     int total = 0;
     for (int decor = 0; decor < DECOR_COUNT; decor++) {
-        for (int id = 1; id <= (int)Sfx::LockLit; id++) {
+        for (int id = 1; id <= (int)Sfx::Assist; id++) {
             for (int arg = 0; arg < 6; arg += 5) {
                 Pattern p;
                 build_pattern((uint8_t)decor, (Sfx)id, (uint8_t)(arg * 20), p);

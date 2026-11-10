@@ -659,7 +659,7 @@ static void draw_playfield(const Game& g, const View& v, const TableDef& t) {
     for (int i = 0; i < MAX_BALLS; i++) {
         if (!g.balls[i].active) continue;
         const int bx = v.X(g.balls[i].x), by = v.Y(g.balls[i].y);
-        const int br = v.R(BALL_RADIUS) < 2 ? 2 : v.R(BALL_RADIUS);
+        const int br = v.R(BALL_RADIUS) < 3 ? 3 : v.R(BALL_RADIUS);
         if (by + br >= HUD_H) {
             const Ball& bl = g.balls[i];
             bool under = false;   // bille au niveau du plateau, sous l'etage : assombrie
@@ -679,6 +679,7 @@ static void draw_playfield(const Game& g, const View& v, const TableDef& t) {
             } else {
                 const int off = high ? 4 : 2;
                 pfillcircle(bx + off, by + off, br, C3(2, 3, 6));                                 // ombre (plus decalee en altitude)
+                pcircle(bx, by, br + 1, C3(4, 6, 12));                                            // contour sombre : la bille ressort sur tous les decors
                 pfillcircle(bx, by, br, C3(100, 116, 139));
                 pfillcircle(bx - 1, by - 1, br > 2 ? br - 1 : br, C3(203, 213, 225));
                 pfillcircle(bx - br / 3, by - br / 3, br / 3 > 0 ? br / 3 : 1, C3(255, 255, 255)); // reflet
@@ -707,9 +708,14 @@ static void draw_overlays(const Game& g, const TableDef& t) {
         ptext_center(120, y0 + 24, buf, white);
         ptext_center(120, y0 + 38, t.name, C(t.accent));
         ptext_wrap(28, y0 + 54, 24, t.subName, grey, 3);
+        {   // caracteristiques de la table : de quoi choisir sans tout essayer
+            char feat[40];
+            snprintf(feat, sizeof(feat), "%uBUMP %uRAMP%s%s", (unsigned)t.bumperCount, 2u, t.upper.present ? " ETAGE" : "", t.toy.present ? " JOUET" : "");
+            ptext_center(120, y0 + 88, feat, C3(250, 204, 21));
+        }
         snprintf(buf, sizeof(buf), "RECORD %lu", (unsigned long)g.highScores[g.tableIdx]);
-        ptext_center(120, y0 + 92, buf, white);
-        ptext_center(120, y0 + 108, "A/D: TABLE  R1/B: JOUER", green);
+        ptext_center(120, y0 + 100, buf, white);
+        ptext_center(120, y0 + 115, "A/D: TABLE  R1/B: JOUER", green);
     } else if (g.state == State::GameOver) {
         panel(t, 0xEF4444);
         ptext_center(120, y0 + 10, "FIN DE PARTIE", C3(239, 68, 68), 1);
@@ -748,6 +754,7 @@ static void draw_hud(const Game& g, const TableDef& t) {
     char buf[48];
     snprintf(buf, sizeof(buf), "BILLE %u/3", g.ballsRemaining);
     ptext(168, 5, buf, C3(255, 255, 255));
+    if (g.assistOn) ptext(138, 5, "AIDE", C3(56, 189, 248));
 
     snprintf(buf, sizeof(buf), "%08lu", (unsigned long)g.score);
     ptext(6, 22, buf, C3(255, 255, 255), 2);
@@ -756,8 +763,15 @@ static void draw_hud(const Game& g, const TableDef& t) {
     if (g.multiballActive) {
         ptext(146, 22, "MULTIBILLE!", C3(52, 211, 153));
     } else {
-        snprintf(buf, sizeof(buf), "M%u:%u/%u L:%u/2%s", (g.missionIdx % 3) + 1, g.missionProgress, m.goal, g.lockedBalls, g.lockLit ? "*" : "");
-        ptext(146, 22, buf, C3(148, 163, 184));
+        if (g.rampCombo >= 2) {
+            snprintf(buf, sizeof(buf), "COMBO X%u", (unsigned)g.rampCombo);
+            ptext(146, 22, buf, C3(250, 204, 21));
+        } else if (g.lockLit) {
+            ptext(146, 22, "VERROU PRET", C3(52, 211, 153));
+        } else {
+            snprintf(buf, sizeof(buf), "MISS.%u %u/%u", (g.missionIdx % 3) + 1, g.missionProgress, m.goal);
+            ptext(146, 22, buf, C3(148, 163, 184));
+        }
     }
     // Titre de mission en defilement (11 caracteres visibles)
     {
