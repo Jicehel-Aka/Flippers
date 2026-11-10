@@ -26,6 +26,9 @@ constexpr float MAX_CAM_Y     = (float)(WORLD_H - VIEW_H);
 constexpr float OVERVIEW_ZOOM = (float)VIEW_H / (float)WORLD_H;
 constexpr float BALL_RADIUS   = 5.2f;
 constexpr float PLUNGER_TOP_Y = 478.0f;   // sommet du ressort au repos (identique au moteur Web)
+constexpr float RAMP_COMBO_SEC = 12.0f;   // fenetre pour enchainer des rampes (combo)
+constexpr float QUICK_DRAIN_SEC = 12.0f;  // une bille perdue plus vite que ca compte comme "chute rapide"
+constexpr float ASSIST_SAVE_SEC = 40.0f;  // protection etendue offerte apres deux chutes rapides
 constexpr float BALL_SAVE_SEC = 20.0f;    // duree de la protection contre la chute directe, apres la sortie du couloir
 
 constexpr int TABLE_COUNT  = 12;
@@ -307,6 +310,12 @@ public:
     uint8_t bonusMult = 1;               // banque MULTIPLIER : x1..x8 (bonus de fin de bille)
     float vukFlash = 0.0f;
     float multiDelay = 0.0f;
+    uint8_t rampCombo = 0;               // rampes enchainees (fenetre RAMP_COMBO_SEC) : bonus croissant
+    float rampComboTimer = 0.0f;
+    float ballLifeSec = 0.0f;            // duree de la bille en jeu (hors lanceur)
+    uint8_t quickDrains = 0;             // billes perdues en moins de QUICK_DRAIN_SEC d'affilee : declenche l'aide
+    bool assistOn = false;               // aide debutant : protection anti-chute etendue sur la bille suivante
+    uint8_t hintStage = 0;               // coaching de la premiere bille (0 ressort, 1 flippers, 2 termine)
     uint8_t bumperStreak = 0;            // touches de bumpers rapprochees (anti-boucle)
     float bumperStreakTimer = 0.0f;
     uint8_t multiQueue = 0;              // billes de multibille encore a envoyer dans le lanceur
@@ -348,6 +357,7 @@ public:
 
 private:
     HighScoreStore store_;
+    uint8_t gamesThisSession_ = 0;   // le coaching ne s'affiche que pour les deux premieres parties de la session
     float physicsAccum_ = 0.0f;
     uint32_t stateLockUntilMs_ = 0;
     uint32_t recordAtStart_ = 0;

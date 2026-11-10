@@ -201,6 +201,9 @@ void Game::startNewGame(uint8_t tableIndex) {
     for (int i = 0; i < MAX_SPINNERS; i++) { spinAngle[i] = 0.0f; spinVel[i] = 0.0f; spinCount[i] = 0; }
     toyState = ToyState{0, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f};
     bumperStreak = 0; bumperStreakTimer = 0.0f;
+    rampCombo = 0; rampComboTimer = 0.0f; ballLifeSec = 0.0f; quickDrains = 0; assistOn = false;
+    hintStage = gamesThisSession_ < 2 ? 0 : 2;
+    if (gamesThisSession_ < 255) gamesThisSession_++;
     rampBoost = 1; bonusMult = 1; vukFlash = 0.0f; multiQueue = 0; multiDelay = 0.0f;
     rng_ = 12345u + tableIdx;
     score = 0;
@@ -284,6 +287,38 @@ static bool pointInPoly(float x, float y, const Vec2* p, int n) {
         if (cross) inside = !inside;
     }
     return inside;
+}
+
+// Filet de securite : une bille qui retombe de l'etage (ou qui est poussee par un rebond tres violent) peut se retrouver a
+// l'interieur d'un boitier plein. On la rend au plateau par l'arete la plus proche, avec une petite vitesse sortante.
+static bool ejectFromHousings(const TableDef& td, Ball& b) {
+    for (uint8_t h = 0; h < td.housingCount; h++) {
+        const HousingDef& hd = td.housings[h];
+        if (!pointInPoly(b.x, b.y, hd.p, hd.n)) continue;
+        float best = 1e9f, nx = 0, ny = 0, px = b.x, py = b.y;
+        for (uint8_t i = 0; i < hd.n; i++) {
+            const Vec2 a = hd.p[i], c = hd.p[(i + 1) % hd.n];
+            const float ex = c.x - a.x, ey = c.y - a.y, l2 = ex * ex + ey * ey;
+            if (l2 < 1e-6f) continue;
+            float t = ((b.x - a.x) * ex + (b.y - a.y) * ey) / l2;
+            t = t < 0 ? 0 : (t > 1 ? 1 : t);
+            const float qx = a.x + ex * t, qy = a.y + ey * t, d2 = (b.x - qx) * (b.x - qx) + (b.y - qy) * (b.y - qy);
+            if (d2 < best) { best = d2; px = qx; py = qy; }
+        }
+        // sortie : du centre du boitier vers l'arete la plus proche
+        float cx = 0, cy = 0;
+        for (uint8_t i = 0; i < hd.n; i++) { cx += hd.p[i].x; cy += hd.p[i].y; }
+        cx /= hd.n; cy /= hd.n;
+        nx = px - cx; ny = py - cy;
+        const float nl = sqrtf(nx * nx + ny * ny);
+        if (nl < 1e-3f) { nx = 0; ny = 1; } else { nx /= nl; ny /= nl; }
+        b.x = px + nx * (BALL_RADIUS + 1.0f);
+        b.y = py + ny * (BALL_RADIUS + 1.0f);
+        b.vx = nx * 70.0f;
+        b.vy = ny * 70.0f;
+        return true;
+    }
+    return false;
 }
 
 // Contact bille / disque plein (meme loi que le moteur Web) : renvoie vrai au contact ; `kick` impose une vitesse de sortie minimale.
@@ -580,6 +615,7 @@ void Game::stepUpper(Ball& b, float dt, bool leftHeld, bool rightHeld) {
         b.layer = 0;
         b.rampCool = 0.22f;
         b.stuckTime = 0.0f;
+        ejectFromHousings(tbl(), b);
         return;
     }
     bool cradled = false;
@@ -781,7 +817,7 @@ void Game::stepSubstep(float dt, bool leftHeld, bool rightHeld) {
         const bool wasInShooter = b.inShooter;
         b.inShooter = (b.x > 217.0f && b.y > 90.0f);
         if (wasInShooter && !b.inShooter && ballSaveTimer <= 0.0f && !ballSaveUsed && !multiballActive && !isTilted) {
-            ballSaveTimer = BALL_SAVE_SEC;   // protection contre la chute directe : la bille est rendue si elle tombe tout de suite
+            ballSaveTimer = assistOn ? ASSIST_SAVE_SEC : BALL_SAVE_SEC;   // protection contre la chute directe : la bille est rendue si elle tombe tout de suite
         }
         // boucliers des sorties laterales : renvoient la bille vers le haut (une fois chacun par bille)
         if (!isTilted && !b.inShooter && b.y > 438.0f && b.y < 462.0f && b.vy > 0.0f) {
@@ -969,7 +1005,15 @@ void Game::stepSubstep(float dt, bool leftHeld, bool rightHeld) {
                     b.rampCool = 0.75f;
                     score += t.ramps[r].points * rampBoost;
                     advanceMission(1);
-                    bannerf(1.3f, "%s +%lu", t.ramps[r].name, (unsigned long)t.ramps[r].points);
+                    rampCombo = rampComboTimer > 0.0f ? (uint8_t)minf(9.0f, rampCombo + 1.0f) : 1;
+                    rampComboTimer = RAMP_COMBO_SEC;
+                    if (rampCombo >= 2) {   // combo : +50 % des points de rampe par maillon, plafonne a x5
+                        const uint32_t k = rampCombo > 5 ? 4u : (uint32_t)rampCombo - 1u;
+                        score += t.ramps[r].points * k / 2u;
+                        bannerf(1.5f, "COMBO RAMPES X%u !", (unsigned)rampCombo);
+                    } else {
+                        bannerf(1.3f, "%s +%lu", t.ramps[r].name, (unsigned long)t.ramps[r].points);
+                    }
                     emit(Sfx::Ramp, r);
                     touchHud();
                     break;
@@ -1024,6 +1068,7 @@ void Game::stepSubstep(float dt, bool leftHeld, bool rightHeld) {
         }
 
         // Anti-blocage : bille quasi immobile hors lanceur (et pas retenue par un flipper leve)
+        if (!b.inShooter && b.ramp < 0 && !b.held && b.layer == 0) ejectFromHousings(tbl(), b);
         {
             bool cradled = false;
             for (uint8_t f = 0; f < flipperCount; f++) {
@@ -1139,6 +1184,17 @@ void Game::updatePlaying(float dt, const Input& in, bool nudgePressed, bool flip
         if (balls[i].active && balls[i].rampCool > 0.0f) balls[i].rampCool = maxf(0.0f, balls[i].rampCool - dt);
     }
     (void)anyInShooter;
+    if (rampComboTimer > 0.0f) { rampComboTimer -= dt; if (rampComboTimer <= 0.0f) rampCombo = 0; }
+    {
+        bool inPlay = false;
+        for (int i = 0; i < MAX_BALLS; i++) if (balls[i].active && !balls[i].inShooter) inPlay = true;
+        if (inPlay) ballLifeSec += dt;
+        // coaching de la premiere bille : on explique le ressort, puis les flippers (une fois, parties 1 et 2 de la session)
+        if (hintStage < 2 && introTimer <= 0.0f) {
+            if (hintStage == 0 && anyInShooter && !inPlay) { showBanner("RESSORT: MAINTIENS PUIS RELACHE", 3.2f); hintStage = 1; }
+            else if (hintStage == 1 && inPlay) { showBanner("FLIPPERS: GAUCHE / DROITE", 3.0f); hintStage = 2; }
+        }
+    }
 
     // Ressort du lance-bille : inactif tant qu'aucune bille ne repose dessus (bille deja lancee, en vol dans le couloir)
     if (in.plunger && onSpring) {
@@ -1204,11 +1260,15 @@ void Game::updatePlaying(float dt, const Input& in, bool nudgePressed, bool flip
         bonusMult = 1;
         multiQueue = 0;
         emit(Sfx::Drain);
+        // aide debutant : deux chutes rapides d'affilee -> protection etendue sur la bille suivante ; une belle bille la retire
+        if (ballLifeSec < QUICK_DRAIN_SEC) { if (quickDrains < 9) quickDrains++; } else { quickDrains = 0; assistOn = false; }
+        if (quickDrains >= 2) assistOn = true;
+        ballLifeSec = 0.0f; rampCombo = 0; rampComboTimer = 0.0f;
         if (ballsRemaining > 1) {
             ballsRemaining--;
             ballSaveUsed = false; kickLeftLit = kickRightLit = true;
             spawnBallInShooter(0);
-            showBanner("NOUVELLE BILLE", 1.4f);
+            showBanner(assistOn ? "AIDE: PROTECTION ETENDUE" : "NOUVELLE BILLE", 1.6f);
             emit(Sfx::NewBall);
         } else {
             newRecord = score > recordAtStart_;
