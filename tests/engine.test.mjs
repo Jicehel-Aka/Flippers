@@ -552,3 +552,35 @@ test('aide débutant : deux billes perdues en moins de 12 s étendent la protect
   }
   assert.equal(sim.assistOn, true);
 });
+
+test('boîtiers pleins : une bille posée à l’intérieur n’y reste pas piégée (12 tables)', () => {
+  const inside = (poly, x, y) => {
+    let c = false;
+    for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+      if (poly[i].y > y !== poly[j].y > y && x < ((poly[j].x - poly[i].x) * (y - poly[i].y)) / (poly[j].y - poly[i].y) + poly[i].x) c = !c;
+    }
+    return c;
+  };
+  let tested = 0;
+  PINBALL_TABLES.forEach((tbl, idx) => {
+    (tbl.beveledHousings ?? []).forEach((h, hi) => {
+      const cx = h.points.reduce((a, p) => a + p.x, 0) / h.points.length;
+      const cy = h.points.reduce((a, p) => a + p.y, 0) / h.points.length;
+      if (cx < 30 || cx > 195 || cy < 60 || cy > 380) return;
+      const sim = new PinballSimulation(77);
+      sim.selectedTableIndex = idx;
+      sim.syncTableGeometry();
+      sim.startNewGame(1);
+      sim.introTimer = 0;
+      const b = sim.balls[0];
+      b.inShooterLane = false;
+      b.x = cx; b.y = cy; b.vx = 0; b.vy = 0;
+      const ctl = IDLE();
+      for (let t = 0; t < 2; t += 1 / 60) sim.step(1 / 60, ctl);
+      const ball = sim.balls[0];
+      tested++;
+      if (ball) assert.ok(!inside(h.points, ball.x, ball.y), `${tbl.id} boîtier ${hi} : bille piégée en (${ball.x.toFixed(0)},${ball.y.toFixed(0)})`);
+    });
+  });
+  assert.ok(tested >= 8, `assez de boîtiers testés (${tested})`);
+});

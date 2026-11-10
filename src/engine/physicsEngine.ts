@@ -1024,6 +1024,64 @@ export class PinballSimulation {
     }
   }
 
+  /**
+   * Filet de sécurité : une bille qui retombe de l'étage (ou qui est poussée par un rebond très violent) peut se
+   * retrouver à l'intérieur d'un boîtier plein. On la rend au plateau par l'arête la plus proche.
+   */
+  private ejectFromHousings(b: BallEntity, table: PinballTableDef) {
+    for (const h of table.beveledHousings ?? []) {
+      const pts = h.points;
+      let inside = false;
+      for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+        if (pts[i].y > b.y !== pts[j].y > b.y && b.x < ((pts[j].x - pts[i].x) * (b.y - pts[i].y)) / (pts[j].y - pts[i].y) + pts[i].x) {
+          inside = !inside;
+        }
+      }
+      if (!inside) continue;
+      let best = Infinity;
+      let px = b.x;
+      let py = b.y;
+      let cx = 0;
+      let cy = 0;
+      for (let i = 0; i < pts.length; i++) {
+        const a = pts[i];
+        const c = pts[(i + 1) % pts.length];
+        cx += a.x;
+        cy += a.y;
+        const ex = c.x - a.x;
+        const ey = c.y - a.y;
+        const l2 = ex * ex + ey * ey;
+        if (l2 < 1e-6) continue;
+        const t = Math.max(0, Math.min(1, ((b.x - a.x) * ex + (b.y - a.y) * ey) / l2));
+        const qx = a.x + ex * t;
+        const qy = a.y + ey * t;
+        const d2 = (b.x - qx) ** 2 + (b.y - qy) ** 2;
+        if (d2 < best) {
+          best = d2;
+          px = qx;
+          py = qy;
+        }
+      }
+      cx /= pts.length;
+      cy /= pts.length;
+      let nx = px - cx;
+      let ny = py - cy;
+      const nl = Math.hypot(nx, ny);
+      if (nl < 1e-3) {
+        nx = 0;
+        ny = 1;
+      } else {
+        nx /= nl;
+        ny /= nl;
+      }
+      b.x = px + nx * (BALL_RADIUS + 1);
+      b.y = py + ny * (BALL_RADIUS + 1);
+      b.vx = nx * 70;
+      b.vy = ny * 70;
+      return;
+    }
+  }
+
   public step(dtRaw: number, controls: InputControlsState) {
     const dt = Math.min(dtRaw, 0.033);
     this.clock += dt;
@@ -1612,6 +1670,7 @@ export class PinballSimulation {
       // Collide with Cabinet Base Walls + Table Housing Walls + Extra Walls
       for (const w of this.baseWalls) this.collideBallWithSegment(b, w);
       for (const w of this.tableHousingWalls) this.collideBallWithSegment(b, w);
+      if (b.layer === 0 && !b.inShooterLane) this.ejectFromHousings(b, table);
       for (const w of table.extraWalls) this.collideBallWithSegment(b, w);
 
       // Collide with Flush-Mounted Targets
