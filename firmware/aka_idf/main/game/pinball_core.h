@@ -248,7 +248,7 @@ struct Input {
     bool pause   = false;     // pause / reprise
 };
 
-enum class State : uint8_t { Menu, Playing, Paused, GameOver };
+enum class State : uint8_t { Menu, Playing, Paused, GameOver, NameEntry };
 
 enum class Sfx : uint8_t {
     None = 0,
@@ -262,10 +262,15 @@ struct SfxEvent {
     uint8_t arg;              // Bumper : indice du bumper ; Flipper : 0 gauche / 1 droit ; Mission : numero
 };
 
-// Stockage des records (NVS sur la console, memoire dans les tests).
+// Top 10 de chaque table : score + trigramme (3 lettres)
+constexpr int TOP_N = 10;
+struct ScoreEntry { uint32_t score; char tri[4]; };
+struct ScoreBoard { ScoreEntry e[TOP_N]; };
+
+// Stockage des records (carte SD sur la console, memoire dans les tests).
 struct HighScoreStore {
-    void (*load)(uint32_t out[TABLE_COUNT]) = nullptr;
-    void (*save)(const uint32_t in[TABLE_COUNT]) = nullptr;
+    void (*load)(ScoreBoard out[TABLE_COUNT]) = nullptr;
+    void (*save)(const ScoreBoard in[TABLE_COUNT]) = nullptr;
 };
 
 class Game {
@@ -325,7 +330,13 @@ public:
     uint8_t multiQueue = 0;              // billes de multibille encore a envoyer dans le lanceur
 
     uint32_t score = 0;
-    uint32_t highScores[TABLE_COUNT] = {25000, 25000, 25000, 25000};
+    uint32_t highScores[TABLE_COUNT] = {};   // meilleur score de chaque table (= board[t].e[0].score)
+    ScoreBoard board[TABLE_COUNT];           // top 10 par table
+    char nameBuf[4] = "AAA";                 // trigramme en cours de saisie
+    uint8_t nameIdx = 0;                     // lettre editee (0..2)
+    uint8_t pendingRank = 0;                 // rang obtenu par la partie qui vient de se terminer
+    int8_t lastRank = -1;                    // rang a mettre en valeur sur l'ecran de fin (-1 aucun)
+    int rankOf(uint32_t sc) const;           // rang (0..TOP_N-1) que prendrait sc sur la table courante, TOP_N s'il n'entre pas
     uint8_t ballsRemaining = 3;
     uint8_t lockedBalls = 0;
     bool multiballActive = false;
@@ -362,6 +373,12 @@ public:
 
 private:
     HighScoreStore store_;
+    char lastTri_[4] = {'A', 'A', 'A', 0};
+    float nameHold_ = 0.0f, nameRepeat_ = 0.0f;
+    void insertScore(const char* tri);
+    void defaultBoards();
+    void enterName();
+    void stepNameEntry(float dt, const Input& in, bool leftEdge, bool rightEdge, bool plungerEdge, bool nudgeEdge);
     float menuIdle_ = 0.0f, demoClock_ = 0.0f, demoCharge_ = 0.0f, demoEndWait_ = 0.0f; bool demoCharging_ = false;
     Input demoInput(float dt);
     void startDemo();

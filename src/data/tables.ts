@@ -15,6 +15,7 @@ import {
 import rawTablesConfig from './tables.config.json';
 
 const HIGH_SCORE_STORAGE_KEY = 'gamebuino_aka_pinball_highscores_v4';
+const TOP10_STORAGE_KEY = 'gamebuino_aka_pinball_top10_v1';
 const CUSTOM_TABLES_STORAGE_KEY = 'gamebuino_aka_pinball_custom_tables_v1';
 
 const INTERNAL_ARTWORKS: Record<string, string> = {
@@ -163,6 +164,95 @@ export function loadHighScores(): Record<string, number> {
 export function saveHighScores(scores: Record<string, number>) {
   try {
     localStorage.setItem(HIGH_SCORE_STORAGE_KEY, JSON.stringify(scores));
+  } catch {
+    // Ignore storage quota errors
+  }
+}
+
+
+// ============================================================================
+// TOP 10 PAR TABLE (score + trigramme), comme sur la console AKA
+// ============================================================================
+
+export const TOP_N = 10;
+
+export interface ScoreEntry {
+  score: number;
+  /** Trigramme du joueur : 3 lettres A-Z. */
+  tri: string;
+}
+
+const BOARD_RATIOS = [1, 0.8, 0.64, 0.52, 0.42, 0.34, 0.27, 0.22, 0.18, 0.14];
+
+/** Tableau d'honneur d'origine : un objectif à battre dès la première partie (entrées « AKA »). */
+export function defaultBoard(best: number): ScoreEntry[] {
+  return BOARD_RATIOS.map((r) => ({ score: Math.round((best * r) / 1000) * 1000, tri: 'AKA' }));
+}
+
+/** Rang (0..TOP_N-1) que prendrait `score` ; TOP_N s'il n'entre pas. Une égalité se classe après l'existant. */
+export function boardRank(board: ScoreEntry[], score: number): number {
+  let r = 0;
+  while (r < TOP_N && r < board.length && board[r].score >= score) r++;
+  return r;
+}
+
+/** Renvoie un nouveau tableau avec l'entrée insérée (les places suivantes glissent, la 11e sort). */
+export function insertIntoBoard(board: ScoreEntry[], score: number, tri: string): ScoreEntry[] {
+  const r = boardRank(board, score);
+  if (r >= TOP_N || score <= 0) return board;
+  const clean = tri.toUpperCase().replace(/[^A-Z]/g, 'A').padEnd(3, 'A').slice(0, 3);
+  const next = [...board.slice(0, r), { score, tri: clean }, ...board.slice(r)];
+  return next.slice(0, TOP_N);
+}
+
+function sanitizeBoard(raw: unknown, fallback: ScoreEntry[]): ScoreEntry[] {
+  if (!Array.isArray(raw)) return fallback;
+  const out: ScoreEntry[] = [];
+  for (const e of raw) {
+    if (e && typeof e.score === 'number' && Number.isFinite(e.score) && typeof e.tri === 'string') {
+      out.push({ score: e.score, tri: e.tri.toUpperCase().replace(/[^A-Z]/g, 'A').padEnd(3, 'A').slice(0, 3) });
+    }
+  }
+  out.sort((a, b) => b.score - a.score);
+  return out.length ? out.slice(0, TOP_N) : fallback;
+}
+
+/**
+ * Charge les tableaux d'honneur. Premier lancement après la mise à jour : l'ancien record de chaque table
+ * (clé « highscores_v4 ») devient la 1re place, trigramme « AKA ».
+ */
+export function loadScoreBoards(): Record<string, ScoreEntry[]> {
+  const legacy = loadHighScores();
+  const boards: Record<string, ScoreEntry[]> = {};
+  let stored: Record<string, unknown> = {};
+  let hasStored = false;
+  try {
+    const raw = localStorage.getItem(TOP10_STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === 'object') {
+        stored = parsed as Record<string, unknown>;
+        hasStored = true;
+      }
+    }
+  } catch {
+    // stockage indisponible : on repart des valeurs par défaut
+  }
+  for (const t of PINBALL_TABLES) {
+    const base = DEFAULT_HIGH_SCORES[t.id as BuiltinThemeId] ?? 250000;
+    let board = sanitizeBoard(stored[t.id], defaultBoard(base));
+    if (!hasStored) {
+      const best = legacy[t.id] ?? 0;
+      if (best > board[0].score) board = insertIntoBoard(board, best, 'AKA');
+    }
+    boards[t.id] = board;
+  }
+  return boards;
+}
+
+export function saveScoreBoards(boards: Record<string, ScoreEntry[]>) {
+  try {
+    localStorage.setItem(TOP10_STORAGE_KEY, JSON.stringify(boards));
   } catch {
     // Ignore storage quota errors
   }

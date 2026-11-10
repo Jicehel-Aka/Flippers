@@ -25,11 +25,78 @@ Game::Game() {
 
 void Game::begin(const HighScoreStore& store) {
     store_ = store;
-    if (store_.load) store_.load(highScores);
+    defaultBoards();
+    if (store_.load) store_.load(board);
+    for (int t = 0; t < TABLE_COUNT; t++) highScores[t] = board[t].e[0].score;
     tableIdx = 0;
     startNewGame(0);
     state = State::Menu;   // on arrive sur la selection de table
     touchHud();
+}
+
+// Tableau d'honneur d'origine : de quoi donner un objectif a battre des la premiere partie
+void Game::defaultBoards() {
+    static const uint32_t base[TOP_N] = {25000, 20000, 16000, 13000, 10000, 8000, 6500, 5000, 4000, 3000};
+    for (int t = 0; t < TABLE_COUNT; t++)
+        for (int i = 0; i < TOP_N; i++) { board[t].e[i].score = base[i]; board[t].e[i].tri[0] = 'A'; board[t].e[i].tri[1] = 'K'; board[t].e[i].tri[2] = 'A'; board[t].e[i].tri[3] = 0; }
+}
+
+int Game::rankOf(uint32_t sc) const {
+    int r = 0;
+    while (r < TOP_N && board[tableIdx].e[r].score >= sc) r++;
+    return r;
+}
+
+void Game::insertScore(const char* tri) {
+    const int r = rankOf(score);
+    if (r >= TOP_N || score == 0) { lastRank = -1; return; }
+    ScoreEntry* e = board[tableIdx].e;
+    for (int i = TOP_N - 1; i > r; i--) e[i] = e[i - 1];
+    e[r].score = score;
+    for (int k = 0; k < 3; k++) e[r].tri[k] = tri[k];
+    e[r].tri[3] = 0;
+    lastRank = (int8_t)r;
+    for (int k = 0; k < 4; k++) lastTri_[k] = e[r].tri[k];
+    highScores[tableIdx] = e[0].score;
+    if (store_.save) store_.save(board);
+}
+
+void Game::enterName() {
+    pendingRank = (uint8_t)rankOf(score);
+    for (int k = 0; k < 3; k++) nameBuf[k] = lastTri_[k];
+    nameBuf[3] = 0;
+    nameIdx = 0; nameHold_ = 0.0f; nameRepeat_ = 0.0f;
+    state = State::NameEntry;
+    stateLockUntilMs_ = nowMs + 700;   // une touche encore tenue a la fin de la bille ne valide pas la premiere lettre
+}
+
+void Game::stepNameEntry(float dt, const Input& in, bool leftEdge, bool rightEdge, bool plungerEdge, bool nudgeEdge) {
+    if (nowMs < stateLockUntilMs_) return;
+    int step = 0;
+    if (leftEdge) step = -1; else if (rightEdge) step = 1;
+    if (in.left != in.right) {   // maintenu : defilement automatique apres un court delai
+        nameHold_ += dt;
+        if (nameHold_ > 0.4f) { nameRepeat_ -= dt; if (nameRepeat_ <= 0.0f) { step = in.left ? -1 : 1; nameRepeat_ = 0.09f; } }
+    } else { nameHold_ = 0.0f; nameRepeat_ = 0.0f; }
+    if (step != 0) {
+        char& ch = nameBuf[nameIdx];
+        ch = (char)('A' + ((ch - 'A' + step + 26) % 26));
+        emit(Sfx::MenuMove, step < 0 ? 0 : 1);
+        touchHud();
+    }
+    if (plungerEdge) {
+        emit(Sfx::MenuOk);
+        if (nameIdx < 2) { nameIdx++; nameBuf[nameIdx] = nameBuf[nameIdx - 1]; }
+        else {
+            insertScore(nameBuf);
+            state = State::GameOver;
+            stateLockUntilMs_ = nowMs + 900;
+            touchHud();
+        }
+    } else if (nudgeEdge && nameIdx > 0) {
+        nameIdx--;
+        emit(Sfx::MenuMove, 0);
+    }
 }
 
 bool Game::popSfx(SfxEvent& out) {
@@ -224,6 +291,7 @@ void Game::startNewGame(uint8_t tableIndex) {
     plungerCharge = 0.0f;
     recordAtStart_ = highScores[tableIdx];
     newRecord = false;
+    lastRank = -1;
     physicsAccum_ = 0.0f;
     confirmAction = 0;
     cameraZoom = OVERVIEW_ZOOM;
@@ -1165,12 +1233,10 @@ void Game::updateCamera(float dt) {
     }
 }
 
+// Partie abandonnee (menu systeme, recommencer) : le score entre au top 10 avec le dernier trigramme saisi
 void Game::commitScore() {
     if (demo) return;
-    if (score > highScores[tableIdx]) {
-        highScores[tableIdx] = score;
-        if (store_.save) store_.save(highScores);
-    }
+    insertScore(lastTri_);
 }
 
 void Game::updatePlaying(float dt, const Input& in, bool nudgePressed, bool flipperEdge) {
@@ -1283,9 +1349,9 @@ void Game::updatePlaying(float dt, const Input& in, bool nudgePressed, bool flip
             emit(Sfx::NewBall);
         } else {
             newRecord = score > recordAtStart_;
-            commitScore();
-            state = State::GameOver;
-            stateLockUntilMs_ = nowMs + 1200;   // un appui sur B/R1 ne saute pas l'ecran de fin
+            if (!demo && score > 0 && rankOf(score) < TOP_N) enterName();   // top 10 : saisie du trigramme
+            else state = State::GameOver;
+            if (state == State::GameOver) stateLockUntilMs_ = nowMs + 1200;   // un appui sur B/R1 ne saute pas l'ecran de fin
             emit(newRecord ? Sfx::NewRecord : Sfx::GameOver);
         }
         touchHud();
@@ -1455,6 +1521,10 @@ void Game::update(float dtRaw, const Input& inReal, uint32_t now) {
             } else if (leftEdge) {
                 requestConfirm(2);
             }
+            break;
+
+        case State::NameEntry:
+            stepNameEntry(dt, in, leftEdge, rightEdge, plungerEdge, nudgeEdge);
             break;
 
         case State::GameOver:

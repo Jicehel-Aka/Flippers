@@ -30,10 +30,11 @@ static int g_fail = 0;
         }                                                 \
     } while (0)
 
-static uint32_t g_store[TABLE_COUNT];
+static ScoreBoard g_store[TABLE_COUNT];
+static bool g_storeValid = false;
 static int g_saves = 0;
-static void store_load(uint32_t out[TABLE_COUNT]) { for (int i = 0; i < TABLE_COUNT; i++) out[i] = g_store[i]; }
-static void store_save(const uint32_t in[TABLE_COUNT]) { for (int i = 0; i < TABLE_COUNT; i++) g_store[i] = in[i]; g_saves++; }
+static void store_load(ScoreBoard out[TABLE_COUNT]) { if (g_storeValid) for (int i = 0; i < TABLE_COUNT; i++) out[i] = g_store[i]; }
+static void store_save(const ScoreBoard in[TABLE_COUNT]) { for (int i = 0; i < TABLE_COUNT; i++) g_store[i] = in[i]; g_storeValid = true; g_saves++; }
 static HighScoreStore STORE() { HighScoreStore s; s.load = store_load; s.save = store_save; return s; }
 
 struct SfxCount { int n[32]; };
@@ -154,8 +155,7 @@ static void test_framerate_independence() {
 
 static void test_state_machine() {
     printf("[etats : menu / pause / fin de partie / records]\n");
-    memset(g_store, 0, sizeof(g_store));
-    for (int i = 0; i < TABLE_COUNT; i++) g_store[i] = 25000;
+    g_storeValid = false;   // pas de fichier : tableaux d'honneur par defaut (record a battre : 25000)
     g_saves = 0;
     Game g;
     g.begin(STORE());
@@ -186,6 +186,11 @@ static void test_state_machine() {
         frames++;
     }
     printf("  fin de partie apres %.1f s simules\n", frames / 30.0f);
+    if (g.state == State::NameEntry) {   // le score entre au top 10 : on valide le trigramme propose
+        for (int i = 0; i < 60; i++) tick(g, Input(), 0.016f);
+        Input okk; okk.plunger = true;
+        for (int k = 0; k < 3; k++) { tick(g, okk, 0.016f); tick(g, Input(), 0.016f); }
+    }
     CHECK(g.state == State::GameOver, "la partie doit se terminer (%d)", (int)g.state);
 
     // anti-rebond de l'ecran de fin
@@ -230,7 +235,60 @@ static void test_state_machine() {
     for (int i = 0; i < MAX_BALLS; i++) h.balls[i].active = false;
     h.ballsRemaining = 1;
     tick(h, Input(), 0.016f);
-    CHECK(h.state == State::GameOver && h.newRecord && g_saves == 1 && g_store[0] == 99999, "nouveau record sauvegarde (%d ecritures)", g_saves);
+    CHECK(h.state == State::NameEntry && h.newRecord && h.pendingRank == 0, "un record ouvre la saisie du trigramme");
+    CHECK(g_saves == 0, "rien n'est ecrit avant la validation du trigramme");
+    for (int i = 0; i < 60; i++) tick(h, Input(), 0.016f);   // verrou anti-appui residuel
+    Input rt; rt.right = true; tick(h, rt, 0.016f); tick(h, Input(), 0.016f);   // A -> B
+    Input ok; ok.plunger = true;
+    tick(h, ok, 0.016f); tick(h, Input(), 0.016f);   // lettre 1 validee : B, la suivante demarre sur B
+    Input lf; lf.left = true; tick(h, lf, 0.016f); tick(h, Input(), 0.016f);   // lettre 2 : A
+    tick(h, ok, 0.016f); tick(h, Input(), 0.016f);
+    tick(h, ok, 0.016f); tick(h, Input(), 0.016f);   // lettre 3 validee
+    CHECK(h.state == State::GameOver && g_saves == 1, "trigramme valide : sauvegarde unique (%d)", g_saves);
+    CHECK(g_store[0].e[0].score == 99999 && !strncmp(g_store[0].e[0].tri, "BAA", 3), "score et trigramme enregistres (%s)", g_store[0].e[0].tri);
+    CHECK(h.board[0].e[1].score == 25000, "l'ancien record descend d'une place");
+    // rechargement : les scores et trigrammes survivent a un redemarrage
+    Game r; r.begin(STORE());
+    CHECK(r.highScores[0] == 99999 && !strncmp(r.board[0].e[0].tri, "BAA", 3), "records recharges au demarrage");
+}
+
+// --- Top 10 : classement, glissement, saisie du trigramme, abandon ---------------------------------------
+static void test_top10() {
+    printf("[top 10 et trigrammes]\n");
+    g_storeValid = false; g_saves = 0;
+    Game g; g.begin(STORE());
+    g.tableIdx = 3;
+    CHECK(g.rankOf(1) == TOP_N, "un score trop faible n'entre pas");
+    CHECK(g.rankOf(3500) == 9, "3500 prend la 10e place (%d)", g.rankOf(3500));
+    CHECK(g.rankOf(25000) == 1, "une egalite se classe apres l'existant");
+    CHECK(g.rankOf(50000) == 0, "50000 est premier");
+    // une partie qui entre au top 10 sans etre premiere
+    g.startNewGame(3);
+    g.score = 14000;   // 4e place par defaut
+    for (int i = 0; i < MAX_BALLS; i++) g.balls[i].active = false;
+    g.ballsRemaining = 1;
+    tick(g, Input(), 0.016f);
+    CHECK(g.state == State::NameEntry && g.pendingRank == 3 && !g.newRecord, "rang 4 : saisie, pas de nouveau record (%d)", (int)g.pendingRank);
+    for (int i = 0; i < 60; i++) tick(g, Input(), 0.016f);
+    Input ok; ok.plunger = true;
+    for (int k = 0; k < 3; k++) { tick(g, ok, 0.016f); tick(g, Input(), 0.016f); }
+    CHECK(g.state == State::GameOver && g.lastRank == 3, "rang 4 enregistre et mis en valeur (%d)", (int)g.lastRank);
+    CHECK(g.board[3].e[3].score == 14000 && !strncmp(g.board[3].e[3].tri, "AAA", 3), "trigramme par defaut AAA");
+    CHECK(g.board[3].e[4].score == 13000 && g.board[3].e[9].score == 4000, "les suivants glissent, le 10e sort");
+    // la derniere lettre saisie est reproposee a la partie suivante
+    CHECK(!strncmp(g.board[3].e[0].tri, "AKA", 3), "les places par defaut restent AKA");
+    // defilement : la lettre boucle de A a Z
+    g.startNewGame(3); g.score = 90000;
+    for (int i = 0; i < MAX_BALLS; i++) g.balls[i].active = false;
+    g.ballsRemaining = 1; tick(g, Input(), 0.016f);
+    for (int i = 0; i < 60; i++) tick(g, Input(), 0.016f);
+    Input lf; lf.left = true; tick(g, lf, 0.016f); tick(g, Input(), 0.016f);
+    CHECK(g.nameBuf[0] == 'Z', "A puis gauche = Z (%c)", g.nameBuf[0]);
+    // un score nul ou la demo n'ouvrent jamais la saisie
+    Game z; z.begin(STORE()); z.startNewGame(0); z.score = 0;
+    for (int i = 0; i < MAX_BALLS; i++) z.balls[i].active = false;
+    z.ballsRemaining = 1; tick(z, Input(), 0.016f);
+    CHECK(z.state == State::GameOver, "score nul : pas de saisie");
 }
 
 static void test_multiball_and_lock() {
@@ -583,6 +641,11 @@ static void test_render(const char* outDir) {
         g.newRecord = true;
         render::draw(g);
         if (outDir && t == 2) { snprintf(path, sizeof(path), "%s/t%d_gameover.ppm", outDir, t); vid::dump_ppm(path); }
+        g.state = State::NameEntry; g.pendingRank = 2; g.nameIdx = 1; g.nameBuf[0] = 'J'; g.nameBuf[1] = 'C'; g.nameBuf[2] = 'C'; g.score = 123456;
+        g.nowMs = 300;
+        render::draw(g);
+        if (outDir && t == 2) { snprintf(path, sizeof(path), "%s/t%d_name.ppm", outDir, t); vid::dump_ppm(path); }
+        g.nameBuf[0] = 'A'; g.nameBuf[1] = 'K'; g.nameBuf[2] = 'A';
     }
     // HUD : la bande gauche (sx < 46) ne doit pas etre une couleur unie
     printf("  ok (raw_* n'a recu aucune coordonnee hors ecran)\n");
@@ -1034,6 +1097,7 @@ int main(int argc, char** argv) {
     test_ramp_exit_not_drain();
     test_sprint1();
     test_sprint3();
+    test_top10();
     test_containment();
     test_ramp_follow();
     test_hunt();

@@ -8,9 +8,8 @@
 #include "../../main/game/pinball_core.h"
 using namespace pinball;
 
-static uint32_t g_store[TABLE_COUNT];
-static void st_load(uint32_t o[TABLE_COUNT]) { for (int i = 0; i < TABLE_COUNT; i++) o[i] = g_store[i]; }
-static void st_save(const uint32_t in[TABLE_COUNT]) { for (int i = 0; i < TABLE_COUNT; i++) g_store[i] = in[i]; }
+static void st_load(ScoreBoard[TABLE_COUNT]) {}
+static void st_save(const ScoreBoard[TABLE_COUNT]) {}
 
 static uint32_t rs = 1;
 static float rnd() { rs = rs * 1664525u + 1013904223u; return (rs >> 8) / 16777216.0f; }
