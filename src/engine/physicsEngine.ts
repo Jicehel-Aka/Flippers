@@ -1,5 +1,16 @@
 import { soundEngine } from '../audio/soundEngine';
-import { PINBALL_TABLES, loadHighScores, saveHighScores } from '../data/tables';
+import {
+  PINBALL_TABLES,
+  TOP_N,
+  boardRank,
+  defaultBoard,
+  insertIntoBoard,
+  loadHighScores,
+  loadScoreBoards,
+  saveHighScores,
+  saveScoreBoards,
+  type ScoreEntry,
+} from '../data/tables';
 import {
   BallEntity,
   FlipperState,
@@ -126,6 +137,29 @@ export class PinballSimulation {
   public popups: FloatingPopup[] = [];
   public sparks: SparkParticle[] = [];
   public highScores: Record<string, number> = loadHighScores();
+  /** Top 10 (score + trigramme) de chaque table, sauvegardé dans le navigateur / l'appli PC. */
+  public scoreBoards: Record<string, ScoreEntry[]> = loadScoreBoards();
+  /** Saisie du trigramme en cours (fin de partie), sinon null. */
+  public nameEntry: {
+    playerIndex: number;
+    rank: number;
+    score: number;
+    letters: string[];
+    idx: number;
+    lockUntil: number;
+    holdT: number;
+    repT: number;
+  } | null = null;
+  /** Entrées du top 10 gagnées par la partie qui vient de se terminer (« score|tri »), mises en valeur à l'écran. */
+  public recentEntries: Set<string> = new Set();
+  private nameQueue: number[] = [];
+  private lastTri: string = 'AAA';
+  public gameOverSince: number = 0;
+  private gameOverLockUntil: number = 0;
+  // Aide débutant : deux billes perdues en moins de 12 s -> protection anti-chute étendue sur la bille suivante
+  public assistOn: boolean = false;
+  private quickDrains: number = 0;
+  private ballLifeStart: number = 0;
   public clock: number = 0;
 
   private prevControls: InputControlsState = {
@@ -538,7 +572,129 @@ export class PinballSimulation {
     }
   }
 
+  // --------------------------------------------------------------------------
+  // TOP 10 : classement, saisie du trigramme, sauvegarde
+  // --------------------------------------------------------------------------
+
+  public tableBoard(): ScoreEntry[] {
+    const id = this.currentTable.id;
+    if (!this.scoreBoards[id]) this.scoreBoards[id] = defaultBoard(this.highScores[id] ?? 250000);
+    return this.scoreBoards[id];
+  }
+
+  /** Fin de partie : les joueurs dont le score entre au top 10 saisissent leur trigramme, du meilleur au moins bon. */
+  private beginNameEntries() {
+    this.recentEntries.clear();
+    this.gameOverSince = this.clock;
+    const board = this.tableBoard();
+    this.nameQueue = this.players
+      .filter((p) => p.score > 0 && boardRank(board, p.score) < TOP_N)
+      .sort((a, b) => b.score - a.score)
+      .map((p) => p.playerIndex);
+    this.nextNameEntry();
+  }
+
+  private nextNameEntry() {
+    while (this.nameQueue.length) {
+      const idx = this.nameQueue.shift() as number;
+      const p = this.players.find((q) => q.playerIndex === idx);
+      if (!p) continue;
+      const rank = boardRank(this.tableBoard(), p.score);
+      if (rank >= TOP_N) continue;
+      this.nameEntry = {
+        playerIndex: idx,
+        rank,
+        score: p.score,
+        letters: this.lastTri.split(''),
+        idx: 0,
+        lockUntil: this.clock + 0.7, // une touche encore tenue à la fin de la bille ne valide pas la 1re lettre
+        holdT: 0,
+        repT: 0,
+      };
+      return;
+    }
+    this.nameEntry = null;
+    this.gameOverSince = this.clock;
+    this.gameOverLockUntil = this.clock + 0.9; // le relâchement de R1 qui valide la dernière lettre ne relance pas une partie
+  }
+
+  private commitNameEntry(tri: string) {
+    const ne = this.nameEntry;
+    if (!ne) return;
+    const id = this.currentTable.id;
+    this.scoreBoards[id] = insertIntoBoard(this.tableBoard(), ne.score, tri);
+    this.recentEntries.add(`${ne.score}|${tri}`);
+    this.lastTri = tri;
+    saveScoreBoards(this.scoreBoards);
+    this.nextNameEntry();
+  }
+
+  /** Partie abandonnée (menu, recommencer) : les scores entrent au top 10 avec le dernier trigramme saisi. */
+  private commitAbandonedScores() {
+    if (this.gameState !== 'PLAYING' && this.gameState !== 'PAUSED') return;
+    const id = this.currentTable.id;
+    let changed = false;
+    for (const p of this.players) {
+      if (p.score <= 0) continue;
+      const before = this.tableBoard();
+      const after = insertIntoBoard(before, p.score, this.lastTri);
+      if (after !== before) {
+        this.scoreBoards[id] = after;
+        changed = true;
+      }
+    }
+    if (changed) saveScoreBoards(this.scoreBoards);
+  }
+
+  private stepNameEntry(
+    dt: number,
+    controls: InputControlsState,
+    edges: { left: boolean; right: boolean; plunger: boolean; nudge: boolean; up: boolean; down: boolean }
+  ) {
+    const ne = this.nameEntry;
+    if (!ne || this.clock < ne.lockUntil) return;
+    let step = 0;
+    if (edges.left || edges.down) step = -1;
+    else if (edges.right || edges.up) step = 1;
+    const heldLeft = controls.leftFlipper || controls.dpadLeft || controls.dpadDown;
+    const heldRight = controls.rightFlipper || controls.dpadRight || controls.dpadUp;
+    if (heldLeft !== heldRight) {
+      // maintenu : défilement automatique après un court délai
+      ne.holdT += dt;
+      if (ne.holdT > 0.4) {
+        ne.repT -= dt;
+        if (ne.repT <= 0) {
+          step = heldLeft ? -1 : 1;
+          ne.repT = 0.09;
+        }
+      }
+    } else {
+      ne.holdT = 0;
+      ne.repT = 0;
+    }
+    if (step !== 0) {
+      const cur = ne.letters[ne.idx].charCodeAt(0) - 65;
+      ne.letters[ne.idx] = String.fromCharCode(65 + ((cur + step + 26) % 26));
+      soundEngine.playMenuTick();
+    }
+    if (edges.plunger) {
+      soundEngine.playMenuTick();
+      if (ne.idx < 2) {
+        ne.idx++;
+        ne.letters[ne.idx] = ne.letters[ne.idx - 1];
+      } else {
+        this.commitNameEntry(ne.letters.join(''));
+      }
+    } else if (edges.nudge && ne.idx > 0) {
+      ne.idx--;
+      soundEngine.playMenuTick();
+    }
+  }
+
   public openTableMenu() {
+    this.commitAbandonedScores();
+    this.nameEntry = null;
+    this.nameQueue = [];
     this.flushHighScores();
     this.pendingConfirm = null;
     this.gameState = 'TABLE_SELECT';
@@ -551,6 +707,12 @@ export class PinballSimulation {
   }
 
   public startNewGame(playerCount: number = this.playerCount) {
+    this.commitAbandonedScores();
+    this.nameEntry = null;
+    this.nameQueue = [];
+    this.recentEntries.clear();
+    this.assistOn = false;
+    this.quickDrains = 0;
     this.syncTableGeometry();
     this.initPlayers(playerCount);
     this.gameState = 'PLAYING';
@@ -916,6 +1078,22 @@ export class PinballSimulation {
     }
 
     if (this.gameState === 'GAME_OVER') {
+      if (this.nameEntry) {
+        this.stepNameEntry(dt, controls, {
+          left: justLeft || justDpadLeft,
+          right: justRight || justDpadRight,
+          plunger: justPlunger,
+          nudge: justNudge,
+          up: justDpadUp,
+          down: justDpadDown,
+        });
+        this.prevControls = { ...controls };
+        return;
+      }
+      if (this.clock < this.gameOverLockUntil) {
+        this.prevControls = { ...controls };
+        return;
+      }
       if (justLeft || justDpadLeft) this.cycleTable(-1);
       else if (justRight || justDpadRight) this.cycleTable(1);
       else if (justPlunger || releasedPlunger) this.startNewGame(this.playerCount);
@@ -1324,8 +1502,9 @@ export class PinballSimulation {
       if (b.inShooterLane && b.x < 214 && b.y < 92) {
         b.inShooterLane = false;
         this.gateOpenTimer = 0.3;
+        this.ballLifeStart = this.clock;
         if (this.ballSaveTimer <= 0 && !this.multiballActive && !this.isTilted) {
-          this.ballSaveTimer = 14.0;
+          this.ballSaveTimer = this.assistOn ? 28.0 : 14.0;
         }
       }
 
@@ -2482,6 +2661,19 @@ export class PinballSimulation {
     if (this.balls.length === 0 && this.multiballSpawnQueue === 0 && this.gameState === 'PLAYING') {
       soundEngine.playDrain();
       const player = this.players[this.activePlayerIndex];
+      {
+        // aide débutant : deux billes perdues en moins de 12 s -> protection étendue ; une belle bille la retire
+        const life = this.clock - this.ballLifeStart;
+        if (life < 12) this.quickDrains = Math.min(9, this.quickDrains + 1);
+        else {
+          this.quickDrains = 0;
+          this.assistOn = false;
+        }
+        if (this.quickDrains >= 2 && !this.assistOn) {
+          this.assistOn = true;
+          this.setCallout('AIDE : PROTECTION ÉTENDUE', 0);
+        }
+      }
 
       if (player && !this.isTilted) {
         const bonusAward = player.bonusPoints * player.bonusMultiplier;
@@ -2516,6 +2708,7 @@ export class PinballSimulation {
       } else {
         this.gameState = 'GAME_OVER';
         this.flushHighScores();
+        this.beginNameEntries();
         this.setCallout('FIN DE PARTIE', 0);
       }
     }
@@ -2559,6 +2752,7 @@ export class PinballSimulation {
       activeMissionGoal: activeMission.goal,
       missionsCompleted: activePlayer?.missionsCompleted ?? 0,
       highScores: { ...this.highScores },
+      scoreBoards: this.scoreBoards,
     };
   }
 }

@@ -458,6 +458,8 @@ export interface LiveGameSnapshot {
   activeMissionGoal: number;
   missionsCompleted: number;
   highScores: Record<string, number>;
+  /** Top 10 (score + trigramme) de chaque table. */
+  scoreBoards: Record<string, { score: number; tri: string }[]>;
 }
 
 export function resolveDecorTheme(

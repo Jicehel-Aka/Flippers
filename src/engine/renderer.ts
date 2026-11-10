@@ -4234,7 +4234,74 @@ export class PinballCanvasRenderer {
     );
   }
 
+  /** Saisie du trigramme (top 10) : trois grandes lettres, la lettre éditée clignote. */
+  private renderNameEntryOverlay(ctx: CanvasRenderingContext2D, sim: PinballSimulation) {
+    const ne = sim.nameEntry;
+    if (!ne) return;
+    ctx.fillStyle = 'rgba(5, 8, 16, 0.92)';
+    ctx.fillRect(0, HUD_HEIGHT, SCREEN_WIDTH, VIEWPORT_HEIGHT);
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    ctx.font = '700 15px "Outfit", sans-serif';
+    ctx.fillStyle = '#FACC15';
+    ctx.fillText(ne.rank === 0 ? 'NOUVEAU RECORD !' : 'TOP 10 !', SCREEN_WIDTH * 0.5, 70);
+
+    ctx.font = '700 8px "JetBrains Mono", monospace';
+    ctx.fillStyle = '#38BDF8';
+    const who = sim.playerCount > 1 ? `${ne.playerIndex + 1}UP · ` : '';
+    ctx.fillText(`${who}RANG ${ne.rank + 1} · ${sim.currentTable.name.toUpperCase()}`, SCREEN_WIDTH * 0.5, 94);
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillText(ne.score.toLocaleString('fr-FR'), SCREEN_WIDTH * 0.5, 110);
+    ctx.fillStyle = '#94A3B8';
+    ctx.fillText('TON TRIGRAMME', SCREEN_WIDTH * 0.5, 134);
+
+    const blink = Math.floor(sim.clock * 3.3) % 2 === 0;
+    for (let i = 0; i < 3; i++) {
+      const cx = SCREEN_WIDTH * 0.5 + (i - 1) * 40;
+      const cur = i === ne.idx;
+      ctx.font = '800 38px "Outfit", sans-serif';
+      ctx.fillStyle = cur ? '#FACC15' : i < ne.idx ? '#34D399' : '#64748B';
+      if (!cur || blink) ctx.fillText(ne.letters[i], cx, 152);
+      if (cur) {
+        ctx.fillStyle = '#FACC15';
+        ctx.fillRect(cx - 14, 198, 28, 3);
+      }
+    }
+    ctx.font = '600 7.5px "JetBrains Mono", monospace';
+    ctx.fillStyle = '#34D399';
+    ctx.fillText('A / D : LETTRE · R1 : OK', SCREEN_WIDTH * 0.5, 222);
+    ctx.fillStyle = '#94A3B8';
+    ctx.fillText('B : RETOUR', SCREEN_WIDTH * 0.5, 236);
+  }
+
+  /** Top 10 de la table ; les places qui viennent d'être gagnées clignotent. */
+  private renderTop10Rows(ctx: CanvasRenderingContext2D, sim: PinballSimulation, y0: number) {
+    const board = sim.tableBoard();
+    ctx.font = '700 8px "JetBrains Mono", monospace';
+    ctx.textBaseline = 'top';
+    board.slice(0, 10).forEach((e, i) => {
+      const y = y0 + i * 12;
+      const mine = sim.recentEntries.has(`${e.score}|${e.tri}`);
+      const flash = mine && Math.floor(sim.clock * 3) % 2 === 0;
+      if (mine) {
+        ctx.fillStyle = 'rgba(250, 204, 21, 0.16)';
+        ctx.fillRect(22, y - 2, SCREEN_WIDTH - 44, 12);
+      }
+      ctx.fillStyle = flash ? '#FFFFFF' : mine || i === 0 ? '#FACC15' : '#CBD5E1';
+      ctx.textAlign = 'left';
+      ctx.fillText(`${String(i + 1).padStart(2, ' ')}  ${e.tri}`, 30, y);
+      ctx.textAlign = 'right';
+      ctx.fillText(e.score.toLocaleString('fr-FR'), SCREEN_WIDTH - 30, y);
+    });
+  }
+
   private renderGameOverOverlay(ctx: CanvasRenderingContext2D, sim: PinballSimulation) {
+    if (sim.nameEntry) {
+      this.renderNameEntryOverlay(ctx, sim);
+      return;
+    }
+    // l'écran alterne : résumé de la partie / top 10 de la table (le top 10 s'affiche d'abord si on vient d'y entrer)
+    const showTop10 = (Math.floor((sim.clock - sim.gameOverSince) / 3.5) + (sim.recentEntries.size > 0 ? 1 : 0)) % 2 === 1;
     ctx.fillStyle = 'rgba(5, 8, 16, 0.9)';
     ctx.fillRect(0, HUD_HEIGHT, SCREEN_WIDTH, VIEWPORT_HEIGHT);
 
@@ -4248,7 +4315,11 @@ export class PinballCanvasRenderer {
     ctx.fillStyle = '#38BDF8';
     ctx.fillText(sim.currentTable.name.toUpperCase(), SCREEN_WIDTH * 0.5, 88);
 
-    const sorted = [...sim.players].sort((a, b) => b.score - a.score);
+    const sorted = showTop10 ? [] : [...sim.players].sort((a, b) => b.score - a.score);
+    if (showTop10) {
+      this.renderTop10Rows(ctx, sim, 108);
+      ctx.textAlign = 'center';
+    }
     sorted.forEach((p, idx) => {
       const y = 110 + idx * 24;
       ctx.fillStyle = idx === 0 ? 'rgba(250, 204, 21, 0.16)' : 'rgba(255,255,255,0.05)';
@@ -4270,7 +4341,7 @@ export class PinballCanvasRenderer {
     ctx.textAlign = 'center';
     ctx.font = '700 8px "JetBrains Mono", monospace';
     ctx.fillStyle = '#FACC15';
-    ctx.fillText(`HIGH SCORE : ${record.toLocaleString('fr-FR')}`, SCREEN_WIDTH * 0.5, 220);
+    ctx.fillText(showTop10 ? 'TOP 10' : `HIGH SCORE : ${record.toLocaleString('fr-FR')}`, SCREEN_WIDTH * 0.5, showTop10 ? 232 : 220);
 
     ctx.fillStyle = '#FACC15';
     ctx.beginPath();

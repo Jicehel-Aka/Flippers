@@ -466,3 +466,89 @@ test('records : écriture différée (pas à chaque point)', () => {
   sim.flushHighScores();
   assert.equal(storageWrites, 1, 'pas de ré-écriture inutile');
 });
+
+// --- Top 10 + trigramme (même logique que le firmware AKA) ---------------------------------------------
+function forceGameOver(sim, score) {
+  sim.startNewGame(1);
+  sim.players[0].score = score;
+  sim.players[0].ballsRemaining = 1;
+  sim.balls = [];
+  sim.step(1 / 60, IDLE());
+}
+function pressOnce(sim, key) {
+  const c = IDLE();
+  c[key] = true;
+  sim.step(1 / 60, c);
+  sim.step(1 / 60, IDLE());
+}
+
+test('top 10 : une partie qui entre au classement ouvre la saisie du trigramme, puis sauvegarde', () => {
+  const sim = new PinballSimulation(21);
+  sim.selectedTableIndex = 1;
+  sim.syncTableGeometry();
+  const id = sim.currentTable.id;
+  const before = sim.tableBoard().map((e) => e.score);
+  storageWrites = 0;
+  forceGameOver(sim, before[0] + 1000);
+  assert.equal(sim.gameState, 'GAME_OVER');
+  assert.ok(sim.nameEntry, 'la saisie du trigramme doit s’ouvrir');
+  assert.equal(sim.nameEntry.rank, 0, 'premier du classement');
+  const finalScore = sim.nameEntry.score; // le bonus de fin de bille peut s'ajouter au score forcé
+  assert.ok(finalScore >= before[0] + 1000);
+  for (let i = 0; i < 60; i++) sim.step(1 / 60, IDLE()); // verrou anti-appui résiduel
+  pressOnce(sim, 'rightFlipper'); // A -> B
+  pressOnce(sim, 'plunger'); // lettre 1 validée, la suivante repart de B
+  pressOnce(sim, 'leftFlipper'); // B -> A
+  pressOnce(sim, 'plunger');
+  pressOnce(sim, 'plunger'); // lettre 3 validée
+  assert.equal(sim.nameEntry, null, 'saisie terminée');
+  const board = sim.scoreBoards[id];
+  assert.equal(board[0].score, finalScore);
+  assert.equal(board[0].tri, 'BAA');
+  assert.equal(board[1].score, before[0], 'l’ancien record descend d’une place');
+  assert.equal(board.length, 10);
+  assert.ok(storageWrites >= 1, 'le classement est écrit dans le stockage');
+  assert.ok(sim.recentEntries.has(`${finalScore}|BAA`), 'la nouvelle place est mise en valeur');
+});
+
+test('top 10 : score nul, ou insuffisant, n’ouvre pas la saisie ; la lettre boucle de A à Z', () => {
+  const sim = new PinballSimulation(22);
+  sim.selectedTableIndex = 2;
+  sim.syncTableGeometry();
+  forceGameOver(sim, 0);
+  assert.equal(sim.gameState, 'GAME_OVER');
+  assert.equal(sim.nameEntry, null, 'score nul : pas de saisie');
+
+  const worst = sim.tableBoard()[9].score;
+  forceGameOver(sim, Math.max(1, worst - 50000)); // marge : le bonus de fin de bille s’ajoute au score
+  assert.equal(sim.nameEntry, null, 'score trop faible : pas de saisie');
+
+  forceGameOver(sim, worst + 1);
+  assert.ok(sim.nameEntry, 'un score qui bat la 10e place ouvre la saisie');
+  assert.equal(sim.nameEntry.rank, 9);
+  for (let i = 0; i < 60; i++) sim.step(1 / 60, IDLE());
+  pressOnce(sim, 'leftFlipper');
+  assert.equal(sim.nameEntry.letters[0], 'Z', 'A puis gauche = Z');
+});
+
+test('top 10 : partie abandonnée via le menu, le score entre avec le dernier trigramme', () => {
+  const sim = new PinballSimulation(23);
+  sim.selectedTableIndex = 3;
+  sim.syncTableGeometry();
+  const best = sim.tableBoard()[0].score;
+  sim.startNewGame(1);
+  sim.players[0].score = best + 5;
+  sim.openTableMenu();
+  assert.equal(sim.scoreBoards[sim.currentTable.id][0].score, best + 5);
+});
+
+test('aide débutant : deux billes perdues en moins de 12 s étendent la protection anti-chute', () => {
+  const sim = new PinballSimulation(24);
+  sim.startNewGame(1);
+  assert.equal(sim.assistOn, false);
+  for (let k = 0; k < 2; k++) {
+    sim.balls = [];
+    sim.step(1 / 60, IDLE());
+  }
+  assert.equal(sim.assistOn, true);
+});

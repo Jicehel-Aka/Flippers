@@ -303,6 +303,7 @@ export default function App() {
       }
       setSnapshot(sim.getSnapshot());
     } else if (sim.gameState === 'GAME_OVER') {
+      if (sim.nameEntry) return; // saisie du trigramme : on n'agit qu'avec les boutons
       if (ly >= 240 && ly <= 272) {
         sim.startNewGame(sim.playerCount);
       } else if (ly > 272) {

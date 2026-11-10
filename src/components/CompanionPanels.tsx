@@ -376,6 +376,7 @@ export const CompanionPanels: React.FC<CompanionPanelsProps> = ({
             {filteredTables.map((table) => {
               const selected = table.id === snapshot.selectedTableId;
               const hi = snapshot.highScores[table.id] ?? 0;
+              const topEntry = snapshot.scoreBoards?.[table.id]?.[0];
               const totalFlippers =
                 2 + table.extraFlippers.length + (table.upperPlayfield?.flippers.length ?? 0);
               const musicInfo = MUSIC_THEME_META[resolveMusicTheme(table)];
@@ -422,6 +423,7 @@ export const CompanionPanels: React.FC<CompanionPanelsProps> = ({
                         </h3>
                         <span className="font-mono text-xs text-amber-400 tabular-nums shrink-0">
                           Record {hi.toLocaleString('fr-FR')}
+                          {topEntry && topEntry.score >= hi ? ` · ${topEntry.tri}` : ''}
                         </span>
                       </div>
 
