@@ -492,7 +492,7 @@ static void test_sfx_patterns() {
     printf("[effets sonores]\n");
     int total = 0;
     for (int decor = 0; decor < DECOR_COUNT; decor++) {
-        for (int id = 1; id <= (int)Sfx::LockLit; id++) {
+        for (int id = 1; id <= (int)Sfx::Assist; id++) {
             for (int arg = 0; arg < 6; arg += 5) {
                 Pattern p;
                 build_pattern((uint8_t)decor, (Sfx)id, (uint8_t)(arg * 20), p);
@@ -906,6 +906,117 @@ static void test_ramp_exit_not_drain() {
     CHECK(bad == 0, "%d/%d sorties de rampe retombent dans un couloir de sortie", bad, total);
 }
 
+
+// --- Sprint 1 de l'agence : boitiers, combo, aide debutant, coaching ------------------------------------
+static void test_sprint1() {
+    printf("[sprint 1 : boitier, combo, aide, coaching]\n");
+    // 1) une bille posee dans un boitier plein est rendue au plateau (bug : bille retombee de l'etage coincee a vie)
+    for (int t = 0; t < TABLE_COUNT; t++) {
+        const TableDef& d = table(t);
+        for (int h = 0; h < d.housingCount; h++) {
+            const HousingDef& hd = d.housings[h];
+            float cx = 0, cy = 0; for (int i = 0; i < hd.n; i++) { cx += hd.p[i].x; cy += hd.p[i].y; }
+            cx /= hd.n; cy /= hd.n;
+            if (cx < 30 || cx > 195 || cy < 60 || cy > 380) continue;   // les boitiers colles aux parois ne piegent pas
+            Game* g = fresh(t);
+            g->balls[0] = {cx, cy, 0.0f, 0.0f, true, false, 0.0f, 0.0f};
+            run(*g, 1.0f);
+            bool inside = false; { float x = g->balls[0].x, y = g->balls[0].y; int c = 0;
+                for (int i = 0, j = hd.n - 1; i < hd.n; j = i++) if (((hd.p[i].y > y) != (hd.p[j].y > y)) && (x < (hd.p[j].x - hd.p[i].x) * (y - hd.p[i].y) / (hd.p[j].y - hd.p[i].y) + hd.p[i].x)) c++;
+                inside = c & 1; }
+            CHECK(!inside, "table %d boitier %d : la bille est restee piegee a l'interieur", t, h);
+            delete g;
+        }
+    }
+    // 2) aide debutant : deux chutes rapides d'affilee -> protection etendue ; combo de rampes
+    {
+        Game* g = fresh(1);
+        CHECK(!g->assistOn, "l'aide ne doit pas etre active au depart");
+        for (int k = 0; k < 2; k++) {
+            g->ballSaveUsed = true; g->ballSaveTimer = 0.0f;
+            g->balls[0] = {110.0f, 515.0f, 0.0f, 300.0f, true, false, 0.0f, 0.0f};
+            run(*g, 0.5f);
+        }
+        CHECK(g->assistOn, "deux chutes rapides doivent declencher l'aide (quickDrains=%d)", (int)g->quickDrains);
+        delete g;
+    }
+    {
+        Game* g = fresh(1);
+        const uint32_t s0 = g->score;
+        const Vec2 en = table(1).ramps[0].pts[0];
+        g->balls[0] = {en.x, en.y + 4.0f, 0.0f, -260.0f, true, false, 0.0f, 0.0f};
+        run(*g, 0.3f);
+        const uint32_t afterOne = g->score - s0;
+        CHECK(g->rampCombo == 1, "premiere rampe : combo 1 (%d)", (int)g->rampCombo);
+        // on remet une bille a l'entree dans la fenetre de combo
+        run(*g, 4.5f);
+        g->balls[0] = {en.x, en.y + 4.0f, 0.0f, -260.0f, true, false, 0.0f, 0.0f};
+        g->balls[0].rampCool = 0.0f;
+        run(*g, 0.3f);
+        CHECK(g->rampCombo >= 2, "deuxieme rampe dans la fenetre : combo >= 2 (%d)", (int)g->rampCombo);
+        CHECK(g->score - s0 > afterOne * 2, "le combo doit rapporter plus que deux rampes isolees");
+        delete g;
+    }
+    // 3) coaching : s'affiche sur la premiere partie de la session, pas ensuite
+    {
+        Game g; g.begin(STORE());
+        g.startNewGame(0); run(g, 3.5f);
+        CHECK(g.hintStage >= 1, "le coaching de la premiere bille doit demarrer (stage %d)", (int)g.hintStage);
+        g.startNewGame(0); g.startNewGame(0);
+        CHECK(g.hintStage == 2, "pas de coaching apres les deux premieres parties");
+    }
+}
+
+// --- Sprint 3 : mode demo, combo etendu aux cibles, jauge ----------------------------------------------
+static void test_sprint3() {
+    printf("[sprint 3 : demo automatique, combo cibles, jauge]\n");
+    {   // la demo demarre apres l'inactivite, joue seule, n'enregistre aucun record et rend la main a la moindre touche
+        Game g; g.begin(STORE());
+        const uint32_t rec = g.highScores[0];
+        run(g, DEMO_IDLE_SEC - 2.0f);
+        CHECK(g.state == State::Menu && !g.demo, "pas de demo avant l'inactivite");
+        run(g, 4.0f);
+        CHECK(g.demo && g.state == State::Playing, "la demo doit demarrer apres %.0f s d'inactivite", DEMO_IDLE_SEC);
+        run(g, 60.0f);
+        CHECK(g.score > 0, "la demo doit marquer des points seule (%lu)", (unsigned long)g.score);
+        CHECK(g.highScores[0] == rec, "la demo n'enregistre jamais de record");
+        const uint8_t before = g.tableIdx; (void)before;
+        Input press; press.left = true;
+        tick(g, press, 1.0f / 60.0f);
+        CHECK(!g.demo && g.state == State::Menu, "une touche coupe la demo et revient au menu");
+        Input none; run(g, 0.5f, none);
+        CHECK(g.state == State::Menu, "la touche est consommee : on reste au menu");
+    }
+    {   // la demo qui va au bout revient d'elle-meme au menu
+        Game g; g.begin(STORE());
+        run(g, DEMO_IDLE_SEC + 1.0f);
+        bool back = false;
+        for (int i = 0; i < 60 * 900 && !back; i++) { tick(g, Input(), 1.0f / 60.0f); if (!g.demo && g.state == State::Menu) back = true; }
+        CHECK(back, "la demo doit se terminer et revenir au menu");
+    }
+    {   // combo : une rampe puis une cible rapprochees
+        Game* g = fresh(1);
+        g->attractEnabled = false;
+        const Vec2 en = table(1).ramps[0].pts[0];
+        g->balls[0] = {en.x, en.y + 4.0f, 0.0f, -260.0f, true, false, 0.0f, 0.0f};
+        run(*g, 0.3f);
+        CHECK(g->rampCombo == 1, "rampe : combo 1");
+        g->onTargetHit(0, false);
+        CHECK(g->rampCombo == 2, "une cible touchee dans la fenetre prolonge le combo (%d)", (int)g->rampCombo);
+        delete g;
+    }
+    {   // jauge : la duree de protection est connue du rendu
+        Game* g = fresh(0);
+        g->ballSaveUsed = false;
+        const Ball sh = g->balls[0];
+        (void)sh;
+        g->balls[0] = {200.0f, 450.0f, 0.0f, -300.0f, true, true, 0.0f, 0.0f};
+        run(*g, 0.5f);
+        CHECK(g->ballSaveTimer <= g->ballSaveMax + 0.01f && g->ballSaveMax >= BALL_SAVE_SEC - 0.01f, "ballSaveMax coherent (%.1f/%.1f)", g->ballSaveTimer, g->ballSaveMax);
+        delete g;
+    }
+}
+
 int main(int argc, char** argv) {
     const char* outDir = argc > 1 ? argv[1] : nullptr;
     test_tables();
@@ -921,6 +1032,8 @@ int main(int argc, char** argv) {
     test_plunger_in_flight();
     test_return_and_sling();
     test_ramp_exit_not_drain();
+    test_sprint1();
+    test_sprint3();
     test_containment();
     test_ramp_follow();
     test_hunt();

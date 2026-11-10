@@ -41,6 +41,13 @@ void classic(Pattern& p, Sfx id, uint8_t arg) {
         case Sfx::Sling:     b.add(0, 420, 160, 0.6f, 0.05f, 65, WAVE_SQUARE).add(0, 800, 200, 0.3f, 0.02f, 40, WAVE_NOISE); break;
         case Sfx::Ramp: { float f[4] = {440, 554, 659, 880}; b.arp(f, 4, 55, 140, 0.7f, WAVE_SINE); break; }
         case Sfx::LockLit: { float f[3] = {988, 1319, 1976}; b.arp(f, 3, 70, 90, 0.55f, WAVE_TRIANGLE); break; }
+        case Sfx::Combo: {   // arpege montant dont la hauteur grimpe avec le niveau de combo (arg 2..9)
+            const float k = 1.0f + 0.09f * (float)(arg > 9 ? 9 : arg);
+            float f[4] = {523.0f * k, 659.0f * k, 784.0f * k, 1047.0f * k};
+            b.arp(f, 4, 45, 110, 0.7f, WAVE_TRIANGLE);
+            break;
+        }
+        case Sfx::Assist: { float f[3] = {440, 554, 659}; b.arp(f, 3, 80, 140, 0.5f, WAVE_SINE); break; }   // trois notes douces : "on vous aide"
         case Sfx::Lock:      b.add(0, 800, 300, 0.7f, 0.05f, 160, WAVE_SINE).add(0, 150, 60, 0.7f, 0.02f, 120, WAVE_NOISE); break;
         case Sfx::Multiball: {
             float f[6] = {392, 494, 587, 784, 988, 1175};
