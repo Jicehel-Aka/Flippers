@@ -701,7 +701,7 @@ static void draw_overlays(const Game& g, const TableDef& t) {
     const int y0 = HUD_H + 18;
     uint16_t grey = C3(148, 163, 184), white = C3(255, 255, 255), green = C3(52, 211, 153);
     if (g.state == State::Menu) {
-        panel(t, t.accent, 132);
+        panel(t, t.accent, 150);
         ptext_center(120, y0 + 8, "GAMEBUINO AKA PINBALL", C(t.accent));
         char buf[64];
         snprintf(buf, sizeof(buf), "< %u/%d >", g.tableIdx + 1, TABLE_COUNT);
@@ -713,23 +713,43 @@ static void draw_overlays(const Game& g, const TableDef& t) {
             snprintf(feat, sizeof(feat), "%uBUMP %uRAMP%s%s", (unsigned)t.bumperCount, 2u, t.upper.present ? " ETAGE" : "", t.toy.present ? " JOUET" : "");
             ptext_center(120, y0 + 88, feat, C3(250, 204, 21));
         }
-        snprintf(buf, sizeof(buf), "RECORD %lu", (unsigned long)g.highScores[g.tableIdx]);
-        ptext_center(120, y0 + 100, buf, white);
-        ptext_center(120, y0 + 115, "A/D: TABLE  R1/B: JOUER", green);
-    } else if (g.state == State::GameOver) {
-        panel(t, 0xEF4444);
-        ptext_center(120, y0 + 10, "FIN DE PARTIE", C3(239, 68, 68), 1);
-        char buf[64];
-        snprintf(buf, sizeof(buf), "SCORE %lu", (unsigned long)g.score);
-        ptext_center(120, y0 + 30, buf, white, 1);
-        if (g.newRecord) {
-            ptext_center(120, y0 + 48, "NOUVEAU RECORD !", C3(250, 204, 21));
-        } else {
-            snprintf(buf, sizeof(buf), "RECORD %lu", (unsigned long)g.highScores[g.tableIdx]);
-            ptext_center(120, y0 + 48, buf, grey);
+        for (int i = 0; i < 3; i++) {   // podium de la table
+            const ScoreEntry& e = g.board[g.tableIdx].e[i];
+            snprintf(buf, sizeof(buf), "%d %s %lu", i + 1, e.tri, (unsigned long)e.score);
+            ptext_center(120, y0 + 100 + i * 10, buf, i == 0 ? C3(250, 204, 21) : white);
         }
-        ptext_center(120, y0 + 76, "R1/B: REJOUER", green);
-        ptext_center(120, y0 + 90, "A/D: TABLES", green);
+        ptext_center(120, y0 + 134, "A/D: TABLE  R1/B: JOUER", green);
+    } else if (g.state == State::NameEntry) {
+        panel(t, 0xFACC15, 112);
+        char buf[48];
+        ptext_center(120, y0 + 8, g.pendingRank == 0 ? "NOUVEAU RECORD !" : "TOP 10 !", C3(250, 204, 21));
+        snprintf(buf, sizeof(buf), "RANG %u  SCORE %lu", (unsigned)g.pendingRank + 1u, (unsigned long)g.score);
+        ptext_center(120, y0 + 24, buf, white);
+        ptext_center(120, y0 + 40, "TON TRIGRAMME", grey);
+        for (int i = 0; i < 3; i++) {   // trois grosses lettres, la lettre editee clignote et est soulignee
+            const int cx = 120 + (i - 1) * 30;
+            const bool cur = i == g.nameIdx;
+            char l[2] = {g.nameBuf[i], 0};
+            const bool lit = !cur || ((g.nowMs / 300u) & 1u);
+            if (lit) ptext_center(cx, y0 + 58, l, cur ? C3(250, 204, 21) : (i < g.nameIdx ? green : grey), 3);
+            if (cur) pfill(cx - 9, y0 + 82, 18, 2, C3(250, 204, 21));
+        }
+        ptext_center(120, y0 + 92, "A/D: LETTRE  R1/B: OK", green);
+        ptext_center(120, y0 + 102, "NUDGE: RETOUR", grey);
+    } else if (g.state == State::GameOver) {
+        panel(t, 0xEF4444, 156);
+        ptext_center(120, y0 + 8, "FIN DE PARTIE", C3(239, 68, 68), 1);
+        char buf[64];
+        snprintf(buf, sizeof(buf), g.newRecord ? "SCORE %lu  RECORD !" : "SCORE %lu", (unsigned long)g.score);
+        ptext_center(120, y0 + 20, buf, g.newRecord ? C3(250, 204, 21) : white, 1);
+        for (int i = 0; i < TOP_N; i++) {   // top 10 de la table, la place qui vient d'etre gagnee clignote
+            const ScoreEntry& e = g.board[g.tableIdx].e[i];
+            snprintf(buf, sizeof(buf), "%2d %s %8lu", i + 1, e.tri, (unsigned long)e.score);
+            const bool mine = i == g.lastRank;
+            const uint16_t col = mine ? (((g.nowMs / 350u) & 1u) ? C3(250, 204, 21) : white) : (i == 0 ? C3(250, 204, 21) : grey);
+            ptext_center(120, y0 + 36 + i * 10, buf, col);
+        }
+        ptext_center(120, y0 + 140, "R1/B: REJOUER  A/D: TABLES", green);
     } else if (g.demo && g.bannerTimer <= 0.0f) {
         if ((g.nowMs / 600u) & 1u) {
             pfill(14, HUD_H + 6, 212, 20, C3(15, 23, 42));
